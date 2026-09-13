@@ -49,7 +49,8 @@ const PROTECTED_TABS = [
   "tab-voice",
   "tab-yolo",
   "tab-classifier",
-  "tab-cluster"
+  "tab-cluster",
+  "tab-social"
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -300,8 +301,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const name = document.getElementById("modal-signup-name")?.value?.trim();
       const email = document.getElementById("modal-signup-email")?.value?.trim();
       const password = document.getElementById("modal-signup-password")?.value?.trim();
+      const retypePassword = document.getElementById("modal-signup-retype-password")?.value?.trim();
       const submitBtn = document.getElementById("modal-signup-submit");
       if (!email || !password) return;
+
+      if (password !== retypePassword) {
+        showToast("Passwords do not match. Please retype your password.", "error");
+        return;
+      }
 
       if (submitBtn) submitBtn.disabled = true;
       try {
@@ -395,70 +402,67 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       localStorage.setItem("portfolio_chat_sessions_v2", JSON.stringify(recentSessions));
     } catch (_) {}
-    renderSidebarHistory();
+    renderAgentChatHistory();
   }
 
-  function renderSidebarHistory() {
-    const list = document.getElementById("sidebar-history-list");
-    if (!list) return;
-
-    if (recentSessions.length === 0) {
-      list.innerHTML = `<div style="padding: 10px 12px; font-size: 0.78rem; color: var(--st-text-muted);">No recent chats yet.</div>`;
-      return;
-    }
-
+  function renderAgentChatHistory() {
     const currentHpThread = localStorage.getItem("portfolio_hp_thread_id");
     const currentTourThread = localStorage.getItem("portfolio_tour_thread_id");
 
-    list.innerHTML = recentSessions.map((s) => {
-      const isActive = s.threadId === currentHpThread || s.threadId === currentTourThread;
-      const tag = s.agentName || (s.agent === "harry" ? "Harry" : "Tour");
-      return `
-        <div class="history-item ${isActive ? 'is-active' : ''}" data-thread-id="${escapeHtml(s.threadId)}" data-agent="${escapeHtml(s.agent)}">
-          <div class="history-item-title" title="${escapeHtml(s.title)}">
-            <span class="history-item-tag">[${escapeHtml(tag)}]</span>${escapeHtml(s.title)}
+    const renderAgentList = (containerId, agentKey, currentThread, reloadEvent) => {
+      const list = document.getElementById(containerId);
+      if (!list) return;
+
+      const sessions = recentSessions.filter((s) => (s.agent || "harry") === agentKey);
+      if (sessions.length === 0) {
+        list.innerHTML = `<div class="st-history-empty">No recent chats yet.</div>`;
+        return;
+      }
+
+      list.innerHTML = sessions.map((s) => {
+        const isActive = s.threadId === currentThread;
+        return `
+          <div class="history-item ${isActive ? 'is-active' : ''}" data-thread-id="${escapeHtml(s.threadId)}" data-agent="${escapeHtml(s.agent || agentKey)}">
+            <div class="history-item-title" title="${escapeHtml(s.title)}">
+              ${escapeHtml(s.title)}
+            </div>
+            <button type="button" class="history-item-delete" data-delete-thread="${escapeHtml(s.threadId)}" title="Delete conversation">&times;</button>
           </div>
-          <button type="button" class="history-item-delete" data-delete-thread="${escapeHtml(s.threadId)}" title="Delete conversation">&times;</button>
-        </div>
-      `;
-    }).join("");
+        `;
+      }).join("");
 
-    // Bind click handlers to switch sessions
-    list.querySelectorAll(".history-item").forEach((item) => {
-      item.addEventListener("click", () => {
-        const threadId = item.getAttribute("data-thread-id");
-        const agent = item.getAttribute("data-agent");
-        if (!threadId) return;
-
-        if (agent === "harry") {
-          navigateToTab("tab-harry", "harry");
-          window.dispatchEvent(new CustomEvent("portfolio:reload_harry_history", { detail: { threadId } }));
-        } else if (agent === "tour") {
-          navigateToTab("tab-tour", "tour");
-          window.dispatchEvent(new CustomEvent("portfolio:reload_tour_history", { detail: { threadId } }));
-        }
-        renderSidebarHistory();
+      // Bind click handlers to switch sessions
+      list.querySelectorAll(".history-item").forEach((item) => {
+        item.addEventListener("click", () => {
+          const threadId = item.getAttribute("data-thread-id");
+          if (!threadId) return;
+          window.dispatchEvent(new CustomEvent(reloadEvent, { detail: { threadId } }));
+          setTimeout(renderAgentChatHistory, 50);
+        });
       });
-    });
 
-    // Bind delete button handlers to open delete confirmation modal
-    list.querySelectorAll("[data-delete-thread]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const threadId = btn.getAttribute("data-delete-thread");
-        const session = recentSessions.find((s) => s.threadId === threadId);
-        if (!session) return;
+      // Bind delete button handlers to open delete confirmation modal
+      list.querySelectorAll("[data-delete-thread]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const threadId = btn.getAttribute("data-delete-thread");
+          const session = recentSessions.find((s) => s.threadId === threadId);
+          if (!session) return;
 
-        pendingDeleteThreadId = threadId;
-        pendingDeleteAgent = session.agent;
+          pendingDeleteThreadId = threadId;
+          pendingDeleteAgent = session.agent || agentKey;
 
-        const titleEl = document.getElementById("delete-chat-title");
-        if (titleEl) {
-          titleEl.textContent = `"${session.title}" (#${session.threadId})`;
-        }
-        openModal("delete-chat-modal");
+          const titleEl = document.getElementById("delete-chat-title");
+          if (titleEl) {
+            titleEl.textContent = `"${session.title}" (#${session.threadId})`;
+          }
+          openModal("delete-chat-modal");
+        });
       });
-    });
+    };
+
+    renderAgentList("harry-history-list", "harry", currentHpThread, "portfolio:reload_harry_history");
+    renderAgentList("tour-history-list", "tour", currentTourThread, "portfolio:reload_tour_history");
   }
 
   // Delete chat confirmation modal button
@@ -490,20 +494,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Start New Chat from sidebar button
-  document.getElementById("btn-sidebar-new-chat")?.addEventListener("click", () => {
-    const activeTabEl = document.querySelector(".st-tab-view.active");
-    const activeTabId = activeTabEl?.id;
+  // Dedicated Chat History Sidebar "➕ New" Buttons
+  document.getElementById("harry-btn-new-chat-sidebar")?.addEventListener("click", () => {
+    window.dispatchEvent(new CustomEvent("portfolio:reset_harry_chat"));
+    showToast("New Harry Potter Lore conversation started.", "info");
+    renderAgentChatHistory();
+  });
 
-    if (activeTabId === "tab-tour") {
-      window.dispatchEvent(new CustomEvent("portfolio:reset_tour_chat"));
-      showToast("New Tour Planner conversation started.", "info");
-    } else {
-      navigateToTab("tab-harry", "harry");
-      window.dispatchEvent(new CustomEvent("portfolio:reset_harry_chat"));
-      showToast("New Harry Potter Lore conversation started.", "info");
-    }
-    renderSidebarHistory();
+  document.getElementById("tour-btn-new-chat-sidebar")?.addEventListener("click", () => {
+    window.dispatchEvent(new CustomEvent("portfolio:reset_tour_chat"));
+    showToast("New Tour Planner conversation started.", "info");
+    renderAgentChatHistory();
   });
 
   // Listen to chat updates from harry.js and tour.js
@@ -535,7 +536,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   loadRecentSessions();
-  renderSidebarHistory();
+  renderAgentChatHistory();
+  window.addEventListener("portfolio:thread_switched", renderAgentChatHistory);
 
   // ───────────────────────────────────────────────────────────────────────────
   // Reactive Authentication State UI Updater
@@ -709,9 +711,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const fullname = document.getElementById("signup-fullname")?.value?.trim();
       const email = document.getElementById("signup-email")?.value?.trim();
       const password = document.getElementById("signup-password")?.value?.trim();
+      const retypePassword = document.getElementById("signup-retype-password")?.value?.trim();
       const submitBtn = document.getElementById("auth-signup-submit-btn");
 
       if (!email || !password) return;
+
+      if (password !== retypePassword) {
+        showToast("Passwords do not match. Please retype your password.", "error");
+        return;
+      }
       if (submitBtn) submitBtn.disabled = true;
 
       try {

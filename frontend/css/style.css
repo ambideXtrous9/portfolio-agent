@@ -2260,7 +2260,89 @@ canvas#voiceOrbCanvas {
   box-shadow: 0 0 0 3px rgba(255, 75, 75, 0.15);
 }
 
-/* 4. Sidebar Chat History List */
+/* 4. Chat Workspace & Dedicated Agent History Sidebar */
+.st-chat-workspace {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.st-chat-history-sidebar {
+  width: 260px;
+  min-width: 230px;
+  flex-shrink: 0;
+  background: #FFFFFF;
+  border: 1px solid var(--st-border-color, #E6E9EF);
+  border-radius: var(--st-radius, 8px);
+  padding: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  position: sticky;
+  top: 1.5rem;
+  max-height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+}
+
+.st-chat-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--st-border-color, #E6E9EF);
+}
+
+.st-chat-history-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--st-text-muted, #555E6D);
+}
+
+.st-chat-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 2px;
+  max-height: calc(100vh - 280px);
+  scrollbar-width: thin;
+}
+
+.st-history-empty {
+  padding: 16px 8px;
+  font-size: 0.82rem;
+  color: var(--st-text-muted, #555E6D);
+  text-align: center;
+}
+
+.st-chat-main-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 960px) {
+  .st-chat-workspace {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .st-chat-history-sidebar {
+    width: 100%;
+    position: static;
+    max-height: 220px;
+  }
+  .st-chat-history-list {
+    max-height: 140px;
+  }
+}
+
+/* Sidebar History Items (shared between views) */
 .sidebar-history {
   display: flex;
   flex-direction: column;

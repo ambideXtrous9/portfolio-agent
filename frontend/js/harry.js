@@ -82,6 +82,7 @@ export function initHarryScholar() {
       note.style.cssText = "text-align: center; font-size: 0.78rem; color: var(--st-text-muted); margin: 0.5rem 0;";
       note.textContent = `⚡ Started fresh thread #${currentThreadId} with empty checkpointer state.`;
       chatHistory.appendChild(note);
+      window.dispatchEvent(new CustomEvent("portfolio:thread_switched"));
     });
   }
 
@@ -92,6 +93,7 @@ export function initHarryScholar() {
       localStorage.setItem("portfolio_hp_thread_id", currentThreadId);
       updateThreadUI();
       loadThreadHistory();
+      window.dispatchEvent(new CustomEvent("portfolio:thread_switched"));
     }
   });
 
@@ -100,6 +102,7 @@ export function initHarryScholar() {
     localStorage.setItem("portfolio_hp_thread_id", currentThreadId);
     updateThreadUI();
     chatHistory.innerHTML = welcomeHTML;
+    window.dispatchEvent(new CustomEvent("portfolio:thread_switched"));
   });
 
   // Reload / Restore History Handler
