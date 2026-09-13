@@ -78,7 +78,6 @@ export function initHarryScholar() {
     streamWS("/harry", { prompt: query }, {
       onStatus: (data) => {
         statusLabel.textContent = `${data.message} (${data.elapsed || 0}s)`;
-        assistantMsg.scrollIntoView({ behavior: "smooth" });
       },
       onToolCall: (data) => {
         const card = document.createElement("div");
@@ -90,7 +89,6 @@ export function initHarryScholar() {
           ${data.args ? `<div class="st-tool-body">Query: ${escapeHtml(JSON.stringify(data.args, null, 2))}</div>` : ""}
         `;
         toolsLog.appendChild(card);
-        assistantMsg.scrollIntoView({ behavior: "smooth" });
       },
       onToolResult: (data) => {
         const card = toolsLog.querySelector(`#tool-${data.tool}`);
@@ -103,22 +101,20 @@ export function initHarryScholar() {
           card.appendChild(resEl);
         }
       },
-      onToken: (token) => {
-        fullMarkdown += token;
-        markdownBody.innerHTML = marked.parse(fullMarkdown);
-        assistantMsg.scrollIntoView({ behavior: "smooth" });
+      onToken: () => {
+        // Suppress intermediate token drafting so output only appears after critic node is complete
       },
       onDone: (data) => {
         statusBadge.style.display = "none";
         sendBtn.disabled = false;
-        if (data.full_text) {
-          markdownBody.innerHTML = marked.parse(data.full_text);
+        const text = data.content || data.full_text || "";
+        if (text) {
+          markdownBody.innerHTML = marked.parse(text);
         }
-        assistantMsg.scrollIntoView({ behavior: "smooth" });
       },
       onError: (err) => {
-        statusLabel.textContent = `⚠️ Error: ${err.message}`;
-        statusLabel.style.color = "#D32F2F";
+        statusBadge.style.display = "none";
+        markdownBody.innerHTML = `<div style="color: #D32F2F; padding: 0.5rem; background: #FDE8E8; border-radius: 4px;">⚠️ Error: ${escapeHtml(err.message)}</div>`;
         sendBtn.disabled = false;
       }
     });

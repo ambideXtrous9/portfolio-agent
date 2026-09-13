@@ -98,7 +98,7 @@ export function initStockScreener() {
     });
   }
 
-  // Renders scan results with Streamlit styled success box, DataFrame table, and dropdown
+  // Renders scan results with Streamlit styled success box, DataFrame table, and clickable rows
   function renderScanResults(container, res, prefix) {
     const stocks = res.stocks || [];
     if (stocks.length === 0) {
@@ -114,11 +114,11 @@ export function initStockScreener() {
       dataDisplayHtml = `
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; margin: 1rem 0;">
           ${stocks.map((s) => `
-            <div style="padding: 0.5rem 0.75rem; background: #F8F9FA; border: 1px solid var(--st-border-input); border-radius: 4px; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;">
+            <div class="stock-clickable-item" data-symbol="${s["Symbol"] || s.symbol}" style="padding: 0.65rem 0.85rem; background: #F8F9FA; border: 1px solid var(--st-border-input); border-radius: 4px; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <strong>${s["Symbol"]}</strong> — ${s["Current Price"]} (${s["Change %"]})
+                <strong style="color: #1E88E5;">${s["Symbol"]}</strong> — ${s["Company Name"] || ""} (${s["Change %"] || ""})
               </div>
-              <span style="font-size: 0.85rem; background: #E3F2FD; color: #1565C0; padding: 2px 8px; border-radius: 4px; font-weight: 600;">${s["Vol Ratio"]}</span>
+              <span style="font-size: 0.85rem; background: #E3F2FD; color: #1565C0; padding: 2px 8px; border-radius: 4px; font-weight: 600;">${s["Vol Ratio"] || ""}</span>
             </div>
           `).join("")}
         </div>
@@ -131,11 +131,14 @@ export function initStockScreener() {
               <tr>${columns.map((c) => `<th>${c}</th>`).join("")}</tr>
             </thead>
             <tbody>
-              ${stocks.map((row) => `
-                <tr>
+              ${stocks.map((row) => {
+                const sym = row["Symbol"] || row["symbol"] || Object.values(row)[0];
+                return `
+                <tr class="stock-clickable-row" data-symbol="${sym}" title="Click to analyze ${sym}">
                   ${columns.map((col) => `<td>${row[col] !== undefined && row[col] !== null ? row[col] : "N/A"}</td>`).join("")}
                 </tr>
-              `).join("")}
+              `;
+              }).join("")}
             </tbody>
           </table>
         </div>
@@ -143,30 +146,25 @@ export function initStockScreener() {
     }
 
     container.innerHTML = `
-      <div style="background-color: #D4EDDA; color: #155724; border: 1px solid #C3E6CB; border-radius: var(--st-radius); padding: 0.75rem 1rem; margin-bottom: 1rem; font-weight: 600;">
-        ✅ Scan Complete: ${stocks.length} Stocks Found
+      <div style="background-color: #D4EDDA; color: #155724; border: 1px solid #C3E6CB; border-radius: var(--st-radius); padding: 0.75rem 1rem; margin-bottom: 0.75rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <span>✅ Scan Complete: ${stocks.length} Stocks Found</span>
+        <span style="font-size: 0.88rem; font-weight: 500; opacity: 0.9;">💡 Click any stock row below to view full analysis</span>
       </div>
 
       ${dataDisplayHtml}
-
-      <div style="margin: 1.5rem 0 0.5rem; font-weight: 600; font-size: 1.05rem;">Select a Stock for Analysis:</div>
-      <div style="display: flex; gap: 12px; max-width: 600px; align-items: center;">
-        <select id="sel-${prefix}" class="st-chat-input-field" style="border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.5rem 0.8rem; background: #FFF; font-size: 0.95rem; flex: 1;">
-          <option value="">Select the Stock</option>
-          ${stocks.map((s) => `<option value="${s.Symbol}">${s.Symbol} ${s["Company Name"] ? `- ${s["Company Name"]}` : ""}</option>`).join("")}
-        </select>
-      </div>
     `;
 
-    const selectEl = document.getElementById(`sel-${prefix}`);
-    if (selectEl) {
-      selectEl.addEventListener("change", () => {
-        const sym = selectEl.value;
+    // Attach click listeners to all clickable rows and cards
+    container.querySelectorAll(".stock-clickable-row, .stock-clickable-item").forEach((el) => {
+      el.addEventListener("click", () => {
+        const sym = el.getAttribute("data-symbol");
         if (sym) {
+          container.querySelectorAll(".stock-clickable-row, .stock-clickable-item").forEach((r) => r.classList.remove("selected-stock-row"));
+          el.classList.add("selected-stock-row");
           renderInlineStockAnalysis(sym);
         }
       });
-    }
+    });
   }
 
   // Subtab 6: Load full company catalog for individual search
@@ -455,12 +453,6 @@ export function initStockScreener() {
           <div id="stock-technical-chart" style="width: 100%; min-height: 520px; background: #FFFFFF; border: 1px solid var(--st-border-input); border-radius: var(--st-radius);"></div>
         </div>
 
-        <!-- 1-Year Candlestick Price History (plotChart(option) with Range Slider) -->
-        <div style="margin: 2.5rem 0;">
-          <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">📈 1-Year Interactive Candlestick Chart</h3>
-          <div id="stock-candlestick-chart" style="width: 100%; min-height: 460px; background: #FFFFFF; border: 1px solid var(--st-border-input); border-radius: var(--st-radius);"></div>
-        </div>
-
         <!-- Financial & Shareholding Status (analyze_financial_data matching Streamlit columns) -->
         <div style="margin: 2.5rem 0;">
           <h3 style="font-size: 1.25rem; margin-bottom: 1rem;">📊 Financial Data Analysis</h3>
@@ -563,9 +555,6 @@ export function initStockScreener() {
 
     // Render Institutional Technical Chart (mlpchart Candlestick + SMAs + Volume + RSI)
     renderTechnicalChart(data);
-
-    // Render 1-Year Candlestick Chart
-    renderCandlestickChart(data);
 
     // Render Multi-Panel Financial & Shareholding Subplots
     renderShareholdingSubplots(data);

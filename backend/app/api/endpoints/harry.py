@@ -337,9 +337,9 @@ async def websocket_harry(websocket: WebSocket):
             })
 
             final_draft = ""
+            final_critique = ""
             generic_reply = ""
             is_generic = False
-            live_stream_text = ""
 
             async for event in hp_agent_graph.astream_events(
                 input={"topic": topic, "review": "Write an awesome article on the topic."},
@@ -382,28 +382,25 @@ async def websocket_harry(websocket: WebSocket):
                                 generic_reply = cls_info.get("reply", "")
                         if "draft" in output_data and output_data["draft"]:
                             final_draft = output_data["draft"]
+                        if "critique" in output_data and output_data["critique"]:
+                            final_critique = output_data["critique"]
 
-                # 3. Real-time Live Token Streaming
-                if event_type == "on_chat_model_stream":
-                    chunk = event.get("data", {}).get("chunk")
-                    content = getattr(chunk, "content", "") if chunk else ""
-                    if content:
-                        elapsed = round(time.time() - start_time, 1)
-                        if node in ["writer", "mythologist", "researcher"] or not node:
-                            live_stream_text += content
-                            await websocket.send_json({
-                                "type": "token",
-                                "node": node or "writer",
-                                "token": content,
-                                "elapsed": elapsed
-                            })
+            # Final response only after all nodes (including critic) have finished
+            if is_generic and generic_reply:
+                final_content = generic_reply
+            elif final_draft:
+                if final_critique and final_critique != "Article reviewed.":
+                    final_content = f"{final_draft}\n\n---\n### 🧑‍⚖️ Critic Review\n{final_critique}"
+                else:
+                    final_content = final_draft
+            else:
+                final_content = "No response generated."
 
-            # Final response
-            final_content = generic_reply if (is_generic and generic_reply) else (final_draft or live_stream_text or "No response generated.")
             total_elapsed = round(time.time() - start_time, 2)
             await websocket.send_json({
-                "type": "final",
+                "type": "done",
                 "content": final_content,
+                "full_text": final_content,
                 "elapsed": total_elapsed,
                 "classification": "generic" if is_generic else "harry"
             })
@@ -432,6 +429,7 @@ async def stream_harry_sse(query: str):
         }
 
         final_draft = ""
+        final_critique = ""
         generic_reply = ""
         is_generic = False
 
@@ -472,20 +470,22 @@ async def stream_harry_sse(query: str):
                             generic_reply = cls_info.get("reply", "")
                     if "draft" in output_data and output_data["draft"]:
                         final_draft = output_data["draft"]
+                    if "critique" in output_data and output_data["critique"]:
+                        final_critique = output_data["critique"]
 
-            if event_type == "on_chat_model_stream":
-                chunk = event.get("data", {}).get("chunk")
-                content = getattr(chunk, "content", "") if chunk else ""
-                if content and (node in ["writer", "mythologist"] or not node):
-                    yield {
-                        "event": "token",
-                        "data": json.dumps({"token": content, "node": node or "writer"})
-                    }
+        if is_generic and generic_reply:
+            res = generic_reply
+        elif final_draft:
+            if final_critique and final_critique != "Article reviewed.":
+                res = f"{final_draft}\n\n---\n### 🧑‍⚖️ Critic Review\n{final_critique}"
+            else:
+                res = final_draft
+        else:
+            res = "Analysis complete."
 
-        res = generic_reply if (is_generic and generic_reply) else (final_draft or "Analysis complete.")
         yield {
-            "event": "final",
-            "data": json.dumps({"content": res, "elapsed": round(time.time() - start_time, 2)})
+            "event": "done",
+            "data": json.dumps({"content": res, "full_text": res, "elapsed": round(time.time() - start_time, 2)})
         }
 
     return EventSourceResponse(event_generator())

@@ -88,7 +88,7 @@ export function streamWS(endpoint, payload, { onStatus, onToolCall, onToolResult
         onToolResult(data);
       } else if (type === "token" && onToken) {
         onToken(data.token || "");
-      } else if (type === "done" && onDone) {
+      } else if ((type === "done" || type === "final") && onDone) {
         onDone(data);
         socket.close();
       } else if (type === "error" && onError) {

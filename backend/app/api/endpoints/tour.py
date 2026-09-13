@@ -328,7 +328,7 @@ async def tourAgent(state: Dict[str, Any]):
                 SystemMessage(content=TOUR_AGENT_PROMPT),
                 HumanMessage(content=context)
             ]),
-            timeout=50
+            timeout=120
         )
         summary_content = response.content
     except Exception as e:
@@ -475,8 +475,9 @@ async def websocket_tour(websocket: WebSocket):
 
             total_elapsed = round(time.time() - start_time, 2)
             await websocket.send_json({
-                "type": "final",
+                "type": "done",
                 "content": full_text or "Trip plan generated.",
+                "full_text": full_text or "Trip plan generated.",
                 "elapsed": total_elapsed
             })
 
@@ -544,8 +545,8 @@ async def stream_tour_sse(query: str):
                     full_text = output_data["summary"]
 
         yield {
-            "event": "final",
-            "data": json.dumps({"content": full_text or "Trip plan generated.", "elapsed": round(time.time() - start_time, 2)})
+            "event": "done",
+            "data": json.dumps({"content": full_text or "Trip plan generated.", "full_text": full_text or "Trip plan generated.", "elapsed": round(time.time() - start_time, 2)})
         }
 
     return EventSourceResponse(event_generator())
