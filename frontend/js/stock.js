@@ -221,186 +221,314 @@ export function initStockScreener() {
   }
 
   function renderAnalysisDashboard(data) {
+    // 1. Build Valuation Table HTML (2-column split table matching .valuation-table in screener.py)
+    const valLeft = [
+      ["Market Cap", data.market_cap || "N/A"],
+      ["P/E (TTM)", data.pe_ratio || "N/A"],
+      ["Forward P/E", data.valuation["Forward P/E"] || "N/A"],
+      ["PEG Ratio", data.valuation["PEG Ratio"] || "N/A"],
+      ["P/S (TTM)", data.valuation["Price/Sales"] || "N/A"],
+      ["P/B", data.valuation["Price/Book"] || "N/A"],
+    ];
+    const valRight = [
+      ["P/FCF", data.valuation["Price/FCF"] || "N/A"],
+      ["EV/EBITDA", data.valuation["EV/EBITDA"] || "N/A"],
+      ["EPS (TTM)", data.eps_ttm || "N/A"],
+      ["Forward EPS", data.eps_forward || "N/A"],
+      ["EPS Growth (QoQ)", data.eps_growth || "N/A"],
+      ["Dividend Yield", data.financials["Dividend Yield"] || "N/A"],
+    ];
+    let valTableRows = "";
+    for (let i = 0; i < valLeft.length; i++) {
+      const l = valLeft[i];
+      const r = valRight[i] || ["", ""];
+      valTableRows += `
+        <tr>
+          <td class="metric-col">${l[0]}</td>
+          <td class="value-col">${l[1]}</td>
+          <td class="spacer-col"></td>
+          <td class="metric-col">${r[0]}</td>
+          <td class="value-col">${r[1]}</td>
+        </tr>
+      `;
+    }
+
+    // 2. Build Financials Table HTML (2-column split table matching .financial-table in screener.py)
+    const finLeft = [
+      ["Current Ratio", data.financials["Current Ratio"] || "N/A"],
+      ["Quick Ratio", data.financials["Quick Ratio"] || "N/A"],
+      ["Debt/Equity", data.financials["Debt/Equity"] || "N/A"],
+      ["Interest Coverage", data.financials["Interest Coverage"] || "N/A"],
+      ["ROE", data.roe || "N/A"],
+      ["ROA", data.financials["ROA"] || "N/A"],
+      ["ROIC", data.financials["ROIC"] || "N/A"],
+    ];
+    const finRight = [
+      ["Operating Margin", data.growth["Operating Margin"] || "N/A"],
+      ["Net Margin", data.growth["Net Margin"] || "N/A"],
+      ["EBITDA Margin", data.growth["EBITDA Margin"] || "N/A"],
+      ["Revenue Growth (YoY)", data.growth["Revenue Growth (YoY)"] || "N/A"],
+      ["Earnings Growth (YoY)", data.growth["Earnings Growth (YoY)"] || "N/A"],
+      ["FCF Growth (YoY)", data.growth["FCF Growth (YoY)"] || "N/A"],
+      ["Dividend Payout Ratio", data.financials["Payout Ratio"] || "N/A"],
+    ];
+    let finTableRows = "";
+    const maxFin = Math.max(finLeft.length, finRight.length);
+    for (let i = 0; i < maxFin; i++) {
+      const l = finLeft[i] || ["", ""];
+      const r = finRight[i] || ["", ""];
+      finTableRows += `
+        <tr>
+          <td class="metric-col">${l[0]}</td>
+          <td class="value-col">${l[1]}</td>
+          <td class="spacer-col"></td>
+          <td class="metric-col">${r[0]}</td>
+          <td class="value-col">${r[1]}</td>
+        </tr>
+      `;
+    }
+
+    // 3. Build Multibagger Table HTML (matching #multibagger-table in screener.py)
+    const mRows = data.multibagger_table || [];
+    let multibaggerTableHtml = "";
+    if (mRows.length > 0) {
+      multibaggerTableHtml = `
+        <div style="margin: 15px 0; overflow-x: auto;">
+          <table id="multibagger-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Your Value</th>
+                <th>Target</th>
+                <th>Verdict</th>
+                <th>Why It Matters</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${mRows.map(row => `
+                <tr>
+                  <td><strong>${row.parameter}</strong></td>
+                  <td style="font-weight: 600;">${row.your_value}</td>
+                  <td>${row.target}</td>
+                  <td><span class="verdict-badge ${row.verdict_type}">${row.verdict}</span></td>
+                  <td style="color: #555; font-size: 0.9rem;">${row.why_it_matters}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // 4. Build Key Executives HTML
+    const officers = data.company_officers || [];
+    const officersHtml = officers.length > 0
+      ? `
+        <div style="margin-top: 1.25rem;">
+          <h4 style="margin-bottom: 0.5rem; font-size: 1.05rem;">Key Executives</h4>
+          <ul style="margin: 0; padding-left: 1.25rem; line-height: 1.8;">
+            ${officers.map(o => `<li><strong>${o.name}</strong>: ${o.title}</li>`).join("")}
+          </ul>
+        </div>
+      `
+      : "";
+
+    // 5. Main Dashboard Render
     inlineContainer.innerHTML = `
       <div style="margin-top: 2.5rem; padding-top: 2rem; border-top: 2px solid var(--st-border-color);">
 
         <!-- Company Header (render_company_header) -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
           <div>
-            <h1 style="margin: 0; font-size: 2.1rem; font-weight: 700; color: var(--st-text-color);">${data.company_name}</h1>
-            <div style="font-size: 1rem; color: var(--st-text-muted); margin-top: 4px;">
-              <strong>${data.symbol}</strong> • ${data.sector} • ${data.industry}
+            <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: var(--st-text-color);">${data.company_name}</h1>
+            <div style="font-size: 14px; color: #666; margin-top: 4px;">
+              ${data.symbol} • ${data.industry}
             </div>
           </div>
           <div style="text-align: right;">
             <div style="font-size: 2.2rem; font-weight: 800; color: #1E88E5;">${data.current_price}</div>
-            <div style="font-size: 0.9rem; color: var(--st-text-muted);">Current Market Price</div>
+            <div style="font-size: 0.85rem; color: var(--st-text-muted);">Current Market Price</div>
           </div>
         </div>
 
-        <!-- 4-Metric Grid Summary -->
-        <div class="st-metric-grid">
-          <div class="st-metric-card">
-            <div class="st-metric-label">Market Cap</div>
-            <div class="st-metric-value">${data.market_cap}</div>
-          </div>
-          <div class="st-metric-card">
-            <div class="st-metric-label">P/E Ratio</div>
-            <div class="st-metric-value">${data.pe_ratio}</div>
-          </div>
-          <div class="st-metric-card">
-            <div class="st-metric-label">Return on Equity (ROE)</div>
-            <div class="st-metric-value">${data.roe}</div>
-          </div>
-          <div class="st-metric-card">
-            <div class="st-metric-label">52-Week Range</div>
-            <div class="st-metric-value" style="font-size: 1.15rem;">${data.fifty_two_week_range}</div>
-          </div>
+        <!-- 8-Metric Grid Summary (render_metrics_grid matching Streamlit 4-column layout) -->
+        <div class="st-metric-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 1.5rem;">
+          <div class="st-metric-card"><div class="st-metric-label">Current Price</div><div class="st-metric-value">${data.current_price}</div></div>
+          <div class="st-metric-card"><div class="st-metric-label">52-Week Range</div><div class="st-metric-value" style="font-size: 1.05rem;">${data.fifty_two_week_range}</div></div>
+          <div class="st-metric-card"><div class="st-metric-label">Market Cap</div><div class="st-metric-value">${data.market_cap}</div></div>
+          <div class="st-metric-card"><div class="st-metric-label">Volume / Avg</div><div class="st-metric-value" style="font-size: 1.05rem;">${data.volume} / ${data.avg_volume}</div></div>
+          <div class="st-metric-card"><div class="st-metric-label">P/E (TTM)</div><div class="st-metric-value">${data.pe_ratio}</div></div>
+          <div class="st-metric-card"><div class="st-metric-label">Sector</div><div class="st-metric-value" style="font-size: 1.05rem;">${data.sector}</div></div>
+          <div class="st-metric-card"><div class="st-metric-label">EPS (TTM)</div><div class="st-metric-value">${data.eps_ttm || "N/A"}</div></div>
+          <div class="st-metric-card"><div class="st-metric-label">EPS Growth (QoQ)</div><div class="st-metric-value">${data.eps_growth || "N/A"}</div></div>
         </div>
 
-        <!-- About Section -->
-        <div style="background: #F8F9FA; border-left: 4px solid #1E88E5; padding: 1rem 1.25rem; border-radius: 4px; margin: 1.5rem 0; font-size: 0.98rem; line-height: 1.6; color: #333;">
-          <strong>About ${data.company_name}:</strong><br>
-          <em>${data.about}</em>
-        </div>
-
-        <!-- Subtabs for Deep Dive (Overview, Valuation, Financials, Multibagger) -->
-        <div class="st-tabs-nav" id="deepdive-subtabs" style="margin-top: 2rem;">
+        <!-- 4 Deep-Dive Tabs (render_overview_tab, render_valuation_tab, render_financials_tab, render_multibagger_tab) -->
+        <div class="st-tabs-nav" id="deepdive-subtabs" style="margin-top: 1.75rem;">
           <button class="st-tab-trigger active" data-div="tab-funda-overview">📊 Overview</button>
           <button class="st-tab-trigger" data-div="tab-funda-val">📈 Valuation</button>
-          <button class="st-tab-trigger" data-div="tab-funda-fin">💰 Financial Health</button>
-          <button class="st-tab-trigger" data-div="tab-funda-multi">💎 Multibagger Analysis</button>
+          <button class="st-tab-trigger" data-div="tab-funda-fin">💰 Financials</button>
+          <button class="st-tab-trigger" data-div="tab-funda-multi">💎 Multibagger</button>
         </div>
 
         <!-- Tab 1: Overview -->
         <div class="deepdive-pane" id="tab-funda-overview" style="display: block;">
-          <div class="st-metric-grid">
-            <div class="st-metric-card"><div class="st-metric-label">Day Range</div><div class="st-metric-value" style="font-size: 1.15rem;">${data.day_range}</div></div>
-            <div class="st-metric-card"><div class="st-metric-label">Volume</div><div class="st-metric-value" style="font-size: 1.25rem;">${data.volume}</div></div>
-            <div class="st-metric-card"><div class="st-metric-label">Average Volume (20-day)</div><div class="st-metric-value" style="font-size: 1.25rem;">${data.avg_volume}</div></div>
-            <div class="st-metric-card"><div class="st-metric-label">ROCE</div><div class="st-metric-value">${data.roce}</div></div>
+          <h3 style="font-size: 1.2rem; margin-top: 1rem;">Company Information</h3>
+          <div style="margin: 0.5rem 0 1rem; font-size: 0.95rem;"><strong>Industry:</strong> ${data.industry}</div>
+          <div style="background: #F8F9FA; border-left: 4px solid #1E88E5; padding: 1rem 1.25rem; border-radius: 4px; font-size: 0.95rem; line-height: 1.6; color: #333;">
+            <h4 style="margin: 0 0 0.5rem 0;">About</h4>
+            <em>${data.about}</em>
           </div>
+          ${officersHtml}
         </div>
 
-        <!-- Tab 2: Valuation -->
+        <!-- Tab 2: Valuation (Exact 2-column split valuation table) -->
         <div class="deepdive-pane" id="tab-funda-val" style="display: none;">
-          <div class="st-metric-grid">
-            ${Object.entries(data.valuation).map(([k, v]) => `
-              <div class="st-metric-card"><div class="st-metric-label">${k}</div><div class="st-metric-value" style="font-size: 1.25rem;">${v}</div></div>
-            `).join("")}
+          <h3 style="font-size: 1.2rem; margin-top: 1rem;">Valuation Metrics</h3>
+          <table class="valuation-table">
+            <thead>
+              <tr>
+                <th class="metric-col">Metric</th>
+                <th style="text-align: right;">Value</th>
+                <th class="spacer-col"></th>
+                <th class="metric-col">Metric</th>
+                <th style="text-align: right;">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${valTableRows}
+            </tbody>
+          </table>
+          <div style="margin-top: 10px; font-size: 13px; color: #666;">
+            <strong>Note:</strong> All valuation metrics are based on the most recent available data. P/E and other ratios are calculated using TTM (Trailing Twelve Months) figures unless specified.
           </div>
         </div>
 
-        <!-- Tab 3: Financial Health -->
+        <!-- Tab 3: Financial Health (Exact 2-column split financials table) -->
         <div class="deepdive-pane" id="tab-funda-fin" style="display: none;">
-          <div class="st-metric-grid">
-            ${Object.entries(data.financials).map(([k, v]) => `
-              <div class="st-metric-card"><div class="st-metric-label">${k}</div><div class="st-metric-value" style="font-size: 1.25rem;">${v}</div></div>
-            `).join("")}
-          </div>
+          <h3 style="font-size: 1.2rem; margin-top: 1rem;">Financial Health</h3>
+          <table class="financial-table">
+            <thead>
+              <tr>
+                <th class="metric-col">Metric</th>
+                <th style="text-align: right;">Value</th>
+                <th class="spacer-col"></th>
+                <th class="metric-col">Metric</th>
+                <th style="text-align: right;">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${finTableRows}
+            </tbody>
+          </table>
         </div>
 
-        <!-- Tab 4: Multibagger Analysis -->
+        <!-- Tab 4: Multibagger Analysis (Exact Multibagger Potential Table) -->
         <div class="deepdive-pane" id="tab-funda-multi" style="display: none;">
-          <div class="st-metric-grid">
-            ${Object.entries(data.multibagger).map(([k, v]) => `
-              <div class="st-metric-card"><div class="st-metric-label">${k}</div><div class="st-metric-value" style="font-size: 1.2rem;">${v}</div></div>
-            `).join("")}
-          </div>
-          <div style="margin-top: 1rem; padding: 0.85rem; background: #E8F5E9; border-radius: 4px; font-size: 0.92rem; color: #1B5E20;">
+          <h3 style="font-size: 1.2rem; margin-top: 1rem;">Multibagger Potential Analysis</h3>
+          <div style="font-style: italic; color: #666; font-size: 0.95rem; margin-bottom: 0.75rem;">Comprehensive evaluation of key financial metrics</div>
+          <h4 style="margin: 1rem 0 0.5rem 0;">Key Financial Metrics</h4>
+          ${multibaggerTableHtml}
+          <div style="margin-top: 1rem; padding: 0.85rem 1.25rem; background: #E8F5E9; border-radius: 4px; font-size: 0.92rem; color: #1B5E20; line-height: 1.6;">
             <strong>💡 Multibagger Framework:</strong> Consistent EPS growth &gt;15%, low Debt/Equity &lt;0.5, robust free cash flows, and high ROE &gt;15% signal high capital efficiency and reinvestment runway.
           </div>
         </div>
 
-        <!-- Expander: View Technical Indicators (compute_latest_technical_indicators) -->
-        <div class="st-expander" style="margin-top: 1.5rem;">
-          <div class="st-expander-header" id="expander-tech-toggle">
+        <!-- Technical Indicators Expander (with st.expander("📈 View Technical Indicators")) -->
+        <div class="st-expander" style="margin-top: 1.75rem; border: 1px solid var(--st-border-input); border-radius: var(--st-radius);">
+          <div class="st-expander-header" id="expander-tech-toggle" style="cursor: pointer; padding: 0.85rem 1.25rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; background: #F8F9FA;">
             <span>📈 View Technical Indicators</span>
             <span id="expander-arrow">▼</span>
           </div>
-          <div class="st-expander-content" id="expander-tech-body" style="display: none;">
-            <div class="st-metric-grid">
+          <div class="st-expander-content" id="expander-tech-body" style="display: none; padding: 1.25rem; border-top: 1px solid var(--st-border-input); background: #FFFFFF;">
+            <div class="st-metric-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
               ${Object.entries(data.technical_indicators).map(([k, v]) => `
-                <div class="st-metric-card"><div class="st-metric-label">${k}</div><div class="st-metric-value" style="font-size: 1.2rem;">${v}</div></div>
+                <div class="st-metric-card"><div class="st-metric-label">${k}</div><div class="st-metric-value" style="font-size: 1.15rem;">${v}</div></div>
               `).join("")}
             </div>
           </div>
         </div>
 
-        <!-- Candlestick Chart (plotChart(option)) -->
-        <div style="margin: 2rem 0;">
-          <h3>📈 1-Year Candlestick Price History</h3>
-          <div id="stock-candlestick-chart" style="width: 100%; height: 460px; background: #FFFFFF; border: 1px solid var(--st-border-input); border-radius: var(--st-radius);"></div>
+        <!-- Multi-Panel Technical Chart (chart(ticker=option) from mlpchart.py: Candlesticks + SMAs + Volume + RSI) -->
+        <div style="margin: 2.5rem 0;">
+          <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">📊 Institutional Technical Chart (Candlesticks, SMAs, Volume, RSI)</h3>
+          <div id="stock-technical-chart" style="width: 100%; min-height: 520px; background: #FFFFFF; border: 1px solid var(--st-border-input); border-radius: var(--st-radius);"></div>
         </div>
 
-        <!-- Financial & Shareholding Status (analyze_financial_data) -->
+        <!-- 1-Year Candlestick Price History (plotChart(option) with Range Slider) -->
         <div style="margin: 2.5rem 0;">
-          <h3>📊 Financial & Shareholding Trend Analysis</h3>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 1rem;">
+          <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">📈 1-Year Interactive Candlestick Chart</h3>
+          <div id="stock-candlestick-chart" style="width: 100%; min-height: 460px; background: #FFFFFF; border: 1px solid var(--st-border-input); border-radius: var(--st-radius);"></div>
+        </div>
+
+        <!-- Financial & Shareholding Status (analyze_financial_data matching Streamlit columns) -->
+        <div style="margin: 2.5rem 0;">
+          <h3 style="font-size: 1.25rem; margin-bottom: 1rem;">📊 Financial Data Analysis</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <!-- Column 1 -->
-            <div style="background: #F8F9FA; padding: 1.25rem; border-radius: var(--st-radius); border: 1px solid var(--st-border-input);">
-              <div style="margin-bottom: 1.25rem;">
-                <div style="font-weight: 600; margin-bottom: 6px; font-size: 0.95rem;">1. Quarterly Profit Status:</div>
-                <span class="st-status-badge ${data.financial_status.quarterly_profit.status_type}">${data.financial_status.quarterly_profit.badge}</span>
+            <div style="background: #FFFFFF; padding: 1.5rem; border-radius: var(--st-radius); border: 1px solid var(--st-border-input); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <div class="st-status-item">
+                <div class="st-status-title">1. Quarterly Profit Status:</div>
+                <div class="st-status-verdict ${data.financial_status.quarterly_profit.status_type}">${data.financial_status.quarterly_profit.badge}</div>
               </div>
-              <div style="margin-bottom: 1.25rem;">
-                <div style="font-weight: 600; margin-bottom: 6px; font-size: 0.95rem;">3. FII Shareholding Status:</div>
-                <span class="st-status-badge ${data.financial_status.fii_holding.status_type}">${data.financial_status.fii_holding.badge}</span>
+              <div class="st-status-item">
+                <div class="st-status-title">3. FII Shareholding Status:</div>
+                <div class="st-status-verdict ${data.financial_status.fii_holding.status_type}">${data.financial_status.fii_holding.badge}</div>
               </div>
-              <div>
-                <div style="font-weight: 600; margin-bottom: 6px; font-size: 0.95rem;">5. Promoters Shareholding Status:</div>
-                <span class="st-status-badge ${data.financial_status.promoter_holding.status_type}">${data.financial_status.promoter_holding.badge}</span>
+              <div class="st-status-item" style="margin-bottom: 0;">
+                <div class="st-status-title">5. Promoters Shareholding Status:</div>
+                <div class="st-status-verdict ${data.financial_status.promoter_holding.status_type}">${data.financial_status.promoter_holding.badge}</div>
               </div>
             </div>
 
             <!-- Column 2 -->
-            <div style="background: #F8F9FA; padding: 1.25rem; border-radius: var(--st-radius); border: 1px solid var(--st-border-input);">
-              <div style="margin-bottom: 1.25rem;">
-                <div style="font-weight: 600; margin-bottom: 6px; font-size: 0.95rem;">2. Yearly Profit Status:</div>
-                <span class="st-status-badge ${data.financial_status.yearly_profit.status_type}">${data.financial_status.yearly_profit.badge}</span>
+            <div style="background: #FFFFFF; padding: 1.5rem; border-radius: var(--st-radius); border: 1px solid var(--st-border-input); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <div class="st-status-item">
+                <div class="st-status-title">2. Yearly Profit Status:</div>
+                <div class="st-status-verdict ${data.financial_status.yearly_profit.status_type}">${data.financial_status.yearly_profit.badge}</div>
               </div>
-              <div style="margin-bottom: 1.25rem;">
-                <div style="font-weight: 600; margin-bottom: 6px; font-size: 0.95rem;">4. DII Shareholding Status:</div>
-                <span class="st-status-badge ${data.financial_status.dii_holding.status_type}">${data.financial_status.dii_holding.badge}</span>
+              <div class="st-status-item">
+                <div class="st-status-title">4. DII Shareholding Status:</div>
+                <div class="st-status-verdict ${data.financial_status.dii_holding.status_type}">${data.financial_status.dii_holding.badge}</div>
               </div>
-              <div>
-                <div style="font-weight: 600; margin-bottom: 6px; font-size: 0.95rem;">6. Public Shareholding Status:</div>
-                <span class="st-status-badge ${data.financial_status.public_holding.status_type}">${data.financial_status.public_holding.badge}</span>
+              <div class="st-status-item" style="margin-bottom: 0;">
+                <div class="st-status-title">6. Public Shareholding Status:</div>
+                <div class="st-status-verdict ${data.financial_status.public_holding.status_type}">${data.financial_status.public_holding.badge}</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Shareholding & Financial Subplots (plotShareholding) -->
+        <!-- Shareholding & Financial Subplots (plotShareholding 2-column subplot grid) -->
         <div style="margin: 2.5rem 0;">
-          <h3>📉 Financial & Ownership Trajectory Plots</h3>
-          <div id="stock-shareholding-subplots" style="width: 100%; height: 580px; background: #FFFFFF; border: 1px solid var(--st-border-input); border-radius: var(--st-radius);"></div>
+          <h3 style="font-size: 1.25rem; margin-bottom: 1rem;">📉 Financial & Ownership Trajectory Plots</h3>
+          <div id="stock-subplots-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 16px;"></div>
         </div>
 
-        <!-- Latest News Headlines (CompanyNews) -->
+        <!-- Latest News on Company (CompanyNews) -->
         <div style="margin: 2.5rem 0;">
-          <h3>📰 Latest News on ${data.company_name}</h3>
-          <div style="background: #FFFFFF; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 1rem 1.5rem;">
+          <h3 style="font-size: 1.25rem; margin-bottom: 1rem;">📰 Latest News on ${data.company_name}</h3>
+          <div style="background: #FFFFFF; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 1.25rem 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
             ${(data.news && data.news.length > 0) ? `
-              <ul style="margin: 0; padding-left: 1.25rem; line-height: 2;">
+              <ul style="margin: 0; padding-left: 1.25rem; line-height: 2.2;">
                 ${data.news.map((n) => `
                   <li>
-                    <a href="${n.url}" target="_blank" style="color: #1E88E5; font-weight: 600; text-decoration: none;">${n.title}</a>
-                    ${n.publisher ? `<span style="color: var(--st-text-muted); font-size: 0.85rem; margin-left: 6px;">— ${n.publisher}</span>` : ""}
+                    <a href="${n.url}" target="_blank" style="color: #1E88E5; font-weight: 600; text-decoration: none; font-size: 0.98rem;">${n.title}</a>
+                    ${n.publisher ? `<span style="color: var(--st-text-muted); font-size: 0.85rem; margin-left: 8px;">— ${n.publisher}</span>` : ""}
                   </li>
                 `).join("")}
               </ul>
-            ` : `<div style="color: var(--st-text-muted);">No recent news articles found.</div>`}
+            ` : `<div style="color: var(--st-text-muted);">No news found for this topic.</div>`}
           </div>
         </div>
 
-        <!-- AI Report Generator Button (reportGenerator) -->
-        <div style="margin: 3rem 0; padding: 2rem; background: #F8F9FA; border-radius: var(--st-radius); border: 1px solid var(--st-border-input); text-align: center;">
-          <button class="st-btn st-btn-primary" id="btn-generate-ai-report" style="font-size: 1.15rem; padding: 0.75rem 2rem; font-weight: 600;">
+        <!-- AI Research Report Button & Output (reportGenerator) -->
+        <div style="margin: 3.5rem 0; padding: 2.5rem; background: #F8F9FA; border-radius: var(--st-radius); border: 1px solid var(--st-border-input); text-align: center;">
+          <button class="st-btn st-btn-primary" id="btn-generate-ai-report" style="font-size: 1.2rem; padding: 0.85rem 2.5rem; font-weight: 700; box-shadow: 0 4px 12px rgba(30,136,229,0.25);">
             🤖 AI Research Report
           </button>
-          <div style="font-size: 0.9rem; color: var(--st-text-muted); margin-top: 8px;">
-            Synthesizes institutional commentary, valuation metrics, technical indicators, and investment roadmap via Groq LLM.
+          <div style="font-size: 0.95rem; color: var(--st-text-muted); margin-top: 10px;">
+            Generates institutional-grade equity analysis with valuation comparison, ownership trends, and technical price roadmap.
           </div>
           <div id="ai-report-output-container" style="text-align: left; margin-top: 2rem;"></div>
         </div>
@@ -433,10 +561,13 @@ export function initStockScreener() {
       });
     }
 
-    // Render Plotly Candlestick
+    // Render Institutional Technical Chart (mlpchart Candlestick + SMAs + Volume + RSI)
+    renderTechnicalChart(data);
+
+    // Render 1-Year Candlestick Chart
     renderCandlestickChart(data);
 
-    // Render Plotly Financial Subplots
+    // Render Multi-Panel Financial & Shareholding Subplots
     renderShareholdingSubplots(data);
 
     // Wire AI Research Report Generator
@@ -447,10 +578,10 @@ export function initStockScreener() {
         btnAiReport.disabled = true;
         btnAiReport.innerHTML = `<span class="st-spinner"></span> Generating Report...`;
         aiReportContainer.innerHTML = `
-          <div style="padding: 2rem; text-align: center;">
-            <span class="st-spinner" style="width: 24px; height: 24px;"></span>
-            <div style="margin-top: 8px; color: var(--st-text-muted);">
-              Analyzing fundamentals, macro drivers, and generating institutional research report...
+          <div style="padding: 2.5rem; text-align: center;">
+            <span class="st-spinner" style="width: 28px; height: 28px;"></span>
+            <div style="margin-top: 12px; font-weight: 600; color: var(--st-text-color);">
+              Synthesizing institutional equity research report via Groq LLM...
             </div>
           </div>
         `;
@@ -467,22 +598,22 @@ export function initStockScreener() {
 
           aiReportContainer.innerHTML = `
             <div style="margin-top: 1.5rem;">
-              <h2 style="display: flex; align-items: center; gap: 8px;">
+              <h2 style="display: flex; align-items: center; gap: 8px; font-size: 1.6rem; color: #2C3E50;">
                 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Rocket.png" alt="Rocket" width="40" height="40" />
                 AI Financial Research Report
               </h2>
 
-              <!-- Expandable Reasoning Box (Click to Expand) -->
-              <div class="st-expander" style="margin: 1.25rem 0; border: 1px solid #90CAF9; background: #F0F7FF;">
-                <div class="st-expander-header" id="reasoning-toggle" style="background: #E3F2FD; color: #0D47A1;">
+              <!-- Expandable Reasoning Box (Click to Expand) matching with st.expander("🧠 Agent Reasoning") -->
+              <div class="st-expander" style="margin: 1.25rem 0; border: 1px solid #90CAF9; background: #F0F7FF; border-radius: var(--st-radius);">
+                <div class="st-expander-header" id="reasoning-toggle" style="background: #E3F2FD; color: #0D47A1; cursor: pointer; padding: 0.85rem 1.25rem; font-weight: 600; display: flex; justify-content: space-between;">
                   <span>🧠 Agent Reasoning (Click to Expand)</span>
                   <span id="reasoning-arrow">▼</span>
                 </div>
-                <div class="st-expander-content" id="reasoning-body" style="display: none; background: #FAFCFF; font-family: monospace; font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap;">${escapeHtml(thinkingPart)}</div>
+                <div class="st-expander-content" id="reasoning-body" style="display: none; padding: 1.25rem; background: #FAFCFF; font-family: monospace; font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; border-top: 1px solid #BBDEFB;">${escapeHtml(thinkingPart)}</div>
               </div>
 
               <!-- Main Report Output -->
-              <div style="background: #FFFFFF; padding: 2rem; border-radius: var(--st-radius); border: 1px solid var(--st-border-input); line-height: 1.8; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+              <div style="background: #FFFFFF; padding: 2.25rem; border-radius: var(--st-radius); border: 1px solid var(--st-border-input); line-height: 1.8; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
                 ${reportHtml}
               </div>
             </div>
@@ -508,6 +639,202 @@ export function initStockScreener() {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Institutional Technical Multi-Panel Chart (Candlesticks, SMAs, Volume, RSI)
+  // ─────────────────────────────────────────────────────────────────────────
+  function renderTechnicalChart(data) {
+    if (!window.Plotly || !data.candlestick || !data.candlestick.dates.length) return;
+    const c = data.candlestick;
+    const dates = c.dates;
+    const close = c.close;
+
+    // Calculate SMA helper
+    function calcSMA(prices, windowSize) {
+      const result = [];
+      for (let i = 0; i < prices.length; i++) {
+        if (i < windowSize - 1) {
+          result.push(null);
+        } else {
+          const slice = prices.slice(i - windowSize + 1, i + 1);
+          const sum = slice.reduce((a, b) => a + b, 0);
+          result.push(roundTo2(sum / windowSize));
+        }
+      }
+      return result;
+    }
+
+    function roundTo2(val) {
+      return Math.round(val * 100) / 100;
+    }
+
+    const sma20 = calcSMA(close, 20);
+    const sma50 = calcSMA(close, 50);
+    const sma200 = calcSMA(close, 200);
+
+    // Calculate RSI (14) helper
+    function calcRSI(prices, period = 14) {
+      const rsi = [];
+      let gains = 0;
+      let losses = 0;
+
+      for (let i = 0; i < prices.length; i++) {
+        if (i === 0) {
+          rsi.push(null);
+          continue;
+        }
+        const diff = prices[i] - prices[i - 1];
+        if (i <= period) {
+          if (diff >= 0) gains += diff;
+          else losses -= diff;
+          rsi.push(null);
+          if (i === period) {
+            let avgGain = gains / period;
+            let avgLoss = losses / period;
+            let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+            rsi[i] = roundTo2(100 - (100 / (1 + rs)));
+          }
+        } else {
+          const gain = diff > 0 ? diff : 0;
+          const loss = diff < 0 ? -diff : 0;
+          gains = (gains * (period - 1) + gain) / period;
+          losses = (losses * (period - 1) + loss) / period;
+          let rs = losses === 0 ? 100 : gains / losses;
+          rsi.push(roundTo2(100 - (100 / (1 + rs))));
+        }
+      }
+      return rsi;
+    }
+
+    const rsiValues = calcRSI(close, 14);
+
+    // Panel 1: Candlestick + SMAs
+    const candleTrace = {
+      x: dates,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+      type: "candlestick",
+      name: "Price",
+      yaxis: "y",
+      increasing: { line: { color: "#26A69A", width: 1.2 } },
+      decreasing: { line: { color: "#EF5350", width: 1.2 } },
+    };
+
+    const sma20Trace = {
+      x: dates,
+      y: sma20,
+      type: "scatter",
+      mode: "lines",
+      name: "SMA 20",
+      yaxis: "y",
+      line: { color: "#2196F3", width: 1.5 },
+    };
+
+    const sma50Trace = {
+      x: dates,
+      y: sma50,
+      type: "scatter",
+      mode: "lines",
+      name: "SMA 50",
+      yaxis: "y",
+      line: { color: "#FF9800", width: 1.5 },
+    };
+
+    const sma200Trace = {
+      x: dates,
+      y: sma200,
+      type: "scatter",
+      mode: "lines",
+      name: "SMA 200",
+      yaxis: "y",
+      line: { color: "#9C27B0", width: 1.8 },
+    };
+
+    // Panel 2: Volume Bar
+    const volColors = c.close.map((cl, i) => (i > 0 && cl >= c.close[i - 1]) ? "#26A69A" : "#EF5350");
+    const volumeTrace = {
+      x: dates,
+      y: c.volume,
+      type: "bar",
+      name: "Volume",
+      yaxis: "y2",
+      marker: { color: volColors },
+    };
+
+    // Panel 3: RSI (14)
+    const rsiTrace = {
+      x: dates,
+      y: rsiValues,
+      type: "scatter",
+      mode: "lines",
+      name: "RSI (14)",
+      yaxis: "y3",
+      line: { color: "#673AB7", width: 1.5 },
+    };
+
+    const layout = {
+      margin: { t: 30, r: 30, b: 35, l: 50 },
+      height: 580,
+      template: "plotly_white",
+      paper_bgcolor: "#FFFFFF",
+      plot_bgcolor: "#FFFFFF",
+      showlegend: true,
+      legend: { orientation: "h", y: 1.06, x: 0 },
+      xaxis: {
+        rangeslider: { visible: false },
+        anchor: "y3",
+      },
+      yaxis: {
+        domain: [0.45, 1.0],
+        title: "Price (₹)",
+      },
+      yaxis2: {
+        domain: [0.25, 0.40],
+        title: "Volume",
+        showgrid: true,
+      },
+      yaxis3: {
+        domain: [0.0, 0.20],
+        title: "RSI",
+        range: [0, 100],
+        showgrid: true,
+      },
+      shapes: [
+        // RSI 70 line
+        {
+          type: "line",
+          xref: "paper",
+          x0: 0,
+          x1: 1,
+          yref: "y3",
+          y0: 70,
+          y1: 70,
+          line: { color: "#E53935", width: 1, dash: "dash" },
+        },
+        // RSI 30 line
+        {
+          type: "line",
+          xref: "paper",
+          x0: 0,
+          x1: 1,
+          yref: "y3",
+          y0: 30,
+          y1: 30,
+          line: { color: "#43A047", width: 1, dash: "dash" },
+        },
+      ],
+    };
+
+    window.Plotly.newPlot("stock-technical-chart", [candleTrace, sma20Trace, sma50Trace, sma200Trace, volumeTrace, rsiTrace], layout, {
+      responsive: true,
+      displayModeBar: false,
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Interactive Candlestick Chart (plotChart(option))
+  // ─────────────────────────────────────────────────────────────────────────
   function renderCandlestickChart(data) {
     if (!window.Plotly || !data.candlestick || !data.candlestick.dates.length) return;
     const c = data.candlestick;
@@ -525,7 +852,8 @@ export function initStockScreener() {
 
     const layout = {
       margin: { t: 30, r: 30, b: 35, l: 50 },
-      xaxis: { rangeslider: { visible: false } },
+      height: 440,
+      xaxis: { rangeslider: { visible: true } },
       yaxis: { title: "Price (₹)" },
       template: "plotly_white",
       paper_bgcolor: "#FFFFFF",
@@ -538,36 +866,81 @@ export function initStockScreener() {
     });
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Financial & Shareholding Subplots (plotShareholding from screener.py)
+  // ─────────────────────────────────────────────────────────────────────────
   function renderShareholdingSubplots(data) {
-    if (!window.Plotly || !data.shareholding_series) return;
+    const container = document.getElementById("stock-subplots-container");
+    if (!container || !window.Plotly || !data.shareholding_series) return;
     const s = data.shareholding_series;
-    const keys = Object.keys(s).filter((k) => s[k] && s[k].length > 0);
-    if (!keys.length) return;
 
-    const traces = keys.map((key) => {
-      const vals = s[key];
-      return {
-        x: vals.map((_, i) => `Period ${i + 1}`),
-        y: vals,
-        name: key,
-        mode: "lines+markers",
-        type: "scatter",
-        line: { width: 2.5 },
-      };
-    });
-
-    const layout = {
-      title: "Financial Data Analysis (Net Profit & Shareholding)",
-      margin: { t: 50, r: 30, b: 40, l: 50 },
-      template: "plotly_white",
-      paper_bgcolor: "#FFFFFF",
-      plot_bgcolor: "#FFFFFF",
-      legend: { orientation: "h", y: -0.2 },
+    const titlesMap = {
+      Quarter: "Quarterly Net Profit (₹ Cr)",
+      Yearly: "Yearly Net Profit (₹ Cr)",
+      Promoters: "Promoters Holding (%)",
+      FII: "FII Holding (%)",
+      DII: "DII Holding (%)",
+      Public: "Public Holding (%)",
     };
 
-    window.Plotly.newPlot("stock-shareholding-subplots", traces, layout, {
-      responsive: true,
-      displayModeBar: false,
+    const colorsMap = {
+      Quarter: "#1E88E5",
+      Yearly: "#00897B",
+      Promoters: "#7B1FA2",
+      FII: "#FB8C00",
+      DII: "#43A047",
+      Public: "#E53935",
+    };
+
+    const keys = ["Quarter", "Yearly", "Promoters", "FII", "DII", "Public"].filter(
+      (k) => s[k] && s[k].length > 0
+    );
+
+    container.innerHTML = keys
+      .map(
+        (key) => `
+        <div style="background: #FFFFFF; padding: 1rem; border-radius: var(--st-radius); border: 1px solid var(--st-border-input); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+          <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.5rem; color: #2C3E50;">${titlesMap[key] || key}</div>
+          <div id="plot-series-${key}" style="width: 100%; height: 240px;"></div>
+        </div>
+      `
+      )
+      .join("");
+
+    keys.forEach((key) => {
+      const vals = s[key];
+      const isProfit = key === "Quarter" || key === "Yearly";
+      const trace = {
+        x: vals.map((_, i) => `Period ${i + 1}`),
+        y: vals,
+        type: "scatter",
+        mode: "lines+markers",
+        line: { color: colorsMap[key] || "#1E88E5", width: 2.5 },
+        marker: { size: 7, color: colorsMap[key] || "#1E88E5" },
+        showlegend: false,
+      };
+
+      const layout = {
+        margin: { t: 20, r: 25, b: 35, l: 45 },
+        height: 240,
+        template: "plotly_white",
+        paper_bgcolor: "#FFFFFF",
+        plot_bgcolor: "#FFFFFF",
+        yaxis: {
+          title: isProfit ? "Net Profit" : "Holding (%)",
+          ticksuffix: isProfit ? "" : "%",
+          showgrid: true,
+          gridcolor: "#F0F0F0",
+        },
+        xaxis: {
+          showgrid: false,
+        },
+      };
+
+      window.Plotly.newPlot(`plot-series-${key}`, [trace], layout, {
+        responsive: true,
+        displayModeBar: false,
+      });
     });
   }
 

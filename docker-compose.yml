@@ -34,6 +34,7 @@ services:
     volumes:
       - ./backend/app:/app/backend/app
       - ./backend/data:/app/backend/data
+      - ./backend/models:/app/backend/models
     networks:
       - app_network
 

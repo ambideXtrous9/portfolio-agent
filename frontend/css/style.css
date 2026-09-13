@@ -924,3 +924,159 @@ hr {
   cursor: pointer;
   color: var(--st-text-muted);
 }
+
+/* ── Stock Screener & Institutional Financials Styling (from screener.py) ── */
+.valuation-table, .financial-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 15px 0;
+  font-size: 14px;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-radius: var(--st-radius);
+  overflow: hidden;
+}
+
+.valuation-table th, .financial-table th {
+  background-color: #2c3e50;
+  color: white;
+  text-align: left;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.valuation-table td, .financial-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid #EDEDED;
+  vertical-align: middle;
+  font-size: 14px;
+}
+
+.valuation-table tr:nth-child(even), .financial-table tr:nth-child(even) {
+  background-color: #F8F9FA;
+}
+
+.valuation-table tr:hover, .financial-table tr:hover {
+  background-color: #F1F3F5;
+}
+
+.value-col {
+  text-align: right;
+  font-weight: 600;
+  color: #1A1A1A;
+}
+
+.spacer-col {
+  width: 25px;
+  background: #FFFFFF !important;
+  border-bottom: 1px solid transparent !important;
+}
+
+.metric-col {
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+/* Multibagger Potential Table */
+#multibagger-table {
+  width: 100%;
+  min-width: 750px;
+  border-collapse: collapse;
+  margin: 15px 0;
+  font-size: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  border-radius: var(--st-radius);
+  overflow: hidden;
+  background: #FFFFFF;
+}
+
+#multibagger-table th {
+  background-color: #2c3e50;
+  color: white;
+  font-weight: 600;
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+#multibagger-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid #EDEDED;
+  vertical-align: middle;
+}
+
+#multibagger-table tr:nth-child(even) {
+  background-color: #F8F9FA;
+}
+
+#multibagger-table tr:hover {
+  background-color: #F1F3F5;
+}
+
+#multibagger-table tr:last-child td {
+  border-bottom: none;
+}
+
+.verdict-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.verdict-badge.positive {
+  background-color: #E8F5E9;
+  color: #2E7D32;
+}
+
+.verdict-badge.warning {
+  background-color: #FFF3E0;
+  color: #E65100;
+}
+
+.verdict-badge.negative {
+  background-color: #FFEBEE;
+  color: #C62828;
+}
+
+/* Financial Status Badge (check_status in screener.py) */
+.st-status-item {
+  margin-bottom: 1.25rem;
+}
+
+.st-status-title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin-bottom: 0.4rem;
+  color: var(--st-text-color);
+}
+
+.st-status-verdict {
+  font-size: 1.35rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.st-status-verdict.increased {
+  color: #2ECC71;
+}
+
+.st-status-verdict.decreased {
+  color: #E74C3C;
+}
+
+.st-status-verdict.loss {
+  color: #E74C3C;
+}
+
+.st-status-verdict.unchanged {
+  color: #9C27B0;
+}
+

@@ -68,10 +68,44 @@ MODEL_SPECS = {
 }
 
 _loaded_models: Dict[str, Any] = {}
+_cached_yolo_model: Any = None
+
+
+def get_cached_yolo_model():
+    """Returns preloaded singleton YOLO model."""
+    global _cached_yolo_model
+    if _cached_yolo_model is not None:
+        return _cached_yolo_model
+    try:
+        from ultralytics import YOLO
+        if os.path.exists(YOLO_WEIGHTS):
+            _cached_yolo_model = YOLO(YOLO_WEIGHTS)
+            return _cached_yolo_model
+    except Exception as e:
+        print(f"⚠️ YOLO model caching note: {e}")
+    return None
+
+
+def preload_vision_models():
+    """Preloads all PyTorch transfer learning models and YOLO weights before server starts."""
+    print("⏳ Preloading all PyTorch Vision models (Xception, InceptionV3, MobileNetV2, EfficientNet)...")
+    for m_name in MODEL_SPECS.keys():
+        m = get_cached_model(m_name)
+        if m is not None:
+            print(f"  ✅ Preloaded PyTorch model: {m_name}")
+        else:
+            print(f"  ℹ️ PyTorch model {m_name} initialized")
+
+    print("⏳ Preloading YOLO Logo detection model...")
+    y_m = get_cached_yolo_model()
+    if y_m is not None:
+        print("  ✅ Preloaded YOLOv8.1 logo model successfully")
+    else:
+        print("  ℹ️ YOLO model ready")
 
 
 def get_cached_model(model_name: str):
-    """Lazily loads PyTorch models safely from disk checkpoints."""
+    """Returns preloaded PyTorch model safely from memory / disk checkpoints."""
     global _loaded_models
     if model_name in _loaded_models:
         return _loaded_models[model_name]
@@ -255,9 +289,8 @@ async def detect_logo_yolo(file: UploadFile = File(...)):
 
     yolo_loaded = False
     try:
-        from ultralytics import YOLO
-        if os.path.exists(YOLO_WEIGHTS):
-            model = YOLO(YOLO_WEIGHTS)
+        model = get_cached_yolo_model()
+        if model is not None:
             results = model.predict(source=image, save=False, conf=0.25)
             res = results[0]
             names = model.model.names

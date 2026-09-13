@@ -69,6 +69,20 @@ class StockNewsItem(BaseModel):
     published_date: Optional[str] = None
 
 
+class MultibaggerTableRow(BaseModel):
+    parameter: str
+    your_value: str
+    target: str
+    verdict: str
+    verdict_type: str  # positive, warning, negative
+    why_it_matters: str
+
+
+class CompanyOfficer(BaseModel):
+    name: str
+    title: str
+
+
 class StockAnalysisResponse(BaseModel):
     symbol: str
     company_name: str
@@ -84,6 +98,11 @@ class StockAnalysisResponse(BaseModel):
     fifty_two_week_range: str
     volume: str
     avg_volume: str
+    eps_ttm: Optional[str] = "N/A"
+    eps_forward: Optional[str] = "N/A"
+    eps_growth: Optional[str] = "N/A"
+    company_officers: Optional[List[CompanyOfficer]] = []
+    multibagger_table: Optional[List[MultibaggerTableRow]] = []
     valuation: Dict[str, Any]
     financials: Dict[str, Any]
     growth: Dict[str, Any]

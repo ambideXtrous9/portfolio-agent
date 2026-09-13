@@ -19,6 +19,22 @@ async def lifespan(app: FastAPI):
     print("🚀 ambideXtrous AI Portfolio FastAPI backend starting up...")
     print(f"🔧 Model: {settings.DEFAULT_MODEL}")
     print(f"🌲 Pinecone Index: {settings.PINECONE_INDEX_NAME}")
+
+    # Preload models & services before server starts accepting traffic
+    try:
+        from backend.app.api.endpoints.vision import preload_vision_models
+        preload_vision_models()
+    except Exception as e:
+        print(f"⚠️ Vision models preloading note: {e}")
+
+    try:
+        from backend.app.core.mcp import get_mcp_client
+        get_mcp_client()
+        print("🌲 MultiServerMCPClient pre-initialized for Airbnb and Pinecone")
+    except Exception as e:
+        print(f"⚠️ MCP client pre-initialization note: {e}")
+
+    print("✨ All models and background services preloaded. Backend is ready!")
     yield
     print("🛑 ambideXtrous AI Portfolio FastAPI backend shutting down...")
 

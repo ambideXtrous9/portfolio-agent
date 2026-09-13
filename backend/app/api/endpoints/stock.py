@@ -26,6 +26,8 @@ from backend.app.schemas.stock import (
     StockNewsItem,
     StockReportRequest,
     StockReportResponse,
+    MultibaggerTableRow,
+    CompanyOfficer,
 )
 
 router = APIRouter(prefix="/stock", tags=["Stock Screener"])
@@ -680,6 +682,101 @@ async def get_stock_analysis(symbol: str):
         "Net Margin": growth["Net Margin"],
     }
 
+    # EPS metrics from yfinance
+    eps_ttm_val = info.get("trailingEps")
+    eps_ttm = f"₹{float(eps_ttm_val):.2f}" if eps_ttm_val is not None else "N/A"
+
+    eps_forward_val = info.get("forwardEps")
+    eps_forward = f"₹{float(eps_forward_val):.2f}" if eps_forward_val is not None else "N/A"
+
+    eps_growth_val = info.get("earningsQuarterlyGrowth")
+    eps_growth = f"{float(eps_growth_val) * 100:.1f}%" if eps_growth_val is not None else "N/A"
+
+    # Key company executives
+    company_officers: List[CompanyOfficer] = []
+    if "companyOfficers" in info and isinstance(info["companyOfficers"], list):
+        for off in info["companyOfficers"][:5]:
+            company_officers.append(CompanyOfficer(
+                name=str(off.get("name", "N/A")),
+                title=str(off.get("title", "Executive"))
+            ))
+
+    # Multibagger potential analysis table (exact match to render_multibagger_tab in screener.py)
+    multibagger_rows = [
+        MultibaggerTableRow(
+            parameter="Revenue Growth (YoY)",
+            your_value=growth["Revenue Growth (YoY)"],
+            target="25%+ sustained",
+            verdict="✅ Strong" if (info.get("revenueGrowth", 0) or 0) >= 0.20 else "⚠️ Needs Improvement",
+            verdict_type="positive" if (info.get("revenueGrowth", 0) or 0) >= 0.20 else "warning",
+            why_it_matters="Top-line growth is the engine of future earnings"
+        ),
+        MultibaggerTableRow(
+            parameter="Earnings Growth (YoY)",
+            your_value=growth["Earnings Growth (YoY)"],
+            target="30%+ sustained",
+            verdict="✅ Strong" if (info.get("earningsGrowth", 0) or 0) >= 0.25 else "⚠️ Needs Improvement",
+            verdict_type="positive" if (info.get("earningsGrowth", 0) or 0) >= 0.25 else "warning",
+            why_it_matters="Shows operating leverage and margin expansion"
+        ),
+        MultibaggerTableRow(
+            parameter="EBITDA Margin",
+            your_value=growth["EBITDA Margin"],
+            target="15%+ and rising",
+            verdict="✅ Strong" if (info.get("ebitdaMargins", 0) or 0) >= 0.15 else "⚠️ Needs Improvement",
+            verdict_type="positive" if (info.get("ebitdaMargins", 0) or 0) >= 0.15 else "warning",
+            why_it_matters="High & scalable margins = profit compounding machine"
+        ),
+        MultibaggerTableRow(
+            parameter="Net Margin",
+            your_value=growth["Net Margin"],
+            target="12%+ and rising",
+            verdict="✅ Strong" if (info.get("profitMargins", 0) or 0) >= 0.12 else "⚠️ Needs Improvement",
+            verdict_type="positive" if (info.get("profitMargins", 0) or 0) >= 0.12 else "warning",
+            why_it_matters="Converts revenue into shareholder profit efficiently"
+        ),
+        MultibaggerTableRow(
+            parameter="P/E (TTM)",
+            your_value=pe_str,
+            target="< 25 or PEG < 1.0",
+            verdict="✅ Good" if (info.get("trailingPE", 50) or 50) <= 25 else "⚠️ High",
+            verdict_type="positive" if (info.get("trailingPE", 50) or 50) <= 25 else "warning",
+            why_it_matters="Valuation multiple - lower is better"
+        ),
+        MultibaggerTableRow(
+            parameter="PEG Ratio",
+            your_value=valuation["PEG Ratio"],
+            target="< 1.0",
+            verdict="✅ Good" if (info.get("pegRatio", 2) or 2) <= 1.0 else "⚠️ High",
+            verdict_type="positive" if (info.get("pegRatio", 2) or 2) <= 1.0 else "warning",
+            why_it_matters="Growth at reasonable price indicator"
+        ),
+        MultibaggerTableRow(
+            parameter="Debt/Equity",
+            your_value=financials["Debt/Equity"],
+            target="<= 0.5",
+            verdict="✅ Good" if (info.get("debtToEquity", 1) or 1) <= 0.5 else "⚠️ High",
+            verdict_type="positive" if (info.get("debtToEquity", 1) or 1) <= 0.5 else "warning",
+            why_it_matters="Financial leverage and risk indicator"
+        ),
+        MultibaggerTableRow(
+            parameter="Return on Equity (ROE)",
+            your_value=roe_str,
+            target=">= 20%",
+            verdict="✅ Strong" if (info.get("returnOnEquity", 0) or 0) >= 0.15 else "⚠️ Needs Improvement",
+            verdict_type="positive" if (info.get("returnOnEquity", 0) or 0) >= 0.15 else "warning",
+            why_it_matters="Capital allocation efficiency and shareholder returns"
+        ),
+        MultibaggerTableRow(
+            parameter="Current Ratio",
+            your_value=financials["Current Ratio"],
+            target=">= 1.5",
+            verdict="✅ Strong" if (info.get("currentRatio", 0) or 0) >= 1.5 else "⚠️ Needs Improvement",
+            verdict_type="positive" if (info.get("currentRatio", 0) or 0) >= 1.5 else "warning",
+            why_it_matters="Short-term liquidity and solvency buffer"
+        ),
+    ]
+
     # 7. News Items (Google News RSS / yfinance fallback)
     news_items: List[StockNewsItem] = []
     try:
@@ -720,6 +817,11 @@ async def get_stock_analysis(symbol: str):
         fifty_two_week_range=range_52w,
         volume=vol_str,
         avg_volume=avg_vol_str,
+        eps_ttm=eps_ttm,
+        eps_forward=eps_forward,
+        eps_growth=eps_growth,
+        company_officers=company_officers,
+        multibagger_table=multibagger_rows,
         valuation=valuation,
         financials=financials,
         growth=growth,
