@@ -13,6 +13,8 @@
 import { fetchAPI } from "./api.js";
 
 export function initStockScreener() {
+  const stockNav = document.getElementById("stock-subtabs");
+  if (stockNav) stockNav.scrollLeft = 0;
   const subtabs = document.querySelectorAll("#stock-subtabs .st-tab-trigger");
   const inlineContainer = document.getElementById("stock-inline-analysis-container");
 
