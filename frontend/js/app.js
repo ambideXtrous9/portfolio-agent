@@ -17,6 +17,10 @@ import {
   apiSignup,
   apiLogout,
   apiGetMe,
+  apiForgotPassword,
+  apiResetPassword,
+  apiGetChatHistory,
+  apiClearChatHistory,
 } from "./api.js";
 import { initTourAgent } from "./tour.js";
 import { initHarryScholar } from "./harry.js";
@@ -153,33 +157,6 @@ document.addEventListener("DOMContentLoaded", () => {
     window.history.replaceState({}, "", url);
   }
 
-  // Dual view toggling between Login and Sign Up tabs
-  const loginContainer = document.getElementById("auth-login-container");
-  const signupContainer = document.getElementById("auth-signup-container");
-  const tabBtnLogin = document.getElementById("tab-btn-show-login");
-  const tabBtnSignup = document.getElementById("tab-btn-show-signup");
-  const btnSwitchToSignup = document.getElementById("btn-switch-to-signup");
-  const btnSwitchToLogin = document.getElementById("btn-switch-to-login");
-
-  const showLoginView = () => {
-    if (loginContainer) loginContainer.style.display = "block";
-    if (signupContainer) signupContainer.style.display = "none";
-    if (tabBtnLogin) tabBtnLogin.classList.add("st-btn-primary");
-    if (tabBtnSignup) tabBtnSignup.classList.remove("st-btn-primary");
-  };
-
-  const showSignupView = () => {
-    if (loginContainer) loginContainer.style.display = "none";
-    if (signupContainer) signupContainer.style.display = "block";
-    if (tabBtnSignup) tabBtnSignup.classList.add("st-btn-primary");
-    if (tabBtnLogin) tabBtnLogin.classList.remove("st-btn-primary");
-  };
-
-  if (tabBtnLogin) tabBtnLogin.addEventListener("click", showLoginView);
-  if (tabBtnSignup) tabBtnSignup.addEventListener("click", showSignupView);
-  if (btnSwitchToSignup) btnSwitchToSignup.addEventListener("click", showSignupView);
-  if (btnSwitchToLogin) btnSwitchToLogin.addEventListener("click", showLoginView);
-
   function escapeHtml(str) {
     if (!str) return "";
     return String(str)
@@ -190,6 +167,362 @@ document.addEventListener("DOMContentLoaded", () => {
       .replace(/'/g, "&#039;");
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // Floating Toast Notification System
+  // ───────────────────────────────────────────────────────────────────────────
+  function showToast(message, type = "info") {
+    const container = document.getElementById("toast-container");
+    if (!container) return;
+    const toast = document.createElement("div");
+    toast.className = `toast-item toast-${type}`;
+    const icon = type === "success" ? "✅" : (type === "error" ? "❌" : "ℹ️");
+    toast.innerHTML = `
+      <span class="toast-icon">${icon}</span>
+      <span class="toast-msg">${escapeHtml(message)}</span>
+      <button type="button" class="toast-close" title="Dismiss">&times;</button>
+    `;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("is-visible"));
+    const dismiss = () => {
+      toast.classList.remove("is-visible");
+      setTimeout(() => toast.remove(), 250);
+    };
+    toast.querySelector(".toast-close")?.addEventListener("click", dismiss);
+    setTimeout(dismiss, 4500);
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Modal Backdrop Handlers
+  // ───────────────────────────────────────────────────────────────────────────
+  function openModal(modalId) {
+    const m = document.getElementById(modalId);
+    if (m) m.classList.add("is-open");
+  }
+
+  function closeAllModals() {
+    document.querySelectorAll(".modal-backdrop").forEach((m) => m.classList.remove("is-open"));
+  }
+
+  document.querySelectorAll("[data-modal-close]").forEach((btn) => {
+    btn.addEventListener("click", closeAllModals);
+  });
+
+  document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) closeAllModals();
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Authentication Modals (Sign In, Register, Forgot Password, Reset Password)
+  // Inspired by /home/sushovan/sushovan/STUDY/Langchain-Langgraph-Notebooks
+  // ───────────────────────────────────────────────────────────────────────────
+  const tabModalLogin = document.getElementById("modal-tab-login");
+  const tabModalSignup = document.getElementById("modal-tab-signup");
+  const tabModalForgot = document.getElementById("modal-tab-forgot");
+  const formModalLogin = document.getElementById("modal-form-login");
+  const formModalSignup = document.getElementById("modal-form-signup");
+  const formModalForgot = document.getElementById("modal-form-forgot");
+  const formModalReset = document.getElementById("modal-form-reset");
+
+  function setAuthModalView(view) {
+    [formModalLogin, formModalSignup, formModalForgot].forEach((f) => {
+      if (f) f.style.display = "none";
+    });
+    [tabModalLogin, tabModalSignup, tabModalForgot].forEach((t) => {
+      if (t) t.classList.remove("is-active");
+    });
+
+    if (view === "login") {
+      if (formModalLogin) formModalLogin.style.display = "block";
+      if (tabModalLogin) tabModalLogin.classList.add("is-active");
+    } else if (view === "signup") {
+      if (formModalSignup) formModalSignup.style.display = "block";
+      if (tabModalSignup) tabModalSignup.classList.add("is-active");
+    } else if (view === "forgot") {
+      if (formModalForgot) formModalForgot.style.display = "block";
+      if (tabModalForgot) tabModalForgot.classList.add("is-active");
+    }
+  }
+
+  if (tabModalLogin) tabModalLogin.addEventListener("click", () => setAuthModalView("login"));
+  if (tabModalSignup) tabModalSignup.addEventListener("click", () => setAuthModalView("signup"));
+  if (tabModalForgot) tabModalForgot.addEventListener("click", () => setAuthModalView("forgot"));
+
+  // Modal Sign In form submit
+  if (formModalLogin) {
+    formModalLogin.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const emailOrUsername = document.getElementById("modal-login-email")?.value?.trim();
+      const password = document.getElementById("modal-login-password")?.value?.trim();
+      const submitBtn = document.getElementById("modal-login-submit");
+      if (!emailOrUsername || !password) return;
+
+      if (submitBtn) submitBtn.disabled = true;
+      try {
+        const res = await apiLogin(emailOrUsername, password);
+        token = res.access_token;
+        currentUser = res.user;
+        isLoggedIn = true;
+        updateAuthUI();
+        closeAllModals();
+        showToast(`Welcome back, ${currentUser.full_name || currentUser.email}!`, "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  // Modal 1-Click Demo button
+  document.getElementById("modal-btn-quick-demo")?.addEventListener("click", async () => {
+    closeAllModals();
+    await performQuickDemoLogin();
+  });
+
+  // Modal Sign Up form submit
+  if (formModalSignup) {
+    formModalSignup.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("modal-signup-name")?.value?.trim();
+      const email = document.getElementById("modal-signup-email")?.value?.trim();
+      const password = document.getElementById("modal-signup-password")?.value?.trim();
+      const submitBtn = document.getElementById("modal-signup-submit");
+      if (!email || !password) return;
+
+      if (submitBtn) submitBtn.disabled = true;
+      try {
+        const res = await apiSignup(email, name || "Explorer", password);
+        token = res.access_token;
+        currentUser = res.user;
+        isLoggedIn = true;
+        updateAuthUI();
+        closeAllModals();
+        showToast("Account created and signed in! Welcome!", "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  // Modal Forgot Password form submit
+  if (formModalForgot) {
+    formModalForgot.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("modal-forgot-email")?.value?.trim();
+      const submitBtn = document.getElementById("modal-forgot-submit");
+      if (!email) return;
+
+      if (submitBtn) submitBtn.disabled = true;
+      try {
+        const res = await apiForgotPassword(email);
+        const resetToken = res.reset_token;
+        closeAllModals();
+        openModal("reset-modal");
+        const tokenInput = document.getElementById("modal-reset-token");
+        if (tokenInput && resetToken) tokenInput.value = resetToken;
+        showToast(res.message || "Reset token generated. Set your new password.", "info");
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  // Modal Reset Password form submit (Step 2)
+  if (formModalReset) {
+    formModalReset.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const rToken = document.getElementById("modal-reset-token")?.value?.trim();
+      const newPassword = document.getElementById("modal-reset-new-password")?.value?.trim();
+      const submitBtn = document.getElementById("modal-reset-submit");
+      if (!rToken || !newPassword) return;
+
+      if (submitBtn) submitBtn.disabled = true;
+      try {
+        const res = await apiResetPassword(rToken, newPassword);
+        closeAllModals();
+        openModal("auth-modal");
+        setAuthModalView("login");
+        showToast(res.message || "Password updated successfully! Please sign in.", "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Recent Chats Sidebar & PostgreSQL Checkpoint Manager
+  // Inspired by /home/sushovan/sushovan/STUDY/Langchain-Langgraph-Notebooks
+  // ───────────────────────────────────────────────────────────────────────────
+  let recentSessions = [];
+  let pendingDeleteThreadId = null;
+  let pendingDeleteAgent = null;
+
+  function loadRecentSessions() {
+    try {
+      const stored = localStorage.getItem("portfolio_chat_sessions_v2");
+      recentSessions = stored ? JSON.parse(stored) : [];
+    } catch (_) {
+      recentSessions = [];
+    }
+  }
+
+  function saveRecentSessions() {
+    try {
+      localStorage.setItem("portfolio_chat_sessions_v2", JSON.stringify(recentSessions));
+    } catch (_) {}
+    renderSidebarHistory();
+  }
+
+  function renderSidebarHistory() {
+    const list = document.getElementById("sidebar-history-list");
+    if (!list) return;
+
+    if (recentSessions.length === 0) {
+      list.innerHTML = `<div style="padding: 10px 12px; font-size: 0.78rem; color: var(--st-text-muted);">No recent chats yet.</div>`;
+      return;
+    }
+
+    const currentHpThread = localStorage.getItem("portfolio_hp_thread_id");
+    const currentTourThread = localStorage.getItem("portfolio_tour_thread_id");
+
+    list.innerHTML = recentSessions.map((s) => {
+      const isActive = s.threadId === currentHpThread || s.threadId === currentTourThread;
+      const tag = s.agentName || (s.agent === "harry" ? "Harry" : "Tour");
+      return `
+        <div class="history-item ${isActive ? 'is-active' : ''}" data-thread-id="${escapeHtml(s.threadId)}" data-agent="${escapeHtml(s.agent)}">
+          <div class="history-item-title" title="${escapeHtml(s.title)}">
+            <span class="history-item-tag">[${escapeHtml(tag)}]</span>${escapeHtml(s.title)}
+          </div>
+          <button type="button" class="history-item-delete" data-delete-thread="${escapeHtml(s.threadId)}" title="Delete conversation">&times;</button>
+        </div>
+      `;
+    }).join("");
+
+    // Bind click handlers to switch sessions
+    list.querySelectorAll(".history-item").forEach((item) => {
+      item.addEventListener("click", () => {
+        const threadId = item.getAttribute("data-thread-id");
+        const agent = item.getAttribute("data-agent");
+        if (!threadId) return;
+
+        if (agent === "harry") {
+          navigateToTab("tab-harry", "harry");
+          window.dispatchEvent(new CustomEvent("portfolio:reload_harry_history", { detail: { threadId } }));
+        } else if (agent === "tour") {
+          navigateToTab("tab-tour", "tour");
+          window.dispatchEvent(new CustomEvent("portfolio:reload_tour_history", { detail: { threadId } }));
+        }
+        renderSidebarHistory();
+      });
+    });
+
+    // Bind delete button handlers to open delete confirmation modal
+    list.querySelectorAll("[data-delete-thread]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const threadId = btn.getAttribute("data-delete-thread");
+        const session = recentSessions.find((s) => s.threadId === threadId);
+        if (!session) return;
+
+        pendingDeleteThreadId = threadId;
+        pendingDeleteAgent = session.agent;
+
+        const titleEl = document.getElementById("delete-chat-title");
+        if (titleEl) {
+          titleEl.textContent = `"${session.title}" (#${session.threadId})`;
+        }
+        openModal("delete-chat-modal");
+      });
+    });
+  }
+
+  // Delete chat confirmation modal button
+  document.getElementById("delete-chat-confirm-btn")?.addEventListener("click", async () => {
+    if (!pendingDeleteThreadId) return;
+
+    const threadId = pendingDeleteThreadId;
+    const agent = pendingDeleteAgent;
+    pendingDeleteThreadId = null;
+    pendingDeleteAgent = null;
+
+    closeAllModals();
+
+    try {
+      await apiClearChatHistory(threadId);
+      recentSessions = recentSessions.filter((s) => s.threadId !== threadId);
+      saveRecentSessions();
+
+      // If active thread was deleted, reset chat window
+      if (agent === "harry") {
+        window.dispatchEvent(new CustomEvent("portfolio:reset_harry_chat"));
+      } else if (agent === "tour") {
+        window.dispatchEvent(new CustomEvent("portfolio:reset_tour_chat"));
+      }
+
+      showToast("Conversation & PostgreSQL checkpoints deleted.", "info");
+    } catch (err) {
+      showToast("Error clearing chat history: " + err.message, "error");
+    }
+  });
+
+  // Start New Chat from sidebar button
+  document.getElementById("btn-sidebar-new-chat")?.addEventListener("click", () => {
+    const activeTabEl = document.querySelector(".st-tab-view.active");
+    const activeTabId = activeTabEl?.id;
+
+    if (activeTabId === "tab-tour") {
+      window.dispatchEvent(new CustomEvent("portfolio:reset_tour_chat"));
+      showToast("New Tour Planner conversation started.", "info");
+    } else {
+      navigateToTab("tab-harry", "harry");
+      window.dispatchEvent(new CustomEvent("portfolio:reset_harry_chat"));
+      showToast("New Harry Potter Lore conversation started.", "info");
+    }
+    renderSidebarHistory();
+  });
+
+  // Listen to chat updates from harry.js and tour.js
+  window.addEventListener("portfolio:chat_updated", (e) => {
+    const detail = e.detail;
+    if (!detail || !detail.threadId) return;
+
+    const existingIdx = recentSessions.findIndex((s) => s.threadId === detail.threadId);
+    if (existingIdx >= 0) {
+      recentSessions[existingIdx].title = detail.title;
+      recentSessions[existingIdx].updatedAt = new Date().toISOString();
+      const updated = recentSessions.splice(existingIdx, 1)[0];
+      recentSessions.unshift(updated);
+    } else {
+      recentSessions.unshift({
+        id: "sess_" + Date.now(),
+        threadId: detail.threadId,
+        agent: detail.agent || "harry",
+        agentName: detail.agentName || (detail.agent === "tour" ? "Tour" : "Harry"),
+        title: detail.title || "New Conversation",
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    if (recentSessions.length > 20) {
+      recentSessions = recentSessions.slice(0, 20);
+    }
+    saveRecentSessions();
+  });
+
+  loadRecentSessions();
+  renderSidebarHistory();
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Reactive Authentication State UI Updater
+  // ───────────────────────────────────────────────────────────────────────────
   function updateAuthUI() {
     const topUserArea = document.getElementById("top-user-area");
     const loggedInContainer = document.getElementById("auth-logged-in-container");
@@ -216,7 +549,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // 1. Update Top Global Header
       if (topUserArea) {
         topUserArea.innerHTML = `
-          <div class="st-user-pill" title="${escapeHtml(currentUser.email)}">
+          <div class="st-user-pill" id="top-user-pill-btn" title="Click to view profile & account details" style="cursor: pointer;">
             <span class="st-user-avatar">${escapeHtml(initials)}</span>
             <span>${escapeHtml(userLabel)}</span>
             <span class="st-role-badge ${isAdmin ? 'st-role-admin' : 'st-role-user'}">${escapeHtml(role)}</span>
@@ -224,12 +557,16 @@ document.addEventListener("DOMContentLoaded", () => {
           <button class="st-session-btn" id="top-btn-logout" title="Sign Out">Sign Out</button>
         `;
         document.getElementById("top-btn-logout")?.addEventListener("click", handleLogout);
+        document.getElementById("top-user-pill-btn")?.addEventListener("click", () => {
+          openModal("auth-modal");
+          setAuthModalView("login");
+        });
       }
 
       // 2. Update Left Sidebar Auth Section
       if (authContainer) {
         authContainer.innerHTML = `
-          <div class="st-sidebar-user-card">
+          <div class="st-sidebar-user-card" id="sidebar-user-card-btn" style="cursor: pointer;">
             <div class="st-sidebar-user-header">
               <div class="st-user-avatar">${escapeHtml(initials)}</div>
               <div class="st-sidebar-user-details">
@@ -242,6 +579,10 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         `;
         document.getElementById("btn-logout")?.addEventListener("click", handleLogout);
+        document.getElementById("sidebar-user-card-btn")?.addEventListener("click", () => {
+          openModal("auth-modal");
+          setAuthModalView("login");
+        });
       }
 
       // 3. Update Login Tab
@@ -269,8 +610,8 @@ document.addEventListener("DOMContentLoaded", () => {
           <button class="st-demo-login-btn" id="top-btn-demo" style="padding: 4px 12px; font-size: 0.78rem;">⚡ 1-Click Demo</button>
         `;
         document.getElementById("top-btn-login")?.addEventListener("click", () => {
-          showLoginView();
-          activateView("tab-login", "boom");
+          openModal("auth-modal");
+          setAuthModalView("login");
         });
         document.getElementById("top-btn-demo")?.addEventListener("click", performQuickDemoLogin);
       }
@@ -283,12 +624,12 @@ document.addEventListener("DOMContentLoaded", () => {
           <button class="st-auth-btn" id="btn-sidebar-demo" style="background: linear-gradient(135deg, rgba(30, 136, 229, 0.08), rgba(124, 77, 255, 0.08)); border-color: #1E88E5; color: #1565C0; font-weight: 700;" title="Instantly authenticate with pre-seeded demo credentials">⚡ Demo</button>
         `;
         document.getElementById("btn-login")?.addEventListener("click", () => {
-          showLoginView();
-          activateView("tab-login", "boom");
+          openModal("auth-modal");
+          setAuthModalView("login");
         });
         document.getElementById("btn-signup")?.addEventListener("click", () => {
-          showSignupView();
-          activateView("tab-login", "boom");
+          openModal("auth-modal");
+          setAuthModalView("signup");
         });
         document.getElementById("btn-sidebar-demo")?.addEventListener("click", performQuickDemoLogin);
       }
@@ -296,7 +637,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // 3. Update Login Tab
       if (loggedInContainer) loggedInContainer.style.display = "none";
       if (demoBanner) demoBanner.style.display = "flex";
-      showLoginView();
+      if (loginContainer) loginContainer.style.display = "block";
       document.getElementById("btn-quick-demo-login")?.addEventListener("click", performQuickDemoLogin);
     }
   }
@@ -306,6 +647,7 @@ document.addEventListener("DOMContentLoaded", () => {
     isLoggedIn = false;
     currentUser = null;
     updateAuthUI();
+    showToast("Logged out. JWT token has been revoked.", "info");
     navigateToTab("tab-home", "boom");
   }
 
@@ -320,13 +662,15 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const res = await apiLogin("abc", "123");
       isLoggedIn = true;
+      token = res.access_token;
       currentUser = res.user;
       updateAuthUI();
+      showToast("Signed in as Demo Explorer!", "success");
       const dest = redirectAfterLogin || "tab-harry";
       redirectAfterLogin = null;
       navigateToTab(dest, dest.replace("tab-", ""));
     } catch (err) {
-      alert("Demo sign-in note: " + err.message);
+      showToast("Demo sign-in: " + err.message, "error");
     } finally {
       if (bannerBtn) bannerBtn.textContent = "⚡ Sign In as Demo User";
       if (topBtn) topBtn.textContent = "⚡ 1-Click Demo";
@@ -334,7 +678,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Handle Login form submission
+  // Handle in-page tab-login form submission
   const loginForm = document.getElementById("auth-login-form");
   const authFeedback = document.getElementById("auth-msg-feedback");
   if (loginForm) {
@@ -345,37 +689,29 @@ document.addEventListener("DOMContentLoaded", () => {
       const submitBtn = document.getElementById("auth-login-submit-btn");
 
       if (!u || !p) return;
-
-      if (authFeedback) {
-        authFeedback.innerHTML = `<div style="color: var(--st-text-muted);">Authenticating credentials with PostgreSQL...</div>`;
-      }
       if (submitBtn) submitBtn.disabled = true;
 
       try {
         const res = await apiLogin(u, p);
-        isLoggedIn = true;
+        token = res.access_token;
         currentUser = res.user;
+        isLoggedIn = true;
         updateAuthUI();
-        if (authFeedback) {
-          authFeedback.innerHTML = `<div style="background: #D4EDDA; color: #155724; padding: 0.6rem 0.8rem; border-radius: 6px; font-weight: 600;">✅ Logged in successfully! Welcome, ${res.user.full_name || res.user.email}. Redirecting...</div>`;
-        }
+        showToast(`Welcome back, ${res.user.full_name || res.user.email}!`, "success");
         setTimeout(() => {
-          const dest = redirectAfterLogin || "tab-stock";
+          const dest = redirectAfterLogin || "tab-harry";
           redirectAfterLogin = null;
           navigateToTab(dest, dest.replace("tab-", ""));
-          if (authFeedback) authFeedback.innerHTML = "";
         }, 600);
       } catch (err) {
-        if (authFeedback) {
-          authFeedback.innerHTML = `<div style="background: #F8D7DA; color: #721C24; padding: 0.6rem 0.8rem; border-radius: 6px; font-weight: 500;">❌ ${err.message}</div>`;
-        }
+        showToast(err.message, "error");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
       }
     });
   }
 
-  // Handle Signup form submission
+  // Handle in-page tab-login signup form submission
   const signupForm = document.getElementById("auth-signup-form");
   if (signupForm) {
     signupForm.addEventListener("submit", async (e) => {
@@ -386,30 +722,22 @@ document.addEventListener("DOMContentLoaded", () => {
       const submitBtn = document.getElementById("auth-signup-submit-btn");
 
       if (!email || !password) return;
-
-      if (authFeedback) {
-        authFeedback.innerHTML = `<div style="color: var(--st-text-muted);">Creating account in PostgreSQL database...</div>`;
-      }
       if (submitBtn) submitBtn.disabled = true;
 
       try {
         const res = await apiSignup(email, fullname || "AI Explorer", password);
-        isLoggedIn = true;
+        token = res.access_token;
         currentUser = res.user;
+        isLoggedIn = true;
         updateAuthUI();
-        if (authFeedback) {
-          authFeedback.innerHTML = `<div style="background: #D4EDDA; color: #155724; padding: 0.6rem 0.8rem; border-radius: 6px; font-weight: 600;">✅ Account registered and authenticated! Welcome, ${res.user.full_name || res.user.email}. Redirecting...</div>`;
-        }
+        showToast(`Account registered and authenticated! Welcome!`, "success");
         setTimeout(() => {
-          const dest = redirectAfterLogin || "tab-stock";
+          const dest = redirectAfterLogin || "tab-harry";
           redirectAfterLogin = null;
           navigateToTab(dest, dest.replace("tab-", ""));
-          if (authFeedback) authFeedback.innerHTML = "";
         }, 600);
       } catch (err) {
-        if (authFeedback) {
-          authFeedback.innerHTML = `<div style="background: #F8D7DA; color: #721C24; padding: 0.6rem 0.8rem; border-radius: 6px; font-weight: 500;">❌ ${err.message}</div>`;
-        }
+        showToast(err.message, "error");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
       }

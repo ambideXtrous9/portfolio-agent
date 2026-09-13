@@ -2128,6 +2128,279 @@ canvas#voiceOrbCanvas {
   text-overflow: ellipsis;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   AGENTSPHERE MODALS, CHIP TABS, CHAT HISTORY & TOAST SYSTEM
+   Inspired by /home/sushovan/sushovan/STUDY/Langchain-Langgraph-Notebooks
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* 1. Modal Dialog Backdrops & Cards */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(14, 18, 22, 0.75);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--st-card-bg, #FFFFFF);
+  border: 1px solid var(--st-border-color, rgba(0,0,0,0.1));
+  border-radius: var(--st-radius-lg, 12px);
+  padding: 28px;
+  box-shadow: 0 20px 45px rgba(0,0,0,0.22);
+  transform: translateY(14px) scale(0.98);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-backdrop.is-open .modal {
+  transform: translateY(0) scale(1);
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: none;
+  border: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--st-text-muted, #888);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.modal-close:hover {
+  color: var(--st-text-color, #111);
+  background: rgba(0,0,0,0.06);
+}
+
+/* 2. Chip Groups & Chips (Tabs for Modal) */
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--st-bg-secondary, #F8F9FA);
+  border: 1px solid var(--st-border-input, #E2E8F0);
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--st-text-color, #333);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.chip:hover {
+  border-color: var(--st-primary, #FF4B4B);
+  background: rgba(255, 75, 75, 0.05);
+}
+
+.chip.is-active {
+  background: var(--st-primary, #FF4B4B);
+  border-color: var(--st-primary, #FF4B4B);
+  color: #FFFFFF !important;
+  font-weight: 600;
+}
+
+/* 3. Form Fields */
+.field {
+  margin-bottom: 1.1rem;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--st-text-color, #222);
+}
+
+.field-input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--st-border-input, #CBD5E0);
+  border-radius: var(--st-radius, 8px);
+  background: var(--st-bg-main, #FFFFFF);
+  color: var(--st-text-color, #111);
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: var(--st-primary, #FF4B4B);
+  box-shadow: 0 0 0 3px rgba(255, 75, 75, 0.15);
+}
+
+/* 4. Sidebar Chat History List */
+.sidebar-history {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 2px 8px 10px;
+  scrollbar-width: thin;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--st-text-muted, #666);
+  cursor: pointer;
+  transition: all 0.14s ease;
+  position: relative;
+  background: transparent;
+  user-select: none;
+}
+
+.history-item:hover {
+  background: rgba(255, 75, 75, 0.08);
+  color: var(--st-text-color, #111);
+}
+
+.history-item.is-active {
+  background: rgba(255, 75, 75, 0.12);
+  color: var(--st-primary, #FF4B4B);
+  font-weight: 600;
+}
+
+.history-item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: 6px;
+}
+
+.history-item-tag {
+  opacity: 0.75;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.history-item-delete {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: #E53E3E;
+  cursor: pointer;
+  padding: 2px 5px;
+  font-size: 0.95rem;
+  line-height: 1;
+  border-radius: 4px;
+  transition: opacity 0.14s ease, background 0.14s ease;
+}
+
+.history-item:hover .history-item-delete {
+  opacity: 0.85;
+}
+
+.history-item-delete:hover {
+  opacity: 1;
+  background: rgba(229, 62, 62, 0.12);
+}
+
+/* 5. Toast Notification System */
+.toast-container {
+  position: fixed;
+  z-index: 10000;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(420px, calc(100vw - 48px));
+  pointer-events: none;
+}
+
+.toast-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #1A202C;
+  color: #EDF2F7;
+  border-left: 4px solid #718096;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+
+.toast-item.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-item.toast-success {
+  border-left-color: #38A169;
+}
+
+.toast-item.toast-error {
+  border-left-color: #E53E3E;
+}
+
+.toast-item.toast-info {
+  border-left-color: #3182CE;
+}
+
+.toast-msg {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.toast-close {
+  background: none;
+  border: 0;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
 
 
 

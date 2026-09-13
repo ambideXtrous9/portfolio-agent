@@ -485,6 +485,22 @@ export async function apiGetMe() {
   return await fetchAPI("/auth/me", { method: "GET" });
 }
 
+export async function apiForgotPassword(email) {
+  return await fetchAPI("/auth/forgot-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.trim().toLowerCase() }),
+  });
+}
+
+export async function apiResetPassword(token, newPassword) {
+  return await fetchAPI("/auth/reset-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: token.trim(), new_password: newPassword }),
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Chat History & PostgreSQL Checkpoint Operations
 // ─────────────────────────────────────────────────────────────────────────────
