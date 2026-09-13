@@ -56,27 +56,85 @@ async def get_raw_dataset():
     }
 
 
+def _numpy_kmeans(X, n_clusters, max_iter=20):
+    np.random.seed(42)
+    indices = np.random.choice(len(X), n_clusters, replace=False)
+    centroids = X[indices].copy()
+    labels = np.zeros(len(X), dtype=int)
+    for _ in range(max_iter):
+        dist = np.linalg.norm(X[:, None] - centroids[None, :], axis=2)
+        new_labels = np.argmin(dist, axis=1)
+        if np.array_equal(labels, new_labels):
+            break
+        labels = new_labels
+        for k in range(n_clusters):
+            members = X[labels == k]
+            if len(members) > 0:
+                centroids[k] = members.mean(axis=0)
+    return labels
+
+
+def _numpy_dbscan(X, eps, min_samples):
+    n = len(X)
+    dist = np.linalg.norm(X[:, None] - X[None, :], axis=2)
+    neighbors = [np.where(dist[i] <= eps)[0] for i in range(n)]
+    labels = np.full(n, -1, dtype=int)
+    cluster_id = 0
+    visited = np.zeros(n, dtype=bool)
+
+    for i in range(n):
+        if visited[i]:
+            continue
+        visited[i] = True
+        if len(neighbors[i]) < min_samples:
+            labels[i] = -1
+        else:
+            labels[i] = cluster_id
+            seeds = list(neighbors[i])
+            if i in seeds:
+                seeds.remove(i)
+            while seeds:
+                curr = seeds.pop(0)
+                if not visited[curr]:
+                    visited[curr] = True
+                    curr_neighbors = neighbors[curr]
+                    if len(curr_neighbors) >= min_samples:
+                        for c in curr_neighbors:
+                            if not visited[c] and c not in seeds:
+                                seeds.append(c)
+                if labels[curr] == -1:
+                    labels[curr] = cluster_id
+            cluster_id += 1
+    return labels
+
+
 @router.post("/run", response_model=ClusterResponse)
 async def run_clustering(request: ClusterRequest):
     """Executes K-Means or DBSCAN clustering on the 2D benchmark dataset."""
     X = _cached_df[["x", "y"]].values
 
     if request.algorithm.lower() == "kmeans":
-        model = KMeans(n_clusters=request.n_clusters, random_state=42, n_init=10)
-        labels = model.fit_predict(X)
+        if KMeans is not None:
+            model = KMeans(n_clusters=request.n_clusters, random_state=42, n_init=10)
+            labels = model.fit_predict(X)
+        else:
+            labels = _numpy_kmeans(X, request.n_clusters)
         num_clusters = request.n_clusters
         num_noise = 0
     else:
         # DBSCAN
-        model = DBSCAN(eps=request.eps, min_samples=request.min_samples)
-        labels = model.fit_predict(X)
+        if DBSCAN is not None:
+            model = DBSCAN(eps=request.eps, min_samples=request.min_samples)
+            labels = model.fit_predict(X)
+        else:
+            labels = _numpy_dbscan(X, request.eps, request.min_samples)
         unique_labels = set(labels)
         num_clusters = len(unique_labels - {-1})
         num_noise = int(np.sum(labels == -1))
 
     # Calculate silhouette score if >1 clusters exist
     sil_score = None
-    if num_clusters > 1:
+    if num_clusters > 1 and silhouette_score is not None:
         try:
             valid_mask = labels != -1 if num_noise > 0 else np.ones(len(labels), dtype=bool)
             if np.sum(valid_mask) > num_clusters:
@@ -101,18 +159,26 @@ async def run_clustering(request: ClusterRequest):
 @router.get("/kdist")
 async def get_kdist_graph():
     """Computes sorted 2nd nearest neighbor distances for DBSCAN epsilon tuning."""
-    from sklearn.neighbors import NearestNeighbors
-
     X = _cached_df[["x", "y"]].values
-    neigh = NearestNeighbors(n_neighbors=5)
-    nbrs = neigh.fit(X)
-    distances, _ = nbrs.kneighbors(X)
-
-    distances = np.sort(distances, axis=0)
-    distances = distances[:, 1]  # 2nd nearest neighbor distance
+    try:
+        from sklearn.neighbors import NearestNeighbors
+        neigh = NearestNeighbors(n_neighbors=5)
+        nbrs = neigh.fit(X)
+        distances, _ = nbrs.kneighbors(X)
+        distances = np.sort(distances, axis=0)
+        k_dists = distances[:, 1]
+    except Exception:
+        dists = []
+        chunk_size = 500
+        for i in range(0, len(X), chunk_size):
+            chunk = X[i:i+chunk_size]
+            d = np.linalg.norm(chunk[:, None] - X[None, :], axis=2)
+            d.sort(axis=1)
+            dists.extend(d[:, 1])
+        k_dists = np.sort(dists)
 
     return {
-        "x": list(range(len(distances))),
-        "y": [round(float(d), 2) for d in distances]
+        "x": list(range(len(k_dists))),
+        "y": [round(float(d), 2) for d in k_dists]
     }
 

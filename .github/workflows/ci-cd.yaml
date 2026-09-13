@@ -52,7 +52,7 @@ jobs:
       - name: Validate Python Backend Code Syntax
         run: |
           echo "🔍 Compiling Python backend modules..."
-          python -m compileall -q backend/app/
+          python -m compileall -q backend/app/ api/
           echo "✅ All backend Python modules compiled cleanly"
 
       - name: Verify Frontend Web Assets

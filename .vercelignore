@@ -1,13 +1,15 @@
 .git
+.github
 .env*
 .venv
 __pycache__
 *.pyc
 *.pt
 *.pth
+*.ckpt
 *.onnx
 *.log
 backend/models/
-backend/data/
+legacy_streamlit/
 docker-compose*.yml
 Dockerfile

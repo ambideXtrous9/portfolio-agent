@@ -57,8 +57,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount API endpoints
+# Mount API endpoints (both with and without /api prefix for seamless Vercel Serverless routing)
 app.include_router(api_router, prefix=settings.API_V1_STR)
+if settings.API_V1_STR != "":
+    app.include_router(api_router, prefix="")
 
 # Direct WebSocket route aliases
 from backend.app.api.endpoints.tour import websocket_tour

@@ -9,8 +9,12 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.app.config import settings
-from backend.app.voice_agent.telemetry import is_langfuse_configured
-from backend.app.voice_agent.tools import agent_tools
+try:
+    from backend.app.voice_agent.telemetry import is_langfuse_configured
+    from backend.app.voice_agent.tools import agent_tools
+except Exception:
+    is_langfuse_configured = lambda: False
+    agent_tools = []
 
 logger = logging.getLogger("voice_endpoint")
 router = APIRouter(prefix="/voice", tags=["LiveKit Voice Agent"])
