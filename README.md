@@ -31,7 +31,7 @@
 | **Live Production Web App** | [`portfolio-agent-ai.vercel.app`](https://portfolio-agent-ai.vercel.app) | 🟢 `Online` |
 | **Interactive OpenAPI Docs (Swagger)** | [`/docs`](https://portfolio-agent-ai.vercel.app/docs) | 🟢 `Public` |
 | **Alternative API Specs (ReDoc)** | [`/redoc`](https://portfolio-agent-ai.vercel.app/redoc) | 🟢 `Public` |
-| **⚡ 1-Click Instant Demo Login** | Click **"⚡ 1-Click Demo"** or use `abc` / `123` | 🔑 `Pre-Seeded` |
+| **Authentication Guard** | Sign In or Register via modal | 🔒 `Strictly Enforced` |
 | **Active Feature Pull Request** | [PR #2: feat/postgres-auth-checkpoints](https://github.com/ambideXtrous9/portfolio-agent/pull/2) | 🚀 `All Checks Passing` |
 
 </div>
@@ -100,7 +100,7 @@ flowchart TB
         subgraph MemoryFallback ["Resilient Fallback: In-Memory Engine"]
             MemSaver["MemorySaver\n(Ephemeral Thread Isolation)"]
             MemChat["In-Memory Message Ledger"]
-            MemAuth["Volatile Seeded Credentials (abc / 123)"]
+            MemAuth["Ephemeral User Store & Token Blacklist"]
         end
     end
 
@@ -173,7 +173,7 @@ flowchart TB
 * **Access Control**: Role-Based Access Control (`admin` vs. `user`) baked into standard RFC 7519 JWT access tokens.
 * **Dual-Token Handshake**: Features support for standard HTTP headers (`Authorization: Bearer <token>`) as well as URL query parameters (`?token=<token>`), enabling auth validation over native browser `EventSource` (SSE) and `WebSocket`.
 * **Token Blacklisting**: Immediate revocation on logout (`POST /api/auth/logout`) stored in PostgreSQL `token_blacklist`.
-* **Seeded Demo Account**: Instant test credentials `username: abc` / `password: 123` available via 1-click in the UI.
+* **Zero Unauthorized Access**: All feature endpoints (Harry Potter Lore Scholar, Tour Planner, Stock Screener, Voice Agent, YOLO, Image Classifier, Clustering) strictly require valid user authentication. Unregistered requests are blocked with HTTP 401.
 
 ---
 
@@ -458,10 +458,11 @@ python3 backend/tests/test_postgres_auth.py
 ✅ 1. Public endpoint /api/system/health is accessible without auth.
 ✅ 2. Protected endpoint /api/cluster/dataset returns 401 Unauthorized without token.
 ✅ 3. Protected endpoint /api/voice/status returns 401 Unauthorized without token.
-✅ 4. Demo account [abc / 123] successfully authenticated, JWT issued.
-✅ 5. New user signup successful: test.scholar@example.com, JWT issued.
-✅ 6. /api/auth/me returns authenticated user profile.
-✅ 7. Protected endpoint /api/cluster/dataset succeeds with Bearer token.
+✅ 4. Unregistered/demo login correctly rejected with 401 Unauthorized.
+✅ 5. Real user signup successful, registered with Argon2id hash.
+✅ 6. Explicit user login successful, JWT token issued.
+✅ 7. /api/auth/me returns authenticated user profile.
+✅ 8. Protected endpoint /api/cluster/dataset succeeds with Bearer token.
 ✅ 8. Protected endpoint succeeds with query parameter ?token= for SSE/WebSocket compatibility.
 ✅ 9. Chat history successfully persisted and retrieved via /api/chat/threads/test-session-thread-999/history.
 ✅ 10. User logged out and JWT token added to blacklist.

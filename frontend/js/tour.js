@@ -149,6 +149,11 @@ export function initTourAgent() {
     const query = userInput.value.trim();
     if (!query) return;
 
+    if (!getAuthToken()) {
+      window.dispatchEvent(new CustomEvent("portfolio:unauthorized", { detail: { feature: "AI Tour Planner" } }));
+      return;
+    }
+
     userInput.value = "";
     sendBtn.disabled = true;
 

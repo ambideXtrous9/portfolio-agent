@@ -934,24 +934,15 @@
             </div>
           </div>
 
-          <!-- 1-Click Demo Login Banner -->
-          <div class="st-demo-login-banner" id="auth-demo-banner" style="display: none;">
-            <div>
-              <div style="font-weight: 700; font-size: 1.05rem; color: var(--st-text-color); margin-bottom: 2px;">⚡ Try the Live Portfolio in 1 Click</div>
-              <div style="font-size: 0.85rem; color: var(--st-text-muted);">Instant access with pre-seeded demo credentials [<code>abc</code> / <code>123</code>]</div>
-            </div>
-            <button type="button" class="st-demo-login-btn" id="btn-quick-demo-login">⚡ Sign In as Demo User</button>
-          </div>
-
           <!-- Logged-in User Profile Container (Shown when authenticated) -->
           <div id="auth-logged-in-container" style="max-width: 520px; display: none; background: var(--st-bg-secondary); border: 1px solid var(--st-border-color); border-radius: var(--st-radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 1rem;">
-              <div class="st-user-avatar" id="logged-in-avatar" style="width: 48px; height: 48px; font-size: 1.2rem;">DE</div>
+              <div class="st-user-avatar" id="logged-in-avatar" style="width: 48px; height: 48px; font-size: 1.2rem;">U</div>
               <div>
-                <div style="font-size: 1.15rem; font-weight: 700;" id="logged-in-name">Demo Explorer</div>
-                <div style="font-size: 0.85rem; color: var(--st-text-muted);" id="logged-in-email">abc@example.com</div>
+                <div style="font-size: 1.15rem; font-weight: 700;" id="logged-in-name">Authenticated User</div>
+                <div style="font-size: 0.85rem; color: var(--st-text-muted);" id="logged-in-email">user@example.com</div>
               </div>
-              <span class="st-role-badge st-role-admin" id="logged-in-role" style="margin-left: auto;">Admin</span>
+              <span class="st-role-badge st-role-user" id="logged-in-role" style="margin-left: auto;">Member</span>
             </div>
             <div style="border-top: 1px solid var(--st-border-color); padding-top: 1rem; margin-top: 1rem; display: flex; gap: 10px;">
               <button type="button" class="st-btn st-btn-primary" id="btn-go-agents" style="flex: 1;">Explore AI Agents 🚀</button>
@@ -1072,7 +1063,7 @@
 
         <div class="field">
           <label class="field-label" for="modal-login-email">Email or Username</label>
-          <input type="text" class="field-input" id="modal-login-email" required placeholder="user@example.com or abc" />
+          <input type="text" class="field-input" id="modal-login-email" required placeholder="user@example.com" />
         </div>
 
         <div class="field">
@@ -1084,7 +1075,6 @@
           <button type="submit" class="st-btn st-btn-primary" id="modal-login-submit" style="padding: 0.65rem 1.6rem; font-weight: 600;">
             Sign In &rarr;
           </button>
-          <button type="button" class="st-btn" id="modal-btn-quick-demo">⚡ 1-Click Demo</button>
         </div>
       </form>
 
@@ -1181,6 +1171,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Client Application Scripts -->
-  <script type="module" src="js/app.js?v=3.0"></script>
+  <script type="module" src="js/app.js?v=3.1"></script>
 </body>
 </html>

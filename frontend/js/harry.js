@@ -149,6 +149,11 @@ export function initHarryScholar() {
     const query = userInput.value.trim();
     if (!query) return;
 
+    if (!getAuthToken()) {
+      window.dispatchEvent(new CustomEvent("portfolio:unauthorized", { detail: { feature: "Harry Potter Lore Scholar" } }));
+      return;
+    }
+
     userInput.value = "";
     sendBtn.disabled = true;
 

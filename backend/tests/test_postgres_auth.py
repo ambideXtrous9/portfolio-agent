@@ -37,20 +37,16 @@ async def run_tests():
         assert res.status_code == 401, f"Expected 401 for /api/voice/status, got {res.status_code}"
         print("✅ 3. Protected endpoint /api/voice/status returns 401 Unauthorized without token.")
 
-        # Test C: Default seeded demo user login (abc / 123)
+        # Test C: Verify non-existent / unregistered login returns 401
         res = await client.post(
             "/api/auth/login",
-            json={"email": "abc", "password": "123"}
+            json={"email": "abc@example.com", "password": "123"}
         )
-        assert res.status_code == 200, f"Demo login failed: {res.text}"
-        data = res.json()
-        demo_token = data["access_token"]
-        assert demo_token, "No access token returned for demo user"
-        assert data["user"]["email"] == "abc@example.com"
-        print(f"✅ 4. Demo account [abc / 123] successfully authenticated, JWT issued: {demo_token[:20]}...")
+        assert res.status_code == 401, f"Expected 401 for unregistered user, got {res.status_code}"
+        print("✅ 4. Unregistered/demo login correctly rejected with 401 Unauthorized.")
 
-        # Test D: Signup a new user
-        test_email = "test.scholar@example.com"
+        # Test D: Signup a real new user
+        test_email = f"test.scholar.{os.getpid()}@example.com"
         res = await client.post(
             "/api/auth/signup",
             json={
@@ -61,11 +57,21 @@ async def run_tests():
         )
         assert res.status_code == 201, f"Signup failed: {res.text}"
         signup_data = res.json()
-        new_token = signup_data["access_token"]
         assert signup_data["user"]["email"] == test_email
-        print(f"✅ 5. New user signup successful: {test_email}, JWT issued.")
+        print(f"✅ 5. Real user signup successful: {test_email}, registered with Argon2id hash.")
 
-        # Test E: Call /api/auth/me with new user token
+        # Test E: Explicit login with the newly created account
+        res = await client.post(
+            "/api/auth/login",
+            json={"email": test_email, "password": "SecurePassword123!"}
+        )
+        assert res.status_code == 200, f"Login failed: {res.text}"
+        login_data = res.json()
+        new_token = login_data["access_token"]
+        assert new_token, "No access token returned on login"
+        print(f"✅ 6. Explicit user login successful, JWT token issued: {new_token[:20]}...")
+
+        # Test F: Call /api/auth/me with new user token
         res = await client.get(
             "/api/auth/me",
             headers={"Authorization": f"Bearer {new_token}"}
@@ -74,16 +80,16 @@ async def run_tests():
         me_data = res.json()
         assert me_data["email"] == test_email
         assert me_data["full_name"] == "Test Scholar"
-        print(f"✅ 6. /api/auth/me returns authenticated user profile.")
+        print(f"✅ 7. /api/auth/me returns authenticated user profile.")
 
-        # Test F: Access protected endpoint WITH Bearer token
+        # Test G: Access protected endpoint WITH Bearer token
         res = await client.get(
             "/api/cluster/dataset",
             headers={"Authorization": f"Bearer {new_token}"}
         )
         assert res.status_code == 200, f"Guarded /cluster/dataset with token failed: {res.status_code}"
         assert "total_points" in res.json()
-        print(f"✅ 7. Protected endpoint /api/cluster/dataset succeeds with Bearer token.")
+        print(f"✅ 8. Protected endpoint /api/cluster/dataset succeeds with Bearer token.")
 
         # Test G: Access protected endpoint WITH query parameter ?token= (used by SSE & WebSockets)
         res = await client.get(f"/api/cluster/dataset?token={new_token}")
