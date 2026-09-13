@@ -85,6 +85,23 @@ export function initHarryScholar() {
     });
   }
 
+  // Cross-view events
+  window.addEventListener("portfolio:reload_harry_history", (e) => {
+    if (e.detail?.threadId) {
+      currentThreadId = e.detail.threadId;
+      localStorage.setItem("portfolio_hp_thread_id", currentThreadId);
+      updateThreadUI();
+      loadThreadHistory();
+    }
+  });
+
+  window.addEventListener("portfolio:reset_harry_chat", () => {
+    currentThreadId = "hp-" + Math.random().toString(36).substring(2, 9);
+    localStorage.setItem("portfolio_hp_thread_id", currentThreadId);
+    updateThreadUI();
+    chatHistory.innerHTML = welcomeHTML;
+  });
+
   // Reload / Restore History Handler
   if (btnReloadHistory) {
     btnReloadHistory.addEventListener("click", async () => {
@@ -134,6 +151,16 @@ export function initHarryScholar() {
 
     userInput.value = "";
     sendBtn.disabled = true;
+
+    // Dispatch event to track in sidebar recent chats
+    window.dispatchEvent(new CustomEvent("portfolio:chat_updated", {
+      detail: {
+        agent: "harry",
+        agentName: "Harry",
+        threadId: currentThreadId,
+        title: query.length > 40 ? query.substring(0, 37) + "..." : query
+      }
+    }));
 
     // 1. Append User message bubble
     const userMsg = document.createElement("div");
