@@ -370,76 +370,124 @@
         <!-- ================================================================== -->
         <!-- 🪄 Tab 3: Harry Potter X Mythology (WebSocket Streaming)           -->
         <!-- ================================================================== -->
+        <!-- ================================================================== -->
+        <!-- 🪄 Tab 3: Harry Potter X Mythology (WebSocket Streaming)           -->
+        <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-harry">
-          <div class="st-tab-header-row">
-            <div class="st-tab-header-title">
-              <h1>🪄 <span style="color: #1E88E5;">Harry Potter X Mythology</span></h1>
-              <p style="color: var(--st-text-muted);">Ask anything about Harry Potter and Indian Mythology</p>
-            </div>
-            <button type="button" class="st-arch-trigger-btn" data-arch="harry" title="View Agentic Architecture">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="3" width="6" height="6" rx="1"></rect>
-                <rect x="16" y="3" width="6" height="6" rx="1"></rect>
-                <rect x="9" y="15" width="6" height="6" rx="1"></rect>
-                <path d="M5 9v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"></path>
-                <path d="M12 14v1"></path>
-              </svg>
-              <span>Architecture</span>
-            </button>
-          </div>
-
-          <div class="st-chat-workspace">
+          <div class="st-chat-workspace state-hero" id="harry-workspace">
             <!-- Dedicated Chat History Sidebar for Harry Potter -->
             <aside class="st-chat-history-sidebar">
+              <button type="button" class="st-agent-new-chat-btn" id="harry-btn-new-chat-sidebar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                <span>New chat</span>
+              </button>
               <div class="st-chat-history-header">
-                <span class="st-chat-history-title">Recent Chats</span>
-                <button type="button" class="st-session-btn" id="harry-btn-new-chat-sidebar" title="Start fresh conversation">➕ New</button>
+                <span class="st-chat-history-title">Recents</span>
               </div>
               <div class="st-chat-history-list" id="harry-history-list">
                 <div class="st-history-empty">No recent chats yet.</div>
               </div>
             </aside>
 
-            <!-- Main Conversation Area -->
+            <!-- Main Agent Conversation Canvas -->
             <div class="st-chat-main-area">
-              <!-- Session & Checkpoint Control Toolbar -->
-              <div class="st-session-toolbar" id="harry-session-bar">
-                <div class="st-session-info">
-                  <span class="st-session-badge">Thread: <strong id="harry-thread-id-display">#hp-session</strong></span>
-                  <span class="st-session-status">🟢 Postgres Checkpointed</span>
+              <!-- Sleek Agent Topbar -->
+              <div class="st-agent-topbar" id="harry-session-bar">
+                <div class="st-agent-title-wrap">
+                  <span class="st-agent-name">🪄 Lore Scholar</span>
+                  <span class="st-agent-pill">Pinecone MCP</span>
+                  <span class="st-agent-pill">Postgres Checkpointed</span>
                 </div>
-                <div class="st-session-actions">
-                  <button type="button" class="st-session-btn" id="harry-btn-new-chat" title="Start a fresh thread with clean checkpointer state">➕ New Thread</button>
-                  <button type="button" class="st-session-btn" id="harry-btn-reload-history" title="Fetch past conversation from PostgreSQL chat history">📜 Restore History</button>
-                  <button type="button" class="st-session-btn st-session-btn-danger" id="harry-btn-clear-history" title="Permanently delete thread history in PostgreSQL">🗑️ Clear Thread</button>
+                <div class="st-agent-topbar-actions">
+                  <span class="st-agent-thread-badge" id="harry-thread-id-display">#hp-session</span>
+                  <button type="button" class="st-topbar-btn" id="harry-btn-new-chat" title="Start fresh conversation">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    <span>New</span>
+                  </button>
+                  <button type="button" class="st-topbar-btn" id="harry-btn-reload-history" title="Restore past conversation from PostgreSQL">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    <span>Restore</span>
+                  </button>
+                  <button type="button" class="st-topbar-btn st-topbar-btn-danger" id="harry-btn-clear-history" title="Clear thread in PostgreSQL">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    <span>Clear</span>
+                  </button>
+                  <button type="button" class="st-arch-trigger-btn" data-arch="harry" title="View Agentic Architecture">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="6" height="6" rx="1"></rect><rect x="16" y="3" width="6" height="6" rx="1"></rect><rect x="9" y="15" width="6" height="6" rx="1"></rect><path d="M5 9v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"></path><path d="M12 14v1"></path></svg>
+                    <span>Architecture</span>
+                  </button>
                 </div>
               </div>
 
-              <!-- Chat messages area -->
-              <div class="st-chat-container" id="harry-chat-history">
-                <!-- Initial Welcome Message -->
-                <div class="st-chat-message assistant">
-                  <div class="st-chat-avatar">🪄</div>
-                  <div class="st-chat-content">
-                    <strong>Welcome to the Harry Potter &amp; Indian Mythology Lore Scholar!</strong><br>
-                    I utilize Pinecone vector retrieval (<code>hpvdb-openai</code>) via MCP to cross-examine characters, Astras, Dharma, and wizarding lore with Indian ancient epics.
+              <!-- Content Area: Hero State & Chat Messages -->
+              <div class="st-agent-scroll-area" id="harry-scroll-area">
+                <!-- Hero State (Gemini/ChatGPT Centered Look) -->
+                <div class="st-agent-hero-view" id="harry-hero-view">
+                  <h1 class="st-agent-hero-title">What secrets of the wizarding world shall we uncover?</h1>
+                  <p class="st-agent-hero-subtitle">Cross-examine Harry Potter lore, spells, Horcruxes, and Indian ancient epics via Pinecone vector retrieval</p>
+
+                  <!-- Modern Capsule Pill Input (Centered in Hero) -->
+                  <div class="st-agent-capsule-input">
+                    <button type="button" class="st-capsule-btn st-capsule-plus" id="harry-plus-btn" title="Quick prompt topics">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                    <input type="text" id="harry-user-input" class="st-capsule-field" placeholder="Ask anything..." autocomplete="off" />
+                    <button type="button" class="st-capsule-think-btn" id="harry-think-btn" title="Toggle Deep Reasoning">
+                      <span class="think-icon">🧠</span>
+                      <span>Think</span>
+                    </button>
+                    <button type="button" class="st-capsule-mic-btn" id="harry-mic-btn" title="Voice Input (Speech-to-Text)">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    </button>
+                    <button type="button" class="st-capsule-send-btn" id="harry-send-btn" title="Send Query">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                    </button>
+                  </div>
+
+                  <!-- Quick Action Prompts (Directly under capsule) -->
+                  <div class="st-agent-prompt-list">
+                    <div class="st-agent-prompt-item" data-query="Compare Ron Weasley vs Lakshmana in narrative, duty, and loyalty context">
+                      <span class="st-prompt-icon">⚡</span>
+                      <span class="st-prompt-text">Compare Ron Weasley vs Lakshmana in duty &amp; loyalty</span>
+                    </div>
+                    <div class="st-agent-prompt-item" data-query="Relate Deathly Hallows to Hindu concepts of Samsara, Karma, and Immortality">
+                      <span class="st-prompt-icon">🔮</span>
+                      <span class="st-prompt-text">Relate Deathly Hallows to Hindu concepts of Samsara &amp; Immortality</span>
+                    </div>
+                    <div class="st-agent-prompt-item" data-query="Explore parallels between Lord Rama's exile and Harry Potter's quest for Horcruxes">
+                      <span class="st-prompt-icon">🏹</span>
+                      <span class="st-prompt-text">Parallels between Lord Rama's exile &amp; Horcrux quest</span>
+                    </div>
+                    <div class="st-agent-prompt-item" data-query="Explore the symbolism and ethical constraints of Brahmastra vs Avada Kedavra">
+                      <span class="st-prompt-icon">📜</span>
+                      <span class="st-prompt-text">Analyze Brahmastra vs Avada Kedavra ethical constraints</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Bottom Chat Input (Fixed) -->
-          <div class="st-chat-footer-fixed" id="harry-footer-bar">
-            <div class="st-chat-suggestions">
-              <button class="st-suggestion-chip" data-query="Compare Ron Weasley vs Lakshmana in narrative, duty, and loyalty context">🧙‍♂️ Ron vs Lakshmana</button>
-              <button class="st-suggestion-chip" data-query="Relate Deathly Hallows to Hindu concepts of Samsara, Karma, and Immortality">🔮 Deathly Hallows & Samsara</button>
-              <button class="st-suggestion-chip" data-query="Explore parallels between Lord Rama's exile and Harry Potter's quest for Horcruxes">⚡ Rama's Exile & Horcrux Quest</button>
-              <button class="st-suggestion-chip" data-query="Explore the symbolism and ethical constraints of Brahmastra vs Avada Kedavra">📜 Brahmastra vs Avada Kedavra</button>
-            </div>
-            <div class="st-chat-input-bar">
-              <input type="text" id="harry-user-input" class="st-chat-input-field" placeholder="Ask a question or topic (e.g. Harry Potter, mythology, or general questions)..." />
-              <button class="st-chat-send-btn" id="harry-send-btn">Ask 🪄</button>
+                <!-- Chat History Container (Visible when messages exist) -->
+                <div class="st-chat-container" id="harry-chat-history" style="display: none;"></div>
+              </div>
+
+              <!-- Bottom Floating Capsule Bar (Visible when conversation is active) -->
+              <div class="st-agent-bottom-bar" id="harry-bottom-bar" style="display: none;">
+                <div class="st-agent-capsule-input">
+                  <button type="button" class="st-capsule-btn st-capsule-plus" id="harry-bottom-plus-btn" title="Quick prompt topics">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                  </button>
+                  <input type="text" id="harry-bottom-input" class="st-capsule-field" placeholder="Ask follow-up..." autocomplete="off" />
+                  <button type="button" class="st-capsule-think-btn" id="harry-bottom-think-btn" title="Toggle Deep Reasoning">
+                    <span class="think-icon">🧠</span>
+                    <span>Think</span>
+                  </button>
+                  <button type="button" class="st-capsule-mic-btn" id="harry-bottom-mic-btn" title="Voice Input">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                  </button>
+                  <button type="button" class="st-capsule-send-btn" id="harry-bottom-send-btn" title="Send Query">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -449,75 +497,121 @@
         <!-- 🏡 Tab 4: Tour Agent (WebSocket Streaming)                         -->
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-tour">
-          <div class="st-tab-header-row">
-            <div class="st-tab-header-title">
-              <h1>🏡 <span style="color: #1E88E5;">MCP Powered Tour Agent</span></h1>
-              <p style="color: var(--st-text-muted);">This is a Weather and MCP powered Airbnb tour agent that can help you plan your next vacation.</p>
-            </div>
-            <button type="button" class="st-arch-trigger-btn" data-arch="tour" title="View Agentic Architecture">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="3" width="6" height="6" rx="1"></rect>
-                <rect x="16" y="3" width="6" height="6" rx="1"></rect>
-                <rect x="9" y="15" width="6" height="6" rx="1"></rect>
-                <path d="M5 9v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"></path>
-                <path d="M12 14v1"></path>
-              </svg>
-              <span>Architecture</span>
-            </button>
-          </div>
-
-          <div class="st-chat-workspace">
+          <div class="st-chat-workspace state-hero" id="tour-workspace">
             <!-- Dedicated Chat History Sidebar for Tour Agent -->
             <aside class="st-chat-history-sidebar">
+              <button type="button" class="st-agent-new-chat-btn" id="tour-btn-new-chat-sidebar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                <span>New chat</span>
+              </button>
               <div class="st-chat-history-header">
-                <span class="st-chat-history-title">Recent Chats</span>
-                <button type="button" class="st-session-btn" id="tour-btn-new-chat-sidebar" title="Start fresh conversation">➕ New</button>
+                <span class="st-chat-history-title">Recents</span>
               </div>
               <div class="st-chat-history-list" id="tour-history-list">
                 <div class="st-history-empty">No recent chats yet.</div>
               </div>
             </aside>
 
-            <!-- Main Conversation Area -->
+            <!-- Main Agent Conversation Canvas -->
             <div class="st-chat-main-area">
-              <!-- Session & Checkpoint Control Toolbar -->
-              <div class="st-session-toolbar" id="tour-session-bar">
-                <div class="st-session-info">
-                  <span class="st-session-badge">Thread: <strong id="tour-thread-id-display">#tour-session</strong></span>
-                  <span class="st-session-status">🟢 Postgres Checkpointed</span>
+              <!-- Sleek Agent Topbar -->
+              <div class="st-agent-topbar" id="tour-session-bar">
+                <div class="st-agent-title-wrap">
+                  <span class="st-agent-name">🏡 Tour Agent</span>
+                  <span class="st-agent-pill">Airbnb MCP</span>
+                  <span class="st-agent-pill">Weather API</span>
+                  <span class="st-agent-pill">Postgres Checkpointed</span>
                 </div>
-                <div class="st-session-actions">
-                  <button type="button" class="st-session-btn" id="tour-btn-new-chat" title="Start a fresh thread with clean checkpointer state">➕ New Thread</button>
-                  <button type="button" class="st-session-btn" id="tour-btn-reload-history" title="Fetch past conversation from PostgreSQL chat history">📜 Restore History</button>
-                  <button type="button" class="st-session-btn st-session-btn-danger" id="tour-btn-clear-history" title="Permanently delete thread history in PostgreSQL">🗑️ Clear Thread</button>
+                <div class="st-agent-topbar-actions">
+                  <span class="st-agent-thread-badge" id="tour-thread-id-display">#tour-session</span>
+                  <button type="button" class="st-topbar-btn" id="tour-btn-new-chat" title="Start fresh conversation">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    <span>New</span>
+                  </button>
+                  <button type="button" class="st-topbar-btn" id="tour-btn-reload-history" title="Restore past conversation from PostgreSQL">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    <span>Restore</span>
+                  </button>
+                  <button type="button" class="st-topbar-btn st-topbar-btn-danger" id="tour-btn-clear-history" title="Clear thread in PostgreSQL">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    <span>Clear</span>
+                  </button>
+                  <button type="button" class="st-arch-trigger-btn" data-arch="tour" title="View Agentic Architecture">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="6" height="6" rx="1"></rect><rect x="16" y="3" width="6" height="6" rx="1"></rect><rect x="9" y="15" width="6" height="6" rx="1"></rect><path d="M5 9v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"></path><path d="M12 14v1"></path></svg>
+                    <span>Architecture</span>
+                  </button>
                 </div>
               </div>
 
-              <!-- Chat messages area -->
-              <div class="st-chat-container" id="tour-chat-history">
-                <!-- Initial Welcome Message -->
-                <div class="st-chat-message assistant">
-                  <div class="st-chat-avatar">🏡</div>
-                  <div class="st-chat-content">
-                    <strong>Welcome to the MCP-Powered Travel Agent!</strong><br>
-                    I query live accommodations via the <strong>Airbnb MCP Server</strong> (<code>@openbnb/mcp-server-airbnb</code>) and real-time meteorology APIs to synthesize comprehensive, verified itineraries with live stay rates and weather forecasts.
+              <!-- Content Area: Hero State & Chat Messages -->
+              <div class="st-agent-scroll-area" id="tour-scroll-area">
+                <!-- Hero State (Gemini/ChatGPT Centered Look) -->
+                <div class="st-agent-hero-view" id="tour-hero-view">
+                  <h1 class="st-agent-hero-title">What’s on the agenda today?</h1>
+                  <p class="st-agent-hero-subtitle">Query live Airbnb accommodations via MCP and real-time weather forecasts to curate verified vacation itineraries</p>
+
+                  <!-- Modern Capsule Pill Input (Centered in Hero) -->
+                  <div class="st-agent-capsule-input">
+                    <button type="button" class="st-capsule-btn st-capsule-plus" id="tour-plus-btn" title="Quick prompt topics">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                    <input type="text" id="tour-user-input" class="st-capsule-field" placeholder="Ask anything..." autocomplete="off" />
+                    <button type="button" class="st-capsule-think-btn" id="tour-think-btn" title="Toggle Deep Reasoning">
+                      <span class="think-icon">🧠</span>
+                      <span>Think</span>
+                    </button>
+                    <button type="button" class="st-capsule-mic-btn" id="tour-mic-btn" title="Voice Input (Speech-to-Text)">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    </button>
+                    <button type="button" class="st-capsule-send-btn" id="tour-send-btn" title="Send Query">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                    </button>
+                  </div>
+
+                  <!-- Quick Action Prompts (Directly under capsule) -->
+                  <div class="st-agent-prompt-list">
+                    <div class="st-agent-prompt-item" data-query="Find beachfront Airbnb in Goa under ₹5000/night with live availability">
+                      <span class="st-prompt-icon">🏖️</span>
+                      <span class="st-prompt-text">Find beachfront Airbnb stays in Goa under ₹5,000</span>
+                    </div>
+                    <div class="st-agent-prompt-item" data-query="5 days scenic Switzerland itinerary with weather forecast &amp; train routes">
+                      <span class="st-prompt-icon">✈️</span>
+                      <span class="st-prompt-text">5-day Switzerland itinerary with weather &amp; scenic trains</span>
+                    </div>
+                    <div class="st-agent-prompt-item" data-query="Tokyo 3-day cultural exploration with Airbnb accommodations and budget breakdown">
+                      <span class="st-prompt-icon">🌐</span>
+                      <span class="st-prompt-text">Search Airbnb accommodations &amp; live forecast in Tokyo</span>
+                    </div>
+                    <div class="st-agent-prompt-item" data-query="4 days weekend getaway to Manali for 2 adults with Airbnb stays">
+                      <span class="st-prompt-icon">🎒</span>
+                      <span class="st-prompt-text">Weekend mountain retreat near Manali or Rishikesh</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Bottom Chat Input (Fixed) -->
-          <div class="st-chat-footer-fixed" id="tour-footer-bar">
-            <div class="st-chat-suggestions">
-              <button class="st-suggestion-chip" data-query="3 days trip to Munnar from tomorrow">🌴 Munnar 3-Day Trip</button>
-              <button class="st-suggestion-chip" data-query="4 days weekend getaway to Manali for 2 adults">⛰️ Manali Weekend Getaway</button>
-              <button class="st-suggestion-chip" data-query="3 days relaxing beach vacation in Goa with weather forecast">🌊 Goa Beach Vacation</button>
-              <button class="st-suggestion-chip" data-query="5 days heritage and culture tour in Jaipur starting next Monday">🏰 Jaipur Cultural Tour</button>
-            </div>
-            <div class="st-chat-input-bar">
-              <input type="text" id="tour-user-input" class="st-chat-input-field" placeholder="Ask about your trip (e.g. 3 days trip to Munnar from tomorrow)..." />
-              <button class="st-chat-send-btn" id="tour-send-btn">Send 🚀</button>
+                <!-- Chat History Container (Visible when messages exist) -->
+                <div class="st-chat-container" id="tour-chat-history" style="display: none;"></div>
+              </div>
+
+              <!-- Bottom Floating Capsule Bar (Visible when conversation is active) -->
+              <div class="st-agent-bottom-bar" id="tour-bottom-bar" style="display: none;">
+                <div class="st-agent-capsule-input">
+                  <button type="button" class="st-capsule-btn st-capsule-plus" id="tour-bottom-plus-btn" title="Quick prompt topics">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                  </button>
+                  <input type="text" id="tour-bottom-input" class="st-capsule-field" placeholder="Ask follow-up..." autocomplete="off" />
+                  <button type="button" class="st-capsule-think-btn" id="tour-bottom-think-btn" title="Toggle Deep Reasoning">
+                    <span class="think-icon">🧠</span>
+                    <span>Think</span>
+                  </button>
+                  <button type="button" class="st-capsule-mic-btn" id="tour-bottom-mic-btn" title="Voice Input">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                  </button>
+                  <button type="button" class="st-capsule-send-btn" id="tour-bottom-send-btn" title="Send Query">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>

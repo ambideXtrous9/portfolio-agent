@@ -1,21 +1,39 @@
 /**
  * Harry Potter Lore & Mythology Agent Controller
  * Supports LangGraph Checkpointing & PostgreSQL Chat History
+ * Modern Conversational UI matching Gemini / ChatGPT / Perplexity aesthetic
  */
 
 import { streamAgent, apiGetChatHistory, apiClearChatHistory, getAuthToken } from "./api.js";
 
 export function initHarryScholar() {
+  const workspace = document.getElementById("harry-workspace");
+  const heroView = document.getElementById("harry-hero-view");
   const chatHistory = document.getElementById("harry-chat-history");
-  const userInput = document.getElementById("harry-user-input");
-  const sendBtn = document.getElementById("harry-send-btn");
-  const chips = document.querySelectorAll("#tab-harry .st-suggestion-chip");
+  const bottomBar = document.getElementById("harry-bottom-bar");
+
+  // Hero Inputs
+  const heroInput = document.getElementById("harry-user-input");
+  const heroSendBtn = document.getElementById("harry-send-btn");
+  const heroThinkBtn = document.getElementById("harry-think-btn");
+  const heroMicBtn = document.getElementById("harry-mic-btn");
+  const heroPlusBtn = document.getElementById("harry-plus-btn");
+
+  // Bottom Floating Inputs
+  const bottomInput = document.getElementById("harry-bottom-input");
+  const bottomSendBtn = document.getElementById("harry-bottom-send-btn");
+  const bottomThinkBtn = document.getElementById("harry-bottom-think-btn");
+  const bottomMicBtn = document.getElementById("harry-bottom-mic-btn");
+  const bottomPlusBtn = document.getElementById("harry-bottom-plus-btn");
+
+  // Topbar / Controls
   const threadDisplay = document.getElementById("harry-thread-id-display");
   const btnNewChat = document.getElementById("harry-btn-new-chat");
+  const btnNewChatSidebar = document.getElementById("harry-btn-new-chat-sidebar");
   const btnReloadHistory = document.getElementById("harry-btn-reload-history");
   const btnClearHistory = document.getElementById("harry-btn-clear-history");
 
-  if (!chatHistory || !userInput || !sendBtn) return;
+  if (!chatHistory || !heroInput) return;
 
   // Stable or stored Thread/Session ID
   let currentThreadId = localStorage.getItem("portfolio_hp_thread_id");
@@ -31,23 +49,41 @@ export function initHarryScholar() {
   };
   updateThreadUI();
 
-  const welcomeHTML = `
-    <div class="st-chat-message assistant">
-      <div class="st-chat-avatar">🪄</div>
-      <div class="st-chat-content">
-        <strong>Welcome to the Harry Potter & Indian Mythology Lore Scholar!</strong><br>
-        I utilize Pinecone vector retrieval (<code>hpvdb-openai</code>) via MCP to cross-examine characters, Astras, Dharma, and wizarding lore with Indian ancient epics.
-      </div>
-    </div>
-  `;
+  let isThinkingEnabled = false;
+
+  function setHeroState(isHero) {
+    if (isHero) {
+      if (workspace) workspace.classList.add("state-hero");
+      if (heroView) heroView.style.display = "block";
+      if (chatHistory) {
+        chatHistory.style.display = "none";
+        chatHistory.innerHTML = "";
+      }
+      if (bottomBar) bottomBar.style.display = "none";
+      if (heroInput) {
+        heroInput.value = "";
+        heroInput.focus();
+      }
+    } else {
+      if (workspace) workspace.classList.remove("state-hero");
+      if (heroView) heroView.style.display = "none";
+      if (chatHistory) chatHistory.style.display = "flex";
+      if (bottomBar) bottomBar.style.display = "block";
+      if (bottomInput) bottomInput.focus();
+    }
+  }
 
   // Restore history from PostgreSQL
   async function loadThreadHistory() {
-    if (!getAuthToken()) return;
+    if (!getAuthToken()) {
+      setHeroState(true);
+      return;
+    }
     try {
       const res = await apiGetChatHistory(currentThreadId);
       if (res && res.messages && res.messages.length > 0) {
-        chatHistory.innerHTML = welcomeHTML;
+        setHeroState(false);
+        chatHistory.innerHTML = "";
         res.messages.forEach((msg) => {
           const isUser = msg.type === "human" || msg.type === "user";
           const msgDiv = document.createElement("div");
@@ -62,29 +98,118 @@ export function initHarryScholar() {
           chatHistory.appendChild(msgDiv);
         });
         chatHistory.lastElementChild?.scrollIntoView({ behavior: "smooth" });
+      } else {
+        setHeroState(true);
       }
     } catch (e) {
       console.warn("Could not load Harry chat history:", e);
+      setHeroState(true);
     }
   }
 
-  // Load history on initialization
+  // Initial load
   loadThreadHistory();
 
-  // New Thread Handler
-  if (btnNewChat) {
-    btnNewChat.addEventListener("click", () => {
-      currentThreadId = "hp-" + Math.random().toString(36).substring(2, 9);
-      localStorage.setItem("portfolio_hp_thread_id", currentThreadId);
-      updateThreadUI();
-      chatHistory.innerHTML = welcomeHTML;
-      const note = document.createElement("div");
-      note.style.cssText = "text-align: center; font-size: 0.78rem; color: var(--st-text-muted); margin: 0.5rem 0;";
-      note.textContent = `⚡ Started fresh thread #${currentThreadId} with empty checkpointer state.`;
-      chatHistory.appendChild(note);
-      window.dispatchEvent(new CustomEvent("portfolio:thread_switched"));
+  // Think button toggler
+  function toggleThink() {
+    isThinkingEnabled = !isThinkingEnabled;
+    [heroThinkBtn, bottomThinkBtn].forEach((btn) => {
+      if (btn) {
+        btn.classList.toggle("is-active", isThinkingEnabled);
+        btn.title = isThinkingEnabled ? "Deep Reasoning: Enabled" : "Toggle Deep Reasoning";
+      }
     });
   }
+  heroThinkBtn?.addEventListener("click", toggleThink);
+  bottomThinkBtn?.addEventListener("click", toggleThink);
+
+  // Mic speech recognition setup
+  function setupMic(micBtn, targetInput) {
+    if (!micBtn || !targetInput) return;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      micBtn.addEventListener("click", () => {
+        alert("Voice speech recognition is supported in modern Chrome, Edge, and Safari.");
+      });
+      return;
+    }
+
+    let recognition = null;
+    let isListening = false;
+
+    micBtn.addEventListener("click", () => {
+      if (isListening) {
+        if (recognition) recognition.stop();
+        return;
+      }
+
+      try {
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = "en-US";
+
+        recognition.onstart = () => {
+          isListening = true;
+          micBtn.classList.add("is-listening");
+          micBtn.title = "Listening... Click to finish";
+          targetInput.placeholder = "Listening to your voice...";
+        };
+
+        recognition.onresult = (e) => {
+          const text = Array.from(e.results).map((r) => r[0].transcript).join("");
+          targetInput.value = text;
+        };
+
+        recognition.onerror = () => {
+          cleanup();
+        };
+
+        recognition.onend = () => {
+          cleanup();
+          if (targetInput.value.trim()) {
+            submitHarryQuery(targetInput.value.trim());
+          }
+        };
+
+        recognition.start();
+      } catch (err) {
+        cleanup();
+      }
+
+      function cleanup() {
+        isListening = false;
+        micBtn.classList.remove("is-listening");
+        micBtn.title = "Voice Input";
+        targetInput.placeholder = "Ask anything...";
+      }
+    });
+  }
+
+  setupMic(heroMicBtn, heroInput);
+  setupMic(bottomMicBtn, bottomInput);
+
+  // Plus button sample context prompt
+  function setupPlus(btn, inputEl) {
+    btn?.addEventListener("click", () => {
+      inputEl.focus();
+      inputEl.value = "Examine the philosophical alignment between ";
+    });
+  }
+  setupPlus(heroPlusBtn, heroInput);
+  setupPlus(bottomPlusBtn, bottomInput);
+
+  // Start fresh thread
+  function startNewChat() {
+    currentThreadId = "hp-" + Math.random().toString(36).substring(2, 9);
+    localStorage.setItem("portfolio_hp_thread_id", currentThreadId);
+    updateThreadUI();
+    setHeroState(true);
+    window.dispatchEvent(new CustomEvent("portfolio:thread_switched"));
+  }
+
+  btnNewChat?.addEventListener("click", startNewChat);
+  btnNewChatSidebar?.addEventListener("click", startNewChat);
 
   // Cross-view events
   window.addEventListener("portfolio:reload_harry_history", (e) => {
@@ -98,58 +223,55 @@ export function initHarryScholar() {
   });
 
   window.addEventListener("portfolio:reset_harry_chat", () => {
-    currentThreadId = "hp-" + Math.random().toString(36).substring(2, 9);
-    localStorage.setItem("portfolio_hp_thread_id", currentThreadId);
-    updateThreadUI();
-    chatHistory.innerHTML = welcomeHTML;
-    window.dispatchEvent(new CustomEvent("portfolio:thread_switched"));
+    startNewChat();
   });
 
   // Reload / Restore History Handler
-  if (btnReloadHistory) {
-    btnReloadHistory.addEventListener("click", async () => {
-      btnReloadHistory.textContent = "⏳ Restoring...";
-      await loadThreadHistory();
-      btnReloadHistory.textContent = "📜 Restore History";
-    });
-  }
+  btnReloadHistory?.addEventListener("click", async () => {
+    btnReloadHistory.innerHTML = "⏳ Restoring...";
+    await loadThreadHistory();
+    btnReloadHistory.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      <span>Restore</span>
+    `;
+  });
 
   // Clear History Handler
-  if (btnClearHistory) {
-    btnClearHistory.addEventListener("click", async () => {
-      if (!confirm("Are you sure you want to clear chat history for this thread in PostgreSQL?")) return;
-      try {
-        await apiClearChatHistory(currentThreadId);
-        chatHistory.innerHTML = welcomeHTML;
-      } catch (err) {
-        alert("Failed to clear history: " + err.message);
+  btnClearHistory?.addEventListener("click", async () => {
+    if (!confirm("Are you sure you want to clear chat history for this thread in PostgreSQL?")) return;
+    try {
+      await apiClearChatHistory(currentThreadId);
+      setHeroState(true);
+    } catch (err) {
+      alert("Failed to clear history: " + err.message);
+    }
+  });
+
+  // Suggestion action prompts handler
+  document.querySelectorAll("#tab-harry .st-agent-prompt-item, #tab-harry .st-suggestion-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const q = chip.getAttribute("data-query") || chip.textContent.trim();
+      if (q) {
+        submitHarryQuery(q);
       }
     });
-  }
+  });
 
-  // Suggestion chips handler
-  chips.forEach(chip => {
-    chip.addEventListener("click", () => {
-      const q = chip.getAttribute("data-query");
-      if (q) {
-        userInput.value = q;
+  // Enter key handlers
+  [heroInput, bottomInput].forEach((input) => {
+    input?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
         submitHarryQuery();
       }
     });
   });
 
-  // Enter key handler
-  userInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      submitHarryQuery();
-    }
-  });
+  heroSendBtn?.addEventListener("click", () => submitHarryQuery());
+  bottomSendBtn?.addEventListener("click", () => submitHarryQuery());
 
-  sendBtn.addEventListener("click", submitHarryQuery);
-
-  function submitHarryQuery() {
-    const query = userInput.value.trim();
+  function submitHarryQuery(queryOverride) {
+    const query = (queryOverride || heroInput?.value || bottomInput?.value || "").trim();
     if (!query) return;
 
     if (!getAuthToken()) {
@@ -157,10 +279,14 @@ export function initHarryScholar() {
       return;
     }
 
-    userInput.value = "";
-    sendBtn.disabled = true;
+    if (heroInput) heroInput.value = "";
+    if (bottomInput) bottomInput.value = "";
+    if (heroSendBtn) heroSendBtn.disabled = true;
+    if (bottomSendBtn) bottomSendBtn.disabled = true;
 
-    // Dispatch event to track in sidebar recent chats
+    setHeroState(false);
+
+    // Track in sidebar recent chats
     window.dispatchEvent(new CustomEvent("portfolio:chat_updated", {
       detail: {
         agent: "harry",
@@ -242,7 +368,8 @@ export function initHarryScholar() {
       },
       onDone: (data) => {
         if (statusBadge) statusBadge.style.display = "none";
-        sendBtn.disabled = false;
+        if (heroSendBtn) heroSendBtn.disabled = false;
+        if (bottomSendBtn) bottomSendBtn.disabled = false;
         const text = data.content || data.full_text || "";
         if (text) {
           markdownBody.innerHTML = window.marked ? marked.parse(text) : escapeHtml(text);
@@ -252,7 +379,8 @@ export function initHarryScholar() {
         if (statusBadge) statusBadge.style.display = "none";
         const errMsg = err?.message || (typeof err === "string" ? err : JSON.stringify(err)) || "An unexpected error occurred.";
         markdownBody.innerHTML = `<div style="color: #D32F2F; padding: 0.5rem; background: #FDE8E8; border-radius: 4px;">⚠️ Error: ${escapeHtml(errMsg)}</div>`;
-        sendBtn.disabled = false;
+        if (heroSendBtn) heroSendBtn.disabled = false;
+        if (bottomSendBtn) bottomSendBtn.disabled = false;
       }
     });
   }

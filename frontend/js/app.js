@@ -210,6 +210,12 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(dismiss, 4500);
   }
 
+  window.addEventListener("portfolio:toast", (e) => {
+    if (e.detail?.message) {
+      showToast(e.detail.message, e.detail.type || "info");
+    }
+  });
+
   // ───────────────────────────────────────────────────────────────────────────
   // Modal Backdrop Handlers
   // ───────────────────────────────────────────────────────────────────────────
