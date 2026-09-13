@@ -1,11 +1,58 @@
-**/__pycache__/
-/streamlit/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+stenv/
+
+# Environment and Secrets
 .env
-TXT.txt
+.env.local
+.env.*.local
+!.env.example
 .secrets.toml
 .streamlit
-stenv
 
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# SQLite and Database lock/journal files
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
+# Jupyter / Scratch files
+.ipynb_checkpoints/
+temp.ipynb
+
+# Testing and Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor & IDE configurations
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific legacy patterns
+/streamlit/
+TXT.txt
 .strmlit
 .port
 .qwen
