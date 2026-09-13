@@ -33,9 +33,16 @@ class AuthDatabaseManager:
         self._in_memory_blacklist: set = set()
         self._in_memory_reset_tokens: Dict[str, Dict[str, Any]] = {}
         self._is_in_memory: bool = True
+        self._initialized: bool = False
+        try:
+            self._seed_default_demo_accounts()
+        except Exception as e:
+            logger.warning(f"Initial demo account seed note: {e}")
 
     async def initialize(self) -> None:
         """Initializes PostgreSQL connection pool and creates auth tables."""
+        if self._initialized:
+            return
         auth_uri = settings.effective_auth_db_uri
 
         # 1. Always seed the default demo accounts in in-memory fallback
@@ -87,6 +94,8 @@ class AuthDatabaseManager:
                     pass
                 self.pool = None
             self._is_in_memory = True
+        finally:
+            self._initialized = True
 
     def _seed_default_demo_accounts(self) -> None:
         """Seeds default user accounts into in-memory store."""
@@ -234,6 +243,11 @@ class AuthDatabaseManager:
         """Finds user by email or username."""
         normalized = email.strip().lower()
 
+        # Check demo user shortcuts immediately
+        if normalized in ("abc", "abc@example.com") and normalized in self._in_memory_users:
+            if self._is_in_memory or not self.pool:
+                return self._in_memory_users[normalized]
+
         if self._is_in_memory or not self.pool:
             # Check direct match or username match
             if normalized in self._in_memory_users:
@@ -243,51 +257,81 @@ class AuthDatabaseManager:
                     return u
             return None
 
-        async with self.pool.connection() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    "SELECT id, email, full_name, hashed_password, is_active, is_superuser, role, created_at, updated_at "
-                    "FROM users WHERE LOWER(email) = %s",
-                    (normalized,),
-                )
-                row = await cur.fetchone()
-                if row:
-                    row["id"] = str(row["id"])
-                    return row
-
-                # Also allow login with 'abc' directly if email was abc@example.com
-                if "@" not in normalized:
+        try:
+            async with self.pool.connection() as conn:
+                async with conn.cursor() as cur:
                     await cur.execute(
                         "SELECT id, email, full_name, hashed_password, is_active, is_superuser, role, created_at, updated_at "
-                        "FROM users WHERE LOWER(email) LIKE %s",
-                        (f"{normalized}@%",),
+                        "FROM users WHERE LOWER(email) = %s",
+                        (normalized,),
                     )
                     row = await cur.fetchone()
                     if row:
-                        row["id"] = str(row["id"])
-                        return row
+                        row_dict = dict(row)
+                        row_dict["id"] = str(row_dict["id"])
+                        return row_dict
 
-                return None
+                    # Also allow login with 'abc' directly if email was abc@example.com
+                    if "@" not in normalized:
+                        await cur.execute(
+                            "SELECT id, email, full_name, hashed_password, is_active, is_superuser, role, created_at, updated_at "
+                            "FROM users WHERE LOWER(email) LIKE %s",
+                            (f"{normalized}@%",),
+                        )
+                        row = await cur.fetchone()
+                        if row:
+                            row_dict = dict(row)
+                            row_dict["id"] = str(row_dict["id"])
+                            return row_dict
 
-    async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
-        """Finds user by UUID identifier."""
-        if self._is_in_memory or not self.pool:
+                    # Fallback to in-memory demo account if not found in db
+                    if normalized in self._in_memory_users:
+                        return self._in_memory_users[normalized]
+                    for u in self._in_memory_users.values():
+                        if u.get("email") == normalized or u.get("username") == normalized:
+                            return u
+                    return None
+        except Exception as e:
+            logger.warning(f"Error querying user by email in PostgreSQL: {e}. Falling back to in-memory store.")
+            if normalized in self._in_memory_users:
+                return self._in_memory_users[normalized]
             for u in self._in_memory_users.values():
-                if str(u.get("id")) == str(user_id):
+                if u.get("email") == normalized or u.get("username") == normalized:
                     return u
             return None
 
-        async with self.pool.connection() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    "SELECT id, email, full_name, hashed_password, is_active, is_superuser, role, created_at, updated_at "
-                    "FROM users WHERE id::text = %s",
-                    (str(user_id),),
-                )
-                row = await cur.fetchone()
-                if row:
-                    row["id"] = str(row["id"])
-                return row
+    async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Finds user by UUID identifier."""
+        str_id = str(user_id)
+        if self._is_in_memory or not self.pool:
+            for u in self._in_memory_users.values():
+                if str(u.get("id")) == str_id:
+                    return u
+            return None
+
+        try:
+            async with self.pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        "SELECT id, email, full_name, hashed_password, is_active, is_superuser, role, created_at, updated_at "
+                        "FROM users WHERE id::text = %s",
+                        (str_id,),
+                    )
+                    row = await cur.fetchone()
+                    if row:
+                        row_dict = dict(row)
+                        row_dict["id"] = str(row_dict["id"])
+                        return row_dict
+                    for u in self._in_memory_users.values():
+                        if str(u.get("id")) == str_id:
+                            return u
+                    return None
+        except Exception as e:
+            logger.warning(f"Error querying user by id in PostgreSQL: {e}. Falling back to in-memory store.")
+            for u in self._in_memory_users.values():
+                if str(u.get("id")) == str_id:
+                    return u
+            return None
 
     async def create_user(
         self,

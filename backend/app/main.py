@@ -2,7 +2,7 @@
 
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -78,6 +78,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def ensure_db_initialized(request: Request, call_next):
+    """Ensures database connection and demo accounts are initialized on serverless cold starts."""
+    if not auth_db_manager._initialized:
+        try:
+            await auth_db_manager.initialize()
+        except Exception as err:
+            pass
+    if not db_manager._initialized:
+        try:
+            await db_manager.initialize()
+        except Exception as err:
+            pass
+    return await call_next(request)
+
 
 # Mount API endpoints (both with and without /api prefix for seamless Vercel Serverless routing)
 app.include_router(api_router, prefix=settings.API_V1_STR)

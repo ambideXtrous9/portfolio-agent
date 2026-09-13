@@ -54,15 +54,19 @@ class DatabaseManager:
         self.checkpointer: Any = MemorySaver()
         self._is_in_memory: bool = True
         self._in_memory_chat_history: Dict[str, List[BaseMessage]] = {}
+        self._initialized: bool = False
 
     async def initialize(self) -> None:
         """Initializes the AsyncConnectionPool, creates chat history tables, and sets up AsyncPostgresSaver."""
+        if self._initialized:
+            return
         db_uri = settings.effective_db_uri
 
         if not db_uri or not POSTGRES_AVAILABLE:
             logger.info("No PostgreSQL DATABASE_URL / POSTGRES_URL configured or psycopg unavailable. Using in-memory checkpointer & chat history.")
             self._is_in_memory = True
             self.checkpointer = MemorySaver()
+            self._initialized = True
             return
 
         logger.info(f"Connecting to PostgreSQL database at: {db_uri.split('@')[-1] if '@' in db_uri else 'local'}")
@@ -104,6 +108,8 @@ class DatabaseManager:
             self.pool = None
             self._is_in_memory = True
             self.checkpointer = MemorySaver()
+        finally:
+            self._initialized = True
 
     async def close(self) -> None:
         """Closes the AsyncConnectionPool on application shutdown."""
