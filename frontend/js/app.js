@@ -791,7 +791,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initImageClassifier();
   initClusterSandbox();
   initArchModal();
-  initBackendManager();
   initSidebarCollapse();
   loadGitHubStats();
 });
@@ -867,104 +866,6 @@ function initSidebarCollapse() {
       setSidebarState(!isCollapsed);
     }
   });
-}
-
-function initBackendManager() {
-  const dot = document.getElementById("backend-status-dot");
-  const text = document.getElementById("backend-status-text");
-  const configBtn = document.getElementById("btn-configure-backend");
-  const modal = document.getElementById("backend-modal-overlay");
-  const closeBtn = document.getElementById("btn-close-backend-modal");
-  const inputUrl = document.getElementById("input-backend-url");
-  const saveBtn = document.getElementById("btn-save-backend-url");
-  const resetBtn = document.getElementById("btn-reset-backend-url");
-  const testResult = document.getElementById("backend-test-result");
-
-  async function updateStatus() {
-    if (text) text.textContent = "Probing Backend...";
-    if (dot) dot.style.background = "#ffaa00";
-    const health = await checkBackendHealth();
-    const topDbStatus = document.getElementById("top-db-status");
-    const topDbText = document.getElementById("top-db-text");
-    const topAuthStatus = document.getElementById("top-auth-status");
-    const topAuthText = document.getElementById("top-auth-text");
-
-    if (health.ok) {
-      if (dot) dot.style.background = "#00e676";
-      if (text) text.textContent = "Backend: Live";
-
-      const dbInfo = health.data?.database;
-      if (topDbText) {
-        if (dbInfo?.postgres_connected) {
-          topDbText.textContent = "Postgres Checkpointer: Active";
-          if (topDbStatus) topDbStatus.className = "st-status-pill st-status-pill-db";
-        } else {
-          topDbText.textContent = "Checkpointer: Memory Fallback";
-          if (topDbStatus) topDbStatus.className = "st-status-pill st-status-pill-offline";
-        }
-      }
-      if (topAuthText) {
-        topAuthText.textContent = "JWT Auth Guard: Enforced";
-        if (topAuthStatus) topAuthStatus.className = "st-status-pill st-status-pill-auth";
-      }
-    } else {
-      if (dot) dot.style.background = "#ff3d00";
-      if (text) text.textContent = "Backend: Disconnected";
-      if (topDbText) topDbText.textContent = "Checkpointer: Offline";
-      if (topDbStatus) topDbStatus.className = "st-status-pill st-status-pill-offline";
-    }
-  }
-
-  if (configBtn && modal) {
-    configBtn.addEventListener("click", () => {
-      const current = localStorage.getItem("ai_portfolio_backend_url") || "";
-      if (inputUrl) inputUrl.value = current;
-      if (testResult) testResult.innerHTML = "";
-      modal.style.display = "flex";
-    });
-  }
-
-  if (closeBtn && modal) {
-    closeBtn.addEventListener("click", () => {
-      modal.style.display = "none";
-    });
-  }
-
-  if (modal) {
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) modal.style.display = "none";
-    });
-  }
-
-  if (saveBtn) {
-    saveBtn.addEventListener("click", async () => {
-      const url = inputUrl ? inputUrl.value.trim() : "";
-      if (testResult) testResult.innerHTML = `<span style="color:#ffaa00;">Testing connection to ${url || '/api'}...</span>`;
-      setBackendURL(url);
-      const health = await checkBackendHealth();
-      if (health.ok) {
-        if (testResult) testResult.innerHTML = `<span style="color:#00e676;">✅ Connected! (${health.data?.project || 'FastAPI'})</span>`;
-        updateStatus();
-        setTimeout(() => { if (modal) modal.style.display = "none"; }, 1000);
-      } else {
-        if (testResult) testResult.innerHTML = `<span style="color:#ff3d00;">❌ Offline (${health.error || health.statusText || '404'}). Ensure URL is accessible via HTTPS.</span>`;
-        updateStatus();
-      }
-    });
-  }
-
-  if (resetBtn) {
-    resetBtn.addEventListener("click", () => {
-      setBackendURL("");
-      if (inputUrl) inputUrl.value = "";
-      if (testResult) testResult.innerHTML = `<span style="color:#00e676;">Reset to default (/api).</span>`;
-      updateStatus();
-      setTimeout(() => { if (modal) modal.style.display = "none"; }, 800);
-    });
-  }
-
-  updateStatus();
-  setInterval(updateStatus, 30000);
 }
 
 async function loadGitHubStats() {
