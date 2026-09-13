@@ -77,9 +77,9 @@ services:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
-      - LIVEKIT_URL=${LIVEKIT_URL:-wss://my-voice-agent-6wug4ta7.livekit.cloud}
-      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-APIZ2es8haN8ejZ}
-      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-1ayQSHKXDlcknAfWZCnkqOQUXajHTSL53IYr0Vj2Ce9}
+      - LIVEKIT_URL=${LIVEKIT_URL:-}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - OPENWEATHER_API_KEY=${WEATHER_API_KEY:-}
       - WEATHER_API_KEY=${WEATHER_API_KEY:-}
