@@ -1,11 +1,15 @@
 services:
-  ai-portfolio:
+  # ----------------------------------------------------------------------------
+  # FastAPI Backend Service (Python 3.12 + MCP + ML Engines)
+  # ----------------------------------------------------------------------------
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ambidextrous-ai-portfolio
+    container_name: ai-portfolio-backend
+    restart: unless-stopped
     ports:
-      - "${PORT:-8000}:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     environment:
       - PORT=8000
       - HOST=0.0.0.0
@@ -27,4 +31,26 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    networks:
+      - app_network
+
+  # ----------------------------------------------------------------------------
+  # Frontend SPA Service (Nginx Static Server & Reverse Proxy)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai-portfolio-frontend
     restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge

@@ -110,16 +110,16 @@ python run.py
 
 ---
 
-## 🐳 Docker Deployment
+## 🐳 Docker Deployment (Decoupled BE + FE)
 
-You can build and deploy the entire multi-agent stack using Docker and Docker Compose:
+You can launch both the **FastAPI Backend** and the **SPA Frontend (Nginx)** concurrently using Docker Compose:
 
 ### Using Docker Compose (Recommended)
 ```bash
-# Start container in detached mode
+# Build and run both backend and frontend containers
 docker compose up -d --build
 
-# View real-time logs
+# View real-time logs from both services
 docker compose logs -f
 
 # Check container health status
@@ -129,16 +129,20 @@ docker compose ps
 docker compose down
 ```
 
-### Using Plain Docker
+Once running:
+- 🌐 **Frontend SPA (Nginx)**: Open [http://localhost:3000](http://localhost:3000)
+- ⚙️ **FastAPI Backend API**: Open [http://localhost:8000](http://localhost:8000)
+- 📖 **Interactive OpenAPI Docs**: Open [http://localhost:8000/docs](http://localhost:8000/docs)
+- 🩺 **Backend Healthcheck**: Open [http://localhost:8000/api/system/health](http://localhost:8000/api/system/health)
+
+### Running Backend Only in Docker
 ```bash
-# Build production image
-docker build -t ambidextrous-ai-portfolio .
+# Build backend image
+docker build -t ai-portfolio-backend .
 
 # Run container with environment file
-docker run -d --name ambidextrous-ai-portfolio -p 8000:8000 --env-file .env ambidextrous-ai-portfolio
+docker run -d --name ai-portfolio-backend -p 8000:8000 --env-file .env ai-portfolio-backend
 ```
-
-Access the application at [http://localhost:8000](http://localhost:8000).
 
 ---
 

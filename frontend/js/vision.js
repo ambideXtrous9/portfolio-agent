@@ -2,6 +2,8 @@
  * Vision AI Studio Tab Controller (Brand Classifier & YOLO Logo Detection)
  */
 
+import { API_BASE } from "./api.js";
+
 export function initVisionStudio() {
   const modeRadios = document.querySelectorAll("input[name='vision-mode']");
   const dropzone = document.getElementById("vision-dropzone");
@@ -66,10 +68,6 @@ export function initVisionStudio() {
     const endpoint = selectedMode === "yolo" ? "/vision/yolo" : "/vision/classify";
 
     try {
-      const API_BASE = window.location.origin.includes(":8000") || window.location.origin.includes(":3000")
-        ? `${window.location.protocol}//${window.location.hostname}:8000/api`
-        : "/api";
-
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         body: formData
