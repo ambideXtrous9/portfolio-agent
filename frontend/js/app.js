@@ -4,7 +4,7 @@
  * URL query param synchronization, authentication state (abc:123), and controller initialization.
  */
 
-import { fetchAPI } from "./api.js";
+import { fetchAPI, checkBackendHealth, setBackendURL } from "./api.js";
 import { initTourAgent } from "./tour.js";
 import { initHarryScholar } from "./harry.js";
 import { initStockScreener } from "./stock.js";
@@ -189,8 +189,85 @@ document.addEventListener("DOMContentLoaded", () => {
   initYoloLogo();
   initImageClassifier();
   initClusterSandbox();
+  initBackendManager();
   loadGitHubStats();
 });
+
+function initBackendManager() {
+  const dot = document.getElementById("backend-status-dot");
+  const text = document.getElementById("backend-status-text");
+  const configBtn = document.getElementById("btn-configure-backend");
+  const modal = document.getElementById("backend-modal-overlay");
+  const closeBtn = document.getElementById("btn-close-backend-modal");
+  const inputUrl = document.getElementById("input-backend-url");
+  const saveBtn = document.getElementById("btn-save-backend-url");
+  const resetBtn = document.getElementById("btn-reset-backend-url");
+  const testResult = document.getElementById("backend-test-result");
+
+  async function updateStatus() {
+    if (text) text.textContent = "Probing Backend...";
+    if (dot) dot.style.background = "#ffaa00";
+    const health = await checkBackendHealth();
+    if (health.ok) {
+      if (dot) dot.style.background = "#00e676";
+      if (text) text.textContent = "Backend: Live";
+    } else {
+      if (dot) dot.style.background = "#ff3d00";
+      if (text) text.textContent = "Backend: Disconnected";
+    }
+  }
+
+  if (configBtn && modal) {
+    configBtn.addEventListener("click", () => {
+      const current = localStorage.getItem("ai_portfolio_backend_url") || "";
+      if (inputUrl) inputUrl.value = current;
+      if (testResult) testResult.innerHTML = "";
+      modal.style.display = "flex";
+    });
+  }
+
+  if (closeBtn && modal) {
+    closeBtn.addEventListener("click", () => {
+      modal.style.display = "none";
+    });
+  }
+
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.style.display = "none";
+    });
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener("click", async () => {
+      const url = inputUrl ? inputUrl.value.trim() : "";
+      if (testResult) testResult.innerHTML = `<span style="color:#ffaa00;">Testing connection to ${url || '/api'}...</span>`;
+      setBackendURL(url);
+      const health = await checkBackendHealth();
+      if (health.ok) {
+        if (testResult) testResult.innerHTML = `<span style="color:#00e676;">✅ Connected! (${health.data?.project || 'FastAPI'})</span>`;
+        updateStatus();
+        setTimeout(() => { if (modal) modal.style.display = "none"; }, 1000);
+      } else {
+        if (testResult) testResult.innerHTML = `<span style="color:#ff3d00;">❌ Offline (${health.error || health.statusText || '404'}). Ensure URL is accessible via HTTPS.</span>`;
+        updateStatus();
+      }
+    });
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      setBackendURL("");
+      if (inputUrl) inputUrl.value = "";
+      if (testResult) testResult.innerHTML = `<span style="color:#00e676;">Reset to default (/api).</span>`;
+      updateStatus();
+      setTimeout(() => { if (modal) modal.style.display = "none"; }, 800);
+    });
+  }
+
+  updateStatus();
+  setInterval(updateStatus, 30000);
+}
 
 async function loadGitHubStats() {
   const reposEl = document.getElementById("gh-stats-repos");

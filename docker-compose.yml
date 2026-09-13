@@ -93,6 +93,21 @@ services:
     networks:
       - app_network
 
+  # ----------------------------------------------------------------------------
+  # Cloudflare HTTPS Public Tunnel (Zero-config secure backend for Vercel)
+  # ----------------------------------------------------------------------------
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: ai-portfolio-tunnel
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "--url", "http://backend:8000"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app_network
+
 networks:
   app_network:
     driver: bridge
+

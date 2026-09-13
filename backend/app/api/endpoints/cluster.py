@@ -5,8 +5,13 @@ import numpy as np
 import pandas as pd
 from typing import List
 from fastapi import APIRouter
-from sklearn.cluster import KMeans, DBSCAN
-from sklearn.metrics import silhouette_score
+try:
+    from sklearn.cluster import KMeans, DBSCAN
+    from sklearn.metrics import silhouette_score
+except ImportError:
+    KMeans = None
+    DBSCAN = None
+    silhouette_score = None
 
 from backend.app.schemas.cluster import ClusterRequest, ClusterResponse, Point
 

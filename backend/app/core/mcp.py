@@ -2,17 +2,22 @@
 
 import os
 import shutil
-from typing import List, Optional
+from typing import List, Optional, Any
 from langchain_core.tools import BaseTool
-from langchain_mcp_adapters.client import MultiServerMCPClient
+try:
+    from langchain_mcp_adapters.client import MultiServerMCPClient
+except ImportError:
+    MultiServerMCPClient = None
 from backend.app.config import settings
 
-_client: Optional[MultiServerMCPClient] = None
+_client: Optional[Any] = None
 
 
-def get_mcp_client() -> Optional[MultiServerMCPClient]:
+def get_mcp_client() -> Optional[Any]:
     """Returns singleton MultiServerMCPClient instance for Airbnb and Pinecone."""
     global _client
+    if MultiServerMCPClient is None:
+        return None
     if _client is None:
         npx_bin = shutil.which("npx") or "npx"
         pinecone_key = settings.PINECONE_API_KEY
