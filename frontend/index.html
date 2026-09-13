@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ambideXtrous</title>
   <link rel="icon" href="assets/images/boom.png" type="image/png">
-  <link rel="stylesheet" href="css/style.css?v=2.4">
+  <link rel="stylesheet" href="css/style.css?v=2.5">
   
   <!-- CDNs for Plotly, Marked and LiveKit -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -52,7 +52,7 @@
         <button class="st-nav-btn" data-tab="tab-tour" data-img="tour">
           <span class="st-nav-btn-icon">🏡</span> Tour Agent
         </button>
-        <button class="st-nav-btn" data-tab="tab-voice" data-img="tour">
+        <button class="st-nav-btn" data-tab="tab-voice" data-img="voice">
           <span class="st-nav-btn-icon">🎙️</span> LiveKit Voice Agent
         </button>
         <button class="st-nav-btn" data-tab="tab-yolo" data-img="yolo">
@@ -324,15 +324,6 @@
         <section class="st-tab-view" id="tab-tour">
           <h1>🏡 <span style="color: #1E88E5;">MCP Powered Tour Agent</span></h1>
           <p style="color: var(--st-text-muted);">This is a Weather and MCP powered Airbnb tour agent that can help you plan your next vacation.</p>
-
-          <!-- Voice Mode Quick Switch Banner -->
-          <div class="st-tour-voice-banner">
-            <div>
-              <strong style="color: #1E88E5;">🎙️ Real-Time Voice AI Mode Available!</strong>
-              <div style="font-size: 0.85rem; color: var(--st-text-muted); margin-top: 2px;">Talk hands-free directly with the LiveKit Voice Agent for instant weather, itineraries, and news.</div>
-            </div>
-            <button type="button" class="st-btn st-btn-primary" id="btn-jump-voice-agent" style="padding: 0.45rem 1.1rem; font-size: 0.88rem; font-weight: 600; white-space: nowrap;">Launch Voice AI 🎙️</button>
-          </div>
 
           <!-- Chat messages area -->
           <div class="st-chat-container" id="tour-chat-history">
@@ -775,6 +766,6 @@
   </div>
 
   <!-- Client Application Scripts -->
-  <script type="module" src="js/app.js?v=2.4"></script>
+  <script type="module" src="js/app.js?v=2.5"></script>
 </body>
 </html>

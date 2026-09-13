@@ -18,7 +18,7 @@ const SIDEBAR_IMAGES = {
   stock: "https://cdn-icons-gif.flaticon.com/17507/17507028.gif",
   harry: "https://64.media.tumblr.com/e5e401e35d609e217c19a24204360b8d/tumblr_mg3h0yvGFD1rgpyeqo1_500.gif",
   tour: "assets/images/mcp_airbnb.png",
-  voice: "assets/images/mcp_airbnb.png",
+  voice: "assets/images/studio_mic.png",
   yolo: "https://images.squarespace-cdn.com/content/v1/5a42a3000abd044bd3244bf2/1551247107452-HYAEHY39IKJ2LJTGNLQR/YOLO-Lettering-Sticker-Joan-Quiros.gif",
   classifier: "https://mlnotebook.github.io/img/CNN/poolfig.gif",
   cluster: "https://cdn.dribbble.com/userupload/20456242/file/original-f31f3824dec1d33b1abf5895ce03de45.gif",
