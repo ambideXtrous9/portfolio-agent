@@ -20,9 +20,9 @@ router = APIRouter(prefix="/stock", tags=["Stock Screener"])
 
 # Base path to CSVs
 from pathlib import Path
-BASE_DIR = str(Path(__file__).resolve().parents[4])
-NIFTY_CSV = os.path.join(BASE_DIR, "StockScreener", "ind_nifty500list.csv")
-MICROCAP_CSV = os.path.join(BASE_DIR, "StockScreener", "ind_niftymicrocap250_list.csv")
+BACKEND_DIR = str(Path(__file__).resolve().parents[3])
+NIFTY_CSV = os.path.join(BACKEND_DIR, "data", "ind_nifty500list.csv")
+MICROCAP_CSV = os.path.join(BACKEND_DIR, "data", "ind_niftymicrocap250_list.csv")
 
 
 def load_universe_df(universe: str) -> pd.DataFrame:

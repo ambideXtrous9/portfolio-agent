@@ -17,8 +17,9 @@ from backend.app.schemas.vision import (
 router = APIRouter(prefix="/vision", tags=["Vision AI"])
 
 from pathlib import Path
-BASE_DIR = str(Path(__file__).resolve().parents[4])
-YOLO_WEIGHTS = os.path.join(BASE_DIR, "LogoYolo", "LogoYolobest.pt")
+BACKEND_DIR = str(Path(__file__).resolve().parents[3])
+MODELS_DIR = os.path.join(BACKEND_DIR, "models")
+YOLO_WEIGHTS = os.path.join(MODELS_DIR, "LogoYolobest.pt")
 
 BRAND_CLASSES = [
     "Adidas", "Apple", "BMW", "Citroen", "Cocacola", "DHL", "Fedex",
@@ -57,15 +58,19 @@ async def classify_brand_image(file: UploadFile = File(...)):
         img_t = transform(image).unsqueeze(0)
         
         # Check if saved model checkpoint exists
-        checkpoint_dir = os.path.join(BASE_DIR, "ImageClassifier")
+        checkpoint_dir = MODELS_DIR
         checkpoint_file = None
-        for f in os.listdir(checkpoint_dir):
-            if f.endswith(".pt") or f.endswith(".pth") or f.endswith(".ckpt"):
-                checkpoint_file = os.path.join(checkpoint_dir, f)
-                break
+        if os.path.exists(checkpoint_dir):
+            for f in os.listdir(checkpoint_dir):
+                if f.endswith(".pt") or f.endswith(".pth") or f.endswith(".ckpt"):
+                    checkpoint_file = os.path.join(checkpoint_dir, f)
+                    break
 
         if checkpoint_file:
-            from ImageClassifier.MobilenetV2 import MobileNetV2
+            import sys
+            if MODELS_DIR not in sys.path:
+                sys.path.insert(0, MODELS_DIR)
+            from MobilenetV2 import MobileNetV2
             model = MobileNetV2(num_classes=len(BRAND_CLASSES), lr=0.001)
             ckpt = torch.load(checkpoint_file, map_location="cpu")
             st_dict = ckpt.get("state_dict", ckpt)
