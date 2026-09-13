@@ -1,21 +1,30 @@
 services:
-  streamlit-app:
+  ai-portfolio:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: streamlit-ai-portfolio
+    container_name: ambidextrous-ai-portfolio
     ports:
-      - "8051:8051"
+      - "${PORT:-8000}:8000"
     environment:
-      - PYTHONUNBUFFERED=true
-      - TRANSFORMERS_CACHE=/app/.cache/huggingface
-      - HF_HOME=/app/.cache/huggingface
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - WEATHER_API_KEY=${WEATHER_API_KEY}
+      - PORT=8000
+      - HOST=0.0.0.0
+      - RELOAD=false
+      - PYTHONUNBUFFERED=1
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-openai/gpt-oss-120b}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - PINECONE_API_KEY=${PINECONE_API_KEY:-}
+      - PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME:-hpvdb-openai}
+      - WEATHER_API_KEY=${WEATHER_API_KEY:-}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+      - LANGFUSE_HOST=${LANGFUSE_HOST:-https://us.cloud.langfuse.com}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8051/_stcore/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/system/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
     restart: unless-stopped

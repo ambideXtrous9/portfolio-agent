@@ -3,17 +3,14 @@
 # ==============================================================================
 FROM python:3.12-slim AS builder
 
-# Set build-time environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    UV_HTTP_TIMEOUT=100 \
-    TRANSFORMERS_CACHE=/app/.cache/huggingface \
-    HF_HOME=/app/.cache/huggingface
+    UV_HTTP_TIMEOUT=100
 
 WORKDIR /app
 
-# Install build dependencies (only what's needed for compilation)
+# Install native build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
@@ -32,28 +29,15 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uv/bin/
 RUN /uv/bin/uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy requirements first for maximum Docker layer caching
+# Copy requirements for optimal layer caching
 COPY requirements.txt .
 
-# Install Python dependencies with uv
-# Use CPU-only torch to avoid NVIDIA CUDA bloat
+# Install CPU-optimized torch, torchvision and requirements
 RUN /uv/bin/uv pip install --no-cache torch --index-url https://download.pytorch.org/whl/cpu && \
     /uv/bin/uv pip install --no-cache torchvision --index-url https://download.pytorch.org/whl/cpu && \
     /uv/bin/uv pip install --no-cache -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
 
-# ==============================================================================
-# MODEL DOWNLOAD STAGE - Pre-download all ML models
-# ==============================================================================
-FROM builder AS model-downloader
-
-# Create cache directory
-RUN mkdir -p /app/.cache/huggingface
-
-# Download all required models during build (not at runtime)
-COPY download_models.py .
-RUN python download_models.py || echo "⚠️ Some models failed to download (will download at runtime)"
-
-# Strip binaries and clean up Python cache
+# Clean virtual environment
 RUN find /opt/venv -name '*.so' -type f -exec strip --strip-unneeded '{}' + 2>/dev/null || true && \
     find /opt/venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null && \
     find /opt/venv -name "*.pyc" -delete 2>/dev/null
@@ -66,12 +50,12 @@ FROM python:3.12-slim
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    TRANSFORMERS_CACHE=/app/.cache/huggingface \
-    HF_HOME=/app/.cache/huggingface
+    PORT=8000 \
+    HOST=0.0.0.0
 
 WORKDIR /app
 
-# Install runtime dependencies + Node.js 20.x (required for Airbnb MCP via npx)
+# Install runtime dependencies + Node.js 20.x & npm (for MCP stdio servers via npx)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
@@ -91,26 +75,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && npm cache clean --force
 
-# Verify Node.js and npx are available
+# Verify Node.js and npx are available for MCP tools
 RUN node -v && npx --version
 
-# Copy only the optimized virtual environment from builder
+# Pre-install MCP servers globally for fast cold starts (avoids runtime npm downloads)
+RUN npm install -g @openbnb/mcp-server-airbnb @pinecone-database/mcp \
+    && npm cache clean --force
+
+# Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
 
-# Copy pre-downloaded models from model downloader stage
-COPY --from=model-downloader /app/.cache/huggingface /app/.cache/huggingface
+# Copy application files (backend, frontend, run script)
+COPY backend/ ./backend/
+COPY frontend/ ./frontend/
+COPY run.py .
+COPY .env.example .
 
-# Copy application code (including HPVdb)
-COPY . .
-
-# Create non-root user for security
+# Create non-root user and cache directory for security
 RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app && \
-    mkdir -p /app/.cache/huggingface /app/data && \
-    chown -R appuser:appuser /app/.cache /app/data
+    mkdir -p /home/appuser/.cache && \
+    chown -R appuser:appuser /home/appuser /app
+
+ENV HOME=/home/appuser
 
 USER appuser
 
-EXPOSE 8051
+EXPOSE 8000
 
-CMD ["streamlit", "run", "app.py", "--server.port=8051", "--server.address=0.0.0.0"]
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=30s \
+    CMD curl -f http://localhost:8000/api/system/health || exit 1
+
+CMD ["python", "run.py"]

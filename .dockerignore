@@ -15,8 +15,6 @@ dist/
 venv/
 env/
 ENV/
-.port/
-.rp360/
 
 # IDE/editor files
 .idea/
@@ -34,19 +32,18 @@ ENV/
 ehthumbs.db
 Thumbs.db
 
-# Local data (not needed in container)
+# Local database files
 *.sqlite3
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
-checkpoints.sqlite*
+*.db
 
 # Logs and documentation
 *.log
-*.md
-README.md
+legacy_streamlit/
 
-# Docker files (not needed inside container)
+# Docker files
 docker-compose.yml
 docker-compose*.yml
 .dockerignore
@@ -56,28 +53,24 @@ Dockerfile
 tests/
 test.py
 test_*.py
-*_test.py
 pytest.ini
 .coverage
 htmlcov/
 .pytest_cache/
 
-# Environment and config files
+# Environment files
 .env
-.env.*
-*.json
-!.streamlit/
+.env.local
 
-# Node.js (Docker installs native version if needed)
+# Node.js
 node_modules/
 nodev20/
 
 # CI/CD and deployment
 .github/
 .gitlab-ci.yml
-Jenkinsfile
 
-# Jupyter notebooks (not needed in production)
+# Jupyter notebooks
 *.ipynb
 
 # Temporary files

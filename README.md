@@ -110,6 +110,38 @@ python run.py
 
 ---
 
+## 🐳 Docker Deployment
+
+You can build and deploy the entire multi-agent stack using Docker and Docker Compose:
+
+### Using Docker Compose (Recommended)
+```bash
+# Start container in detached mode
+docker compose up -d --build
+
+# View real-time logs
+docker compose logs -f
+
+# Check container health status
+docker compose ps
+
+# Stop containers
+docker compose down
+```
+
+### Using Plain Docker
+```bash
+# Build production image
+docker build -t ambidextrous-ai-portfolio .
+
+# Run container with environment file
+docker run -d --name ambidextrous-ai-portfolio -p 8000:8000 --env-file .env ambidextrous-ai-portfolio
+```
+
+Access the application at [http://localhost:8000](http://localhost:8000).
+
+---
+
 ## 🌐 Running Frontend Separately (Optional)
 
 The frontend is completely decoupled. You can also run it using any static server:
