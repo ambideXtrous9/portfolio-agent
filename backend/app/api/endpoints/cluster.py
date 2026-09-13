@@ -13,33 +13,32 @@ from backend.app.schemas.cluster import ClusterRequest, ClusterResponse, Point
 router = APIRouter(prefix="/cluster", tags=["Clustering Sandbox"])
 
 
-def generate_cluster_dataset(sample_size: int = 800) -> pd.DataFrame:
-    """Generates a concentric circle dataset with randomized background noise."""
+def points_in_circum(r, n=100):
+    return [
+        (
+            math.cos(2 * math.pi / n * x) * r + np.random.normal(-30, 30),
+            math.sin(2 * math.pi / n * x) * r + np.random.normal(-30, 30),
+        )
+        for x in range(1, n + 1)
+    ]
+
+
+def generate_cluster_dataset() -> pd.DataFrame:
+    """Exact dataGen from Clustering/clusterapp.py: 3 concentric circles + 300 uniform noise points."""
     np.random.seed(42)
+    df1 = pd.DataFrame(points_in_circum(500, 1000))
+    df2 = pd.DataFrame(points_in_circum(300, 700))
+    df3 = pd.DataFrame(points_in_circum(100, 300))
+    df_noise = pd.DataFrame([(np.random.randint(-600, 600), np.random.randint(-600, 600)) for _ in range(300)])
 
-    def points_in_circum(r, n):
-        return [
-            (
-                math.cos(2 * math.pi / n * x) * r + np.random.normal(-25, 25),
-                math.sin(2 * math.pi / n * x) * r + np.random.normal(-25, 25),
-            )
-            for x in range(1, n + 1)
-        ]
-
-    c1 = pd.DataFrame(points_in_circum(450, int(sample_size * 0.45)))
-    c2 = pd.DataFrame(points_in_circum(260, int(sample_size * 0.30)))
-    c3 = pd.DataFrame(points_in_circum(100, int(sample_size * 0.15)))
-    noise = pd.DataFrame(
-        [(np.random.randint(-550, 550), np.random.randint(-550, 550)) for _ in range(int(sample_size * 0.10))]
-    )
-
-    df = pd.concat([c1, c2, c3, noise], ignore_index=True)
+    df = pd.concat([df1, df2, df3, df_noise], ignore_index=True)
     df.columns = ["x", "y"]
     return df
 
 
-# Cache dataset
+# Cache dataset (2,300 benchmark points matching Streamlit app)
 _cached_df = generate_cluster_dataset()
+
 
 
 @router.get("/dataset")

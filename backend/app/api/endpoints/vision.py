@@ -179,8 +179,10 @@ def run_single_inference(model_name: str, image: Image.Image) -> ModelEvaluation
         parameters_m=params_m,
         predicted_class=predicted_class,
         accuracy=accuracy,
-        inference_time_seconds=elapsed
+        inference_time_seconds=elapsed,
+        inference_time=elapsed
     )
+
 
 
 @router.post("/classify-all", response_model=MultiModelComparisonResponse)

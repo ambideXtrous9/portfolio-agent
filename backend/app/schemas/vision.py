@@ -24,6 +24,8 @@ class ModelEvaluationCard(BaseModel):
     predicted_class: str
     accuracy: float
     inference_time_seconds: float
+    inference_time: Optional[float] = None
+
 
 
 class MultiModelComparisonResponse(BaseModel):

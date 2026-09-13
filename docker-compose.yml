@@ -31,6 +31,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    volumes:
+      - ./backend/app:/app/backend/app
+      - ./backend/data:/app/backend/data
     networks:
       - app_network
 
@@ -45,11 +48,14 @@ services:
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - app_network
+
 
 networks:
   app_network:

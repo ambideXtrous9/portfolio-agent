@@ -1,7 +1,12 @@
 /**
  * Clustering Sandbox Tab Controller (K-Means & DBSCAN)
- * Matches Streamlit Clustering/cluster_util.py layout, interactive charts,
- * K-Distance graph elbow curves, and contextual guidance notes.
+ * Matches exact Streamlit Clustering/clusterapp.py & cluster_util.py:
+ * - Pure Black (#000000) canvas with white typography
+ * - Equal 1:1 aspect ratio preserving true circular geometry
+ * - No legend clutter (showlegend: false)
+ * - HSV spectrum palette with darkblue point boundaries
+ * - Cyan K-Distance Graph with dashed grid
+ * - Exact conditional feedback notes and K-Distance graph toggle
  */
 
 import { fetchAPI } from "./api.js";
@@ -22,12 +27,14 @@ export function initClusterSandbox() {
 
   if (!kmeansSlider || !dbscanSlider) return;
 
-  // Render initial raw data plot
+  // Load initial raw dataset plot (PlotData() in clusterapp.py)
   loadInitialDataset();
 
+  // Algorithm selector
   algoRadios.forEach((radio) => {
     radio.addEventListener("change", (e) => {
-      if (e.target.value === "K-Means") {
+      const algo = e.target.value;
+      if (algo === "K-Means") {
         kmeansControls.style.display = "block";
         dbscanControls.style.display = "none";
         notesEl.innerText = "💡 Why don't you try DBSCAN..!!";
@@ -35,12 +42,13 @@ export function initClusterSandbox() {
       } else {
         kmeansControls.style.display = "none";
         dbscanControls.style.display = "block";
-        updateDbscanNotes(parseInt(dbscanSlider.value));
+        updateDbscanGuidance(parseInt(dbscanSlider.value));
       }
       runClustering();
     });
   });
 
+  // Slider controls
   kmeansSlider.addEventListener("input", (e) => {
     kmeansVal.innerText = e.target.value;
   });
@@ -49,11 +57,11 @@ export function initClusterSandbox() {
   dbscanSlider.addEventListener("input", (e) => {
     const eps = parseInt(e.target.value);
     dbscanVal.innerText = eps;
-    updateDbscanNotes(eps);
+    updateDbscanGuidance(eps);
   });
   dbscanSlider.addEventListener("change", runClustering);
 
-  // K-Distance Graph radio listener
+  // K-Distance graph radio listener
   kdistRadios.forEach((r) => {
     r.addEventListener("change", (e) => {
       if (e.target.value === "Yes") {
@@ -67,30 +75,76 @@ export function initClusterSandbox() {
     });
   });
 
+  // Tab visibility observer for proper Plotly sizing
+  const clusterTab = document.getElementById("tab-cluster");
+  if (clusterTab) {
+    const observer = new MutationObserver(() => {
+      if (clusterTab.classList.contains("active") && window.Plotly) {
+        setTimeout(() => {
+          const rawPlot = document.getElementById("cluster-raw-plot");
+          const resultPlot = document.getElementById("cluster-result-plot");
+          const kdistPlotEl = document.getElementById("cluster-kdist-plot");
+          if (rawPlot) window.Plotly.Plots.resize(rawPlot);
+          if (resultPlot) window.Plotly.Plots.resize(resultPlot);
+          if (kdistPlotEl && kdistPlotEl.style.display !== "none") window.Plotly.Plots.resize(kdistPlotEl);
+        }, 100);
+      }
+    });
+    observer.observe(clusterTab, { attributes: true, attributeFilter: ["class"] });
+  }
+
   // Initial run
   runClustering();
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // 1. Initial Dataset Visualization (PlotData() from clusterapp.py)
+  // ─────────────────────────────────────────────────────────────────────────
   async function loadInitialDataset() {
     try {
       const data = await fetchAPI("/cluster/dataset");
       const points = data.points || [];
+
       const trace = {
         x: points.map((p) => p.x),
         y: points.map((p) => p.y),
         mode: "markers",
         type: "scatter",
-        marker: { size: 6, color: "#1E88E5", opacity: 0.75 },
+        name: "Data",
+        marker: {
+          size: 7,
+          color: "cyan",
+          opacity: 0.7,
+          line: { color: "darkblue", width: 1 },
+        },
       };
+
       const layout = {
-        title: "Input Concentric & Noise Benchmark Dataset",
-        paper_bgcolor: "#FFFFFF",
-        plot_bgcolor: "#F8F9FA",
-        margin: { l: 40, r: 20, t: 40, b: 40 },
-        xaxis: { gridcolor: "#E6E9EF", zerolinecolor: "#CCD0D9" },
-        yaxis: { gridcolor: "#E6E9EF", zerolinecolor: "#CCD0D9" },
-        font: { family: '"Source Sans Pro", sans-serif', color: "#31333F" },
-        autosize: true,
+        title: { text: "Dataset Visualization", font: { color: "#FFFFFF", size: 24 } },
+        paper_bgcolor: "#000000",
+        plot_bgcolor: "#000000",
+        showlegend: false,
+        margin: { l: 60, r: 40, t: 60, b: 60 },
+        height: 520,
+        xaxis: {
+          title: { text: "Feature 1", font: { color: "#FFFFFF", size: 16 } },
+          range: [-650, 650],
+          color: "#FFFFFF",
+          showgrid: false,
+          zeroline: false,
+          tickfont: { color: "#FFFFFF" },
+        },
+        yaxis: {
+          title: { text: "Feature 2", font: { color: "#FFFFFF", size: 16 } },
+          range: [-650, 650],
+          color: "#FFFFFF",
+          showgrid: false,
+          zeroline: false,
+          scaleanchor: "x",
+          scaleratio: 1,
+          tickfont: { color: "#FFFFFF" },
+        },
       };
+
       if (window.Plotly) {
         window.Plotly.newPlot("cluster-raw-plot", [trace], layout, {
           responsive: true,
@@ -102,6 +156,9 @@ export function initClusterSandbox() {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // 2. Run Clustering Algorithm (kmeans() / DBScan() from clusterapp.py)
+  // ─────────────────────────────────────────────────────────────────────────
   async function runClustering() {
     const selectedAlgo = document.querySelector("input[name='cluster-algo']:checked")?.value || "K-Means";
     const payload = {
@@ -118,13 +175,100 @@ export function initClusterSandbox() {
         body: JSON.stringify(payload),
       });
 
-      renderClusterPlot(data, selectedAlgo);
+      renderClusteredPlot(data, selectedAlgo);
     } catch (err) {
       console.error("Clustering execution error:", err);
     }
   }
 
-  function updateDbscanNotes(eps) {
+  // ─────────────────────────────────────────────────────────────────────────
+  // 3. Render Clustered Scatter Plot (Matches kmeans() & DBScan() styling)
+  // ─────────────────────────────────────────────────────────────────────────
+  function renderClusteredPlot(data, algoName) {
+    const points = data.points || [];
+    const isDbscan = algoName === "DBSCAN";
+    const titleText = isDbscan
+      ? "DBSCAN Clustering Visualization"
+      : "K-Means Clustering Visualization";
+
+    // Build HSV color palette matching sns.color_palette('hsv', n)
+    const uniqueClusters = Array.from(new Set(points.map((p) => p.cluster))).sort((a, b) => a - b);
+    const nonNoiseClusters = uniqueClusters.filter((c) => c !== -1);
+    const totalColors = Math.max(1, nonNoiseClusters.length);
+
+    // Group points by cluster label
+    const clusterMap = {};
+    points.forEach((p) => {
+      const c = p.cluster;
+      if (!clusterMap[c]) clusterMap[c] = { x: [], y: [] };
+      clusterMap[c].x.push(p.x);
+      clusterMap[c].y.push(p.y);
+    });
+
+    const traces = uniqueClusters.map((c) => {
+      const isNoise = c === -1;
+      let pointColor = "grey";
+      if (!isNoise) {
+        const idx = nonNoiseClusters.indexOf(c);
+        const hue = Math.round((idx / totalColors) * 360);
+        pointColor = `hsl(${hue}, 100%, 50%)`;
+      }
+
+      return {
+        x: clusterMap[c].x,
+        y: clusterMap[c].y,
+        mode: "markers",
+        type: "scatter",
+        name: isNoise ? "Noise" : `Cluster ${c + 1}`,
+        showlegend: false, // Explicitly no legend matching ax.legend([],[], frameon=False)
+        marker: {
+          size: 7,
+          color: pointColor,
+          opacity: 0.7,
+          line: { color: "darkblue", width: 1 },
+        },
+      };
+    });
+
+    const layout = {
+      title: { text: titleText, font: { color: "#FFFFFF", size: 24 } },
+      paper_bgcolor: "#000000",
+      plot_bgcolor: "#000000",
+      showlegend: false,
+      margin: { l: 60, r: 40, t: 60, b: 60 },
+      height: 520,
+      xaxis: {
+        title: { text: "Feature 1", font: { color: "#FFFFFF", size: 16 } },
+        range: [-650, 650],
+        color: "#FFFFFF",
+        showgrid: false,
+        zeroline: false,
+        tickfont: { color: "#FFFFFF" },
+      },
+      yaxis: {
+        title: { text: "Feature 2", font: { color: "#FFFFFF", size: 16 } },
+        range: [-650, 650],
+        color: "#FFFFFF",
+        showgrid: false,
+        zeroline: false,
+        scaleanchor: "x",
+        scaleratio: 1,
+        tickfont: { color: "#FFFFFF" },
+      },
+    };
+
+    if (window.Plotly) {
+      window.Plotly.newPlot("cluster-result-plot", traces, layout, {
+        responsive: true,
+        displayModeBar: false,
+      });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 4. Contextual Feedback Notes & K-Distance Toggle (from cluster_util.py)
+  // ─────────────────────────────────────────────────────────────────────────
+  function updateDbscanGuidance(eps) {
     if (eps <= 5) {
       notesEl.innerText =
         "🌟 Interesting! If all the data points are now of the same color, it means they are treated as noise. It is because the value of epsilon is very small and we didn’t optimize parameters. Therefore, we need to find the value of epsilon and minPoints and then train our model again.";
@@ -141,6 +285,9 @@ export function initClusterSandbox() {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // 5. K-Distance Graph (KDistGraph() from clusterapp.py)
+  // ─────────────────────────────────────────────────────────────────────────
   async function loadKDistGraph() {
     if (!window.Plotly || !kdistPlot) return;
     try {
@@ -150,72 +297,44 @@ export function initClusterSandbox() {
         y: data.y,
         mode: "lines",
         type: "scatter",
-        line: { color: "#00BCD4", width: 2.5 },
+        line: { color: "cyan", width: 2 },
+        showlegend: false,
       };
+
       const layout = {
-        title: "K-Distance Graph (Elbow Detection for Epsilon)",
-        paper_bgcolor: "#FFFFFF",
-        plot_bgcolor: "#1E1E1E",
-        margin: { l: 50, r: 20, t: 40, b: 40 },
-        xaxis: { title: "Data Points Sorted by Distance", gridcolor: "#333", color: "#666" },
-        yaxis: { title: "Epsilon", gridcolor: "#333", color: "#666" },
-        font: { family: '"Source Sans Pro", sans-serif', color: "#31333F" },
+        title: { text: "K-Distance Graph", font: { color: "#FFFFFF", size: 24 } },
+        paper_bgcolor: "#000000",
+        plot_bgcolor: "#000000",
+        showlegend: false,
+        margin: { l: 60, r: 40, t: 60, b: 60 },
+        height: 440,
+        xaxis: {
+          title: { text: "Data Points Sorted by Distance", font: { color: "#FFFFFF", size: 16 } },
+          range: [0, data.x.length],
+          color: "#FFFFFF",
+          showgrid: true,
+          gridcolor: "gray",
+          gridwidth: 0.5,
+          zeroline: false,
+          tickfont: { color: "#FFFFFF" },
+        },
+        yaxis: {
+          title: { text: "Epsilon", font: { color: "#FFFFFF", size: 16 } },
+          color: "#FFFFFF",
+          showgrid: true,
+          gridcolor: "gray",
+          gridwidth: 0.5,
+          zeroline: false,
+          tickfont: { color: "#FFFFFF" },
+        },
       };
+
       window.Plotly.newPlot("cluster-kdist-plot", [trace], layout, {
         responsive: true,
         displayModeBar: false,
       });
     } catch (err) {
       console.error("Failed to load K-Distance data:", err);
-    }
-  }
-
-  function renderClusterPlot(data, algoName) {
-    const points = data.points || [];
-    const colors = ["#FF4B4B", "#1E88E5", "#00C853", "#FF9900", "#9C27B0", "#00BCD4", "#795548", "#607D8B"];
-
-    const clusterMap = {};
-    points.forEach((p) => {
-      const c = p.cluster;
-      if (!clusterMap[c]) clusterMap[c] = { x: [], y: [] };
-      clusterMap[c].x.push(p.x);
-      clusterMap[c].y.push(p.y);
-    });
-
-    const traces = Object.keys(clusterMap).map((c) => {
-      const cNum = parseInt(c);
-      const isNoise = cNum === -1;
-      return {
-        x: clusterMap[c].x,
-        y: clusterMap[c].y,
-        mode: "markers",
-        type: "scatter",
-        name: isNoise ? "Noise" : `Cluster ${cNum + 1}`,
-        marker: {
-          size: 7,
-          color: isNoise ? "#A0A4B0" : colors[cNum % colors.length],
-          opacity: isNoise ? 0.45 : 0.85,
-        },
-      };
-    });
-
-    const layout = {
-      title: `${algoName} Output (${data.num_clusters} clusters identified${data.num_noise ? `, ${data.num_noise} noise points` : ""})`,
-      paper_bgcolor: "#FFFFFF",
-      plot_bgcolor: "#F8F9FA",
-      margin: { l: 40, r: 20, t: 40, b: 40 },
-      xaxis: { gridcolor: "#E6E9EF", zerolinecolor: "#CCD0D9" },
-      yaxis: { gridcolor: "#E6E9EF", zerolinecolor: "#CCD0D9" },
-      font: { family: '"Source Sans Pro", sans-serif', color: "#31333F" },
-      legend: { orientation: "h", y: 1.12 },
-      autosize: true,
-    };
-
-    if (window.Plotly) {
-      window.Plotly.newPlot("cluster-result-plot", traces, layout, {
-        responsive: true,
-        displayModeBar: false,
-      });
     }
   }
 }

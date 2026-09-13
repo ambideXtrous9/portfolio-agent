@@ -75,6 +75,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (activeView) {
       activeView.classList.add("active");
       window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(() => {
+        window.dispatchEvent(new Event("resize"));
+      }, 50);
     }
 
     // 3. Update dynamic circular sidebar image
