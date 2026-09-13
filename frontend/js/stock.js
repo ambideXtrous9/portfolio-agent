@@ -27,6 +27,9 @@ export function initStockScreener() {
       document.querySelectorAll(".stock-subtab-content").forEach((c) => (c.style.display = "none"));
       const activeContent = document.getElementById(target);
       if (activeContent) activeContent.style.display = "block";
+      if (target === "subtab-analysis") {
+        initStocksAnalysisDropdown();
+      }
     });
   });
 
@@ -69,6 +72,11 @@ export function initStockScreener() {
 
   // Wire Subtab 6: Stocks Analysis Searchable Dropdown
   initStocksAnalysisDropdown();
+
+  // Listen for catalog reload events from app navigation or auth login
+  window.addEventListener("portfolio:load_stock_catalog", () => {
+    initStocksAnalysisDropdown();
+  });
 
   function wireGenericScreenerTab(btnId, containerId, mode, prefix) {
     const btn = document.getElementById(btnId);
@@ -169,26 +177,150 @@ export function initStockScreener() {
     });
   }
 
+  // Top 52 Blue-Chip Nifty companies as immediate reliable fallback
+  const FALLBACK_STOCKS = [
+    { symbol: "RELIANCE.NS", company_name: "Reliance Industries Ltd." },
+    { symbol: "TCS.NS", company_name: "Tata Consultancy Services Ltd." },
+    { symbol: "HDFCBANK.NS", company_name: "HDFC Bank Ltd." },
+    { symbol: "INFY.NS", company_name: "Infosys Ltd." },
+    { symbol: "ICICIBANK.NS", company_name: "ICICI Bank Ltd." },
+    { symbol: "HINDUNILVR.NS", company_name: "Hindustan Unilever Ltd." },
+    { symbol: "ITC.NS", company_name: "ITC Ltd." },
+    { symbol: "SBIN.NS", company_name: "State Bank of India" },
+    { symbol: "BHARTIARTL.NS", company_name: "Bharti Airtel Ltd." },
+    { symbol: "KOTAKBANK.NS", company_name: "Kotak Mahindra Bank Ltd." },
+    { symbol: "LT.NS", company_name: "Larsen & Toubro Ltd." },
+    { symbol: "AXISBANK.NS", company_name: "Axis Bank Ltd." },
+    { symbol: "ASIANPAINT.NS", company_name: "Asian Paints Ltd." },
+    { symbol: "MARUTI.NS", company_name: "Maruti Suzuki India Ltd." },
+    { symbol: "SUNPHARMA.NS", company_name: "Sun Pharmaceutical Industries Ltd." },
+    { symbol: "TITAN.NS", company_name: "Titan Company Ltd." },
+    { symbol: "BAJFINANCE.NS", company_name: "Bajaj Finance Ltd." },
+    { symbol: "TATAMOTORS.NS", company_name: "Tata Motors Ltd." },
+    { symbol: "ULTRACEMCO.NS", company_name: "UltraTech Cement Ltd." },
+    { symbol: "POWERGRID.NS", company_name: "Power Grid Corporation of India Ltd." },
+    { symbol: "NTPC.NS", company_name: "NTPC Ltd." },
+    { symbol: "M&M.NS", company_name: "Mahindra & Mahindra Ltd." },
+    { symbol: "TATASTEEL.NS", company_name: "Tata Steel Ltd." },
+    { symbol: "HCLTECH.NS", company_name: "HCL Technologies Ltd." },
+    { symbol: "WIPRO.NS", company_name: "Wipro Ltd." },
+    { symbol: "ADANIENT.NS", company_name: "Adani Enterprises Ltd." },
+    { symbol: "ADANIPORTS.NS", company_name: "Adani Ports and Special Economic Zone Ltd." },
+    { symbol: "COALINDIA.NS", company_name: "Coal India Ltd." },
+    { symbol: "BAJAJFINSV.NS", company_name: "Bajaj Finserv Ltd." },
+    { symbol: "ONGC.NS", company_name: "Oil & Natural Gas Corporation Ltd." },
+    { symbol: "TECHM.NS", company_name: "Tech Mahindra Ltd." },
+    { symbol: "JSWSTEEL.NS", company_name: "JSW Steel Ltd." },
+    { symbol: "NESTLEIND.NS", company_name: "Nestle India Ltd." },
+    { symbol: "GRASIM.NS", company_name: "Grasim Industries Ltd." },
+    { symbol: "INDUSINDBK.NS", company_name: "IndusInd Bank Ltd." },
+    { symbol: "DIVISLAB.NS", company_name: "Divi's Laboratories Ltd." },
+    { symbol: "CIPLA.NS", company_name: "Cipla Ltd." },
+    { symbol: "DRREDDY.NS", company_name: "Dr. Reddy's Laboratories Ltd." },
+    { symbol: "EICHERMOT.NS", company_name: "Eicher Motors Ltd." },
+    { symbol: "BRITANNIA.NS", company_name: "Britannia Industries Ltd." },
+    { symbol: "TATACONSUM.NS", company_name: "Tata Consumer Products Ltd." },
+    { symbol: "APOLLOHOSP.NS", company_name: "Apollo Hospitals Enterprise Ltd." },
+    { symbol: "SBILIFE.NS", company_name: "SBI Life Insurance Company Ltd." },
+    { symbol: "HDFCLIFE.NS", company_name: "HDFC Life Insurance Company Ltd." },
+    { symbol: "BAJAJ-AUTO.NS", company_name: "Bajaj Auto Ltd." },
+    { symbol: "BPCL.NS", company_name: "Bharat Petroleum Corporation Ltd." },
+    { symbol: "VEDL.NS", company_name: "Vedanta Ltd." },
+    { symbol: "ZOMATO.NS", company_name: "Zomato Ltd." },
+    { symbol: "JIOFIN.NS", company_name: "Jio Financial Services Ltd." },
+    { symbol: "HAL.NS", company_name: "Hindustan Aeronautics Ltd." },
+    { symbol: "BEL.NS", company_name: "Bharat Electronics Ltd." },
+    { symbol: "TRENT.NS", company_name: "Trent Ltd." }
+  ];
+
+  let isFetchingCompanies = false;
+
+  function populateDropdownOptions(selectEl, companies) {
+    if (!selectEl || !Array.isArray(companies) || companies.length === 0) return;
+    const currentVal = selectEl.value;
+    const sorted = [...companies].sort((a, b) => {
+      const nameA = (a.company_name || a.symbol || "").toLowerCase();
+      const nameB = (b.company_name || b.symbol || "").toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
+    const optsHtml = [
+      `<option value="">Select the Stock (${sorted.length} companies)</option>`,
+      ...sorted.map((c) => `<option value="${c.symbol}">${c.company_name || c.symbol} (${c.symbol})</option>`)
+    ].join("");
+
+    selectEl.innerHTML = optsHtml;
+    if (currentVal) selectEl.value = currentVal;
+  }
+
   // Subtab 6: Load full company catalog for individual search
-  async function initStocksAnalysisDropdown() {
+  async function initStocksAnalysisDropdown(forceRefresh = false) {
     const analysisSelect = document.getElementById("analysis-company-select");
     const selectedDisplay = document.getElementById("analysis-selected-display");
     if (!analysisSelect) return;
 
-    try {
-      const companies = await fetchAPI("/stock/companies");
-      analysisSelect.innerHTML = `<option value="">Select the Stock</option>` +
-        companies.map((c) => `<option value="${c.symbol}">${c.company_name} (${c.symbol})</option>`).join("");
-
+    // Attach change listener once
+    if (!analysisSelect.dataset.listenerAttached) {
       analysisSelect.addEventListener("change", () => {
         const sym = analysisSelect.value;
         if (sym) {
-          if (selectedDisplay) selectedDisplay.innerText = `You selected: ${analysisSelect.options[analysisSelect.selectedIndex].text}`;
+          if (selectedDisplay) {
+            selectedDisplay.innerText = `You selected: ${analysisSelect.options[analysisSelect.selectedIndex].text}`;
+          }
           renderInlineStockAnalysis(sym);
         }
       });
+      analysisSelect.dataset.listenerAttached = "true";
+    }
+
+    // If already fully populated (>50 items) and not forcing refresh, nothing to do
+    if (!forceRefresh && analysisSelect.options.length > 50) {
+      return;
+    }
+
+    // Try reading from cache first for instant 0ms populate
+    try {
+      const cached = localStorage.getItem("portfolio_stock_companies_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          populateDropdownOptions(analysisSelect, parsed);
+          if (!forceRefresh && parsed.length >= 700) {
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Error reading company cache:", e);
+    }
+
+    // Show loading state if still empty/default
+    if (analysisSelect.options.length <= 1) {
+      analysisSelect.innerHTML = `<option value="">⏳ Loading 750+ companies...</option>`;
+    }
+
+    if (isFetchingCompanies) return;
+    isFetchingCompanies = true;
+
+    try {
+      const companies = await fetchAPI("/stock/companies");
+      if (Array.isArray(companies) && companies.length > 0) {
+        populateDropdownOptions(analysisSelect, companies);
+        try {
+          localStorage.setItem("portfolio_stock_companies_cache", JSON.stringify(companies));
+        } catch (storageErr) {
+          // ignore localStorage quota limit
+        }
+      } else {
+        populateDropdownOptions(analysisSelect, FALLBACK_STOCKS);
+      }
     } catch (err) {
-      console.warn("Could not pre-load companies list:", err);
+      console.warn("Could not load companies list from API, using fallback:", err);
+      if (analysisSelect.options.length <= 1) {
+        populateDropdownOptions(analysisSelect, FALLBACK_STOCKS);
+      }
+    } finally {
+      isFetchingCompanies = false;
     }
   }
 

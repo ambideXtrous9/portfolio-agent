@@ -157,6 +157,11 @@ document.addEventListener("DOMContentLoaded", () => {
       setTimeout(() => {
         window.dispatchEvent(new Event("resize"));
       }, 50);
+
+      // Trigger dynamic stock catalog load if navigating to Stock Screener
+      if (tabId === "tab-stock") {
+        window.dispatchEvent(new CustomEvent("portfolio:load_stock_catalog"));
+      }
     }
 
     // 3. Update dynamic circular sidebar image
@@ -554,6 +559,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const userAvatarEl = document.getElementById("logged-in-avatar");
 
     if (isLoggedIn && currentUser) {
+      window.dispatchEvent(new CustomEvent("portfolio:load_stock_catalog"));
       const userLabel = currentUser.full_name || currentUser.email || "User";
       const initials = (currentUser.full_name || currentUser.username || currentUser.email || "U")
         .trim()

@@ -81,9 +81,7 @@ async def get_universe_list(
 
 
 @router.get("/companies", response_model=List[StockCompanyItem])
-async def get_all_companies(
-    current_user: UserResponse = Depends(get_current_active_user),
-):
+async def get_all_companies():
     """Returns the full searchable list of companies (~750) across Nifty500 & Microcap250."""
     df = load_all_companies_df()
     results = []
