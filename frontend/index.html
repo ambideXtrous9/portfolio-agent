@@ -86,15 +86,6 @@
         </button>
       </nav>
 
-      <!-- Recent Conversations History (as in Langchain-Langgraph-Notebooks) -->
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 4px; border-top: 1px solid var(--st-border-card, rgba(255,255,255,0.06)); margin-top: 8px;">
-        <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--st-text-muted);">Recent Chats</span>
-        <button type="button" class="st-session-btn" id="btn-sidebar-new-chat" style="padding: 2px 7px; font-size: 0.72rem;" title="Start New Conversation">➕ New</button>
-      </div>
-      <div class="sidebar-history" id="sidebar-history-list">
-        <!-- Populated dynamically via chat session coordinator -->
-      </div>
-
       <!-- Auth Action Buttons -->
       <div class="st-sidebar-auth">
         <button class="st-auth-btn" id="btn-login">Login</button>
@@ -116,20 +107,6 @@
     <!-- ── Main Workspace Content ────────────────────────────────────────── -->
     <main class="st-main">
       <div class="st-block-container">
-        <!-- Top Global Status & Auth Header -->
-        <header class="st-top-header" id="global-top-header">
-          <div class="st-top-header-left">
-            <span id="top-db-status" class="st-status-pill st-status-pill-db" title="LangGraph PostgreSQL Checkpointer State">
-              <span>💾</span> <span id="top-db-text">Postgres Checkpointer: Ready</span>
-            </span>
-            <span id="top-auth-status" class="st-status-pill st-status-pill-auth" title="JWT Bearer Authentication">
-              <span>🛡️</span> <span id="top-auth-text">JWT Auth Guard: Enforced</span>
-            </span>
-          </div>
-          <div class="st-top-header-right" id="top-user-area">
-            <!-- Dynamically populated by app.js -->
-          </div>
-        </header>
 
         <!-- ================================================================== -->
         <!-- 🎃 Tab 1: Home Page                                               -->
@@ -420,27 +397,43 @@
             </button>
           </div>
 
-          <!-- Session & Checkpoint Control Toolbar -->
-          <div class="st-session-toolbar" id="harry-session-bar">
-            <div class="st-session-info">
-              <span class="st-session-badge">Thread: <strong id="harry-thread-id-display">#hp-session</strong></span>
-              <span class="st-session-status">🟢 Postgres Checkpointed</span>
-            </div>
-            <div class="st-session-actions">
-              <button type="button" class="st-session-btn" id="harry-btn-new-chat" title="Start a fresh thread with clean checkpointer state">➕ New Thread</button>
-              <button type="button" class="st-session-btn" id="harry-btn-reload-history" title="Fetch past conversation from PostgreSQL chat history">📜 Restore History</button>
-              <button type="button" class="st-session-btn st-session-btn-danger" id="harry-btn-clear-history" title="Permanently delete thread history in PostgreSQL">🗑️ Clear Thread</button>
-            </div>
-          </div>
+          <div class="st-chat-workspace">
+            <!-- Dedicated Chat History Sidebar for Harry Potter -->
+            <aside class="st-chat-history-sidebar">
+              <div class="st-chat-history-header">
+                <span class="st-chat-history-title">Recent Chats</span>
+                <button type="button" class="st-session-btn" id="harry-btn-new-chat-sidebar" title="Start fresh conversation">➕ New</button>
+              </div>
+              <div class="st-chat-history-list" id="harry-history-list">
+                <div class="st-history-empty">No recent chats yet.</div>
+              </div>
+            </aside>
 
-          <!-- Chat messages area -->
-          <div class="st-chat-container" id="harry-chat-history">
-            <!-- Initial Welcome Message -->
-            <div class="st-chat-message assistant">
-              <div class="st-chat-avatar">🪄</div>
-              <div class="st-chat-content">
-                <strong>Welcome to the Harry Potter & Indian Mythology Lore Scholar!</strong><br>
-                I utilize Pinecone vector retrieval (<code>hpvdb-openai</code>) via MCP to cross-examine characters, Astras, Dharma, and wizarding lore with Indian ancient epics.
+            <!-- Main Conversation Area -->
+            <div class="st-chat-main-area">
+              <!-- Session & Checkpoint Control Toolbar -->
+              <div class="st-session-toolbar" id="harry-session-bar">
+                <div class="st-session-info">
+                  <span class="st-session-badge">Thread: <strong id="harry-thread-id-display">#hp-session</strong></span>
+                  <span class="st-session-status">🟢 Postgres Checkpointed</span>
+                </div>
+                <div class="st-session-actions">
+                  <button type="button" class="st-session-btn" id="harry-btn-new-chat" title="Start a fresh thread with clean checkpointer state">➕ New Thread</button>
+                  <button type="button" class="st-session-btn" id="harry-btn-reload-history" title="Fetch past conversation from PostgreSQL chat history">📜 Restore History</button>
+                  <button type="button" class="st-session-btn st-session-btn-danger" id="harry-btn-clear-history" title="Permanently delete thread history in PostgreSQL">🗑️ Clear Thread</button>
+                </div>
+              </div>
+
+              <!-- Chat messages area -->
+              <div class="st-chat-container" id="harry-chat-history">
+                <!-- Initial Welcome Message -->
+                <div class="st-chat-message assistant">
+                  <div class="st-chat-avatar">🪄</div>
+                  <div class="st-chat-content">
+                    <strong>Welcome to the Harry Potter &amp; Indian Mythology Lore Scholar!</strong><br>
+                    I utilize Pinecone vector retrieval (<code>hpvdb-openai</code>) via MCP to cross-examine characters, Astras, Dharma, and wizarding lore with Indian ancient epics.
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -482,27 +475,43 @@
             </button>
           </div>
 
-          <!-- Session & Checkpoint Control Toolbar -->
-          <div class="st-session-toolbar" id="tour-session-bar">
-            <div class="st-session-info">
-              <span class="st-session-badge">Thread: <strong id="tour-thread-id-display">#tour-session</strong></span>
-              <span class="st-session-status">🟢 Postgres Checkpointed</span>
-            </div>
-            <div class="st-session-actions">
-              <button type="button" class="st-session-btn" id="tour-btn-new-chat" title="Start a fresh thread with clean checkpointer state">➕ New Thread</button>
-              <button type="button" class="st-session-btn" id="tour-btn-reload-history" title="Fetch past conversation from PostgreSQL chat history">📜 Restore History</button>
-              <button type="button" class="st-session-btn st-session-btn-danger" id="tour-btn-clear-history" title="Permanently delete thread history in PostgreSQL">🗑️ Clear Thread</button>
-            </div>
-          </div>
+          <div class="st-chat-workspace">
+            <!-- Dedicated Chat History Sidebar for Tour Agent -->
+            <aside class="st-chat-history-sidebar">
+              <div class="st-chat-history-header">
+                <span class="st-chat-history-title">Recent Chats</span>
+                <button type="button" class="st-session-btn" id="tour-btn-new-chat-sidebar" title="Start fresh conversation">➕ New</button>
+              </div>
+              <div class="st-chat-history-list" id="tour-history-list">
+                <div class="st-history-empty">No recent chats yet.</div>
+              </div>
+            </aside>
 
-          <!-- Chat messages area -->
-          <div class="st-chat-container" id="tour-chat-history">
-            <!-- Initial Welcome Message -->
-            <div class="st-chat-message assistant">
-              <div class="st-chat-avatar">🏡</div>
-              <div class="st-chat-content">
-                <strong>Welcome to the MCP-Powered Travel Agent!</strong><br>
-                I query live accommodations via the <strong>Airbnb MCP Server</strong> (<code>@openbnb/mcp-server-airbnb</code>) and real-time meteorology APIs to synthesize comprehensive, verified itineraries with live stay rates and weather forecasts.
+            <!-- Main Conversation Area -->
+            <div class="st-chat-main-area">
+              <!-- Session & Checkpoint Control Toolbar -->
+              <div class="st-session-toolbar" id="tour-session-bar">
+                <div class="st-session-info">
+                  <span class="st-session-badge">Thread: <strong id="tour-thread-id-display">#tour-session</strong></span>
+                  <span class="st-session-status">🟢 Postgres Checkpointed</span>
+                </div>
+                <div class="st-session-actions">
+                  <button type="button" class="st-session-btn" id="tour-btn-new-chat" title="Start a fresh thread with clean checkpointer state">➕ New Thread</button>
+                  <button type="button" class="st-session-btn" id="tour-btn-reload-history" title="Fetch past conversation from PostgreSQL chat history">📜 Restore History</button>
+                  <button type="button" class="st-session-btn st-session-btn-danger" id="tour-btn-clear-history" title="Permanently delete thread history in PostgreSQL">🗑️ Clear Thread</button>
+                </div>
+              </div>
+
+              <!-- Chat messages area -->
+              <div class="st-chat-container" id="tour-chat-history">
+                <!-- Initial Welcome Message -->
+                <div class="st-chat-message assistant">
+                  <div class="st-chat-avatar">🏡</div>
+                  <div class="st-chat-content">
+                    <strong>Welcome to the MCP-Powered Travel Agent!</strong><br>
+                    I query live accommodations via the <strong>Airbnb MCP Server</strong> (<code>@openbnb/mcp-server-airbnb</code>) and real-time meteorology APIs to synthesize comprehensive, verified itineraries with live stay rates and weather forecasts.
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -934,24 +943,15 @@
             </div>
           </div>
 
-          <!-- 1-Click Demo Login Banner -->
-          <div class="st-demo-login-banner" id="auth-demo-banner" style="display: none;">
-            <div>
-              <div style="font-weight: 700; font-size: 1.05rem; color: var(--st-text-color); margin-bottom: 2px;">⚡ Try the Live Portfolio in 1 Click</div>
-              <div style="font-size: 0.85rem; color: var(--st-text-muted);">Instant access with pre-seeded demo credentials [<code>abc</code> / <code>123</code>]</div>
-            </div>
-            <button type="button" class="st-demo-login-btn" id="btn-quick-demo-login">⚡ Sign In as Demo User</button>
-          </div>
-
           <!-- Logged-in User Profile Container (Shown when authenticated) -->
           <div id="auth-logged-in-container" style="max-width: 520px; display: none; background: var(--st-bg-secondary); border: 1px solid var(--st-border-color); border-radius: var(--st-radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 1rem;">
-              <div class="st-user-avatar" id="logged-in-avatar" style="width: 48px; height: 48px; font-size: 1.2rem;">DE</div>
+              <div class="st-user-avatar" id="logged-in-avatar" style="width: 48px; height: 48px; font-size: 1.2rem;">U</div>
               <div>
-                <div style="font-size: 1.15rem; font-weight: 700;" id="logged-in-name">Demo Explorer</div>
-                <div style="font-size: 0.85rem; color: var(--st-text-muted);" id="logged-in-email">abc@example.com</div>
+                <div style="font-size: 1.15rem; font-weight: 700;" id="logged-in-name">Authenticated User</div>
+                <div style="font-size: 0.85rem; color: var(--st-text-muted);" id="logged-in-email">user@example.com</div>
               </div>
-              <span class="st-role-badge st-role-admin" id="logged-in-role" style="margin-left: auto;">Admin</span>
+              <span class="st-role-badge st-role-user" id="logged-in-role" style="margin-left: auto;">Member</span>
             </div>
             <div style="border-top: 1px solid var(--st-border-color); padding-top: 1rem; margin-top: 1rem; display: flex; gap: 10px;">
               <button type="button" class="st-btn st-btn-primary" id="btn-go-agents" style="flex: 1;">Explore AI Agents 🚀</button>
@@ -990,9 +990,13 @@
                 <label style="display: block; font-weight: 600; margin-bottom: 6px;">Email Address</label>
                 <input type="email" id="signup-email" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="e.g. scholar@hogwarts.edu" required />
               </div>
-              <div style="margin-bottom: 1.5rem;">
+              <div style="margin-bottom: 1.25rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 6px;">Password</label>
-                <input type="password" id="signup-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="At least 6 characters" required />
+                <input type="password" id="signup-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="Minimum 8 characters" required minlength="8" />
+              </div>
+              <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px;">Retype Password</label>
+                <input type="password" id="signup-retype-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="Confirm your password" required minlength="8" />
               </div>
               <div style="display: flex; gap: 12px; align-items: center;">
                 <button type="submit" id="auth-signup-submit-btn" class="st-btn st-btn-primary" style="padding: 0.6rem 1.8rem; font-weight: 600;">Register Account</button>
@@ -1067,12 +1071,11 @@
 
       <!-- Sign In Form -->
       <form id="modal-form-login">
-        <h3 style="font-size: 1.25rem; margin: 0 0 4px 0; color: var(--st-text-color);">Sign In to Portfolio Hub</h3>
-        <p style="font-size: 0.84rem; color: var(--st-text-muted); margin: 0 0 16px 0;">Authenticate with Argon2id credentials for persistent PostgreSQL sessions.</p>
+        <h3 style="font-size: 1.25rem; margin: 0 0 16px 0; color: var(--st-text-color);">Sign In to Portfolio Hub</h3>
 
         <div class="field">
           <label class="field-label" for="modal-login-email">Email or Username</label>
-          <input type="text" class="field-input" id="modal-login-email" required placeholder="user@example.com or abc" />
+          <input type="text" class="field-input" id="modal-login-email" required placeholder="user@example.com" />
         </div>
 
         <div class="field">
@@ -1084,14 +1087,12 @@
           <button type="submit" class="st-btn st-btn-primary" id="modal-login-submit" style="padding: 0.65rem 1.6rem; font-weight: 600;">
             Sign In &rarr;
           </button>
-          <button type="button" class="st-btn" id="modal-btn-quick-demo">⚡ 1-Click Demo</button>
         </div>
       </form>
 
       <!-- Register Form -->
       <form id="modal-form-signup" style="display: none;">
-        <h3 style="font-size: 1.25rem; margin: 0 0 4px 0; color: var(--st-text-color);">Create Portfolio Account</h3>
-        <p style="font-size: 0.84rem; color: var(--st-text-muted); margin: 0 0 16px 0;">Stores user profile with Argon2id password hash in PostgreSQL.</p>
+        <h3 style="font-size: 1.25rem; margin: 0 0 16px 0; color: var(--st-text-color);">Create Portfolio Account</h3>
 
         <div class="field">
           <label class="field-label" for="modal-signup-name">Full Name</label>
@@ -1106,6 +1107,11 @@
         <div class="field">
           <label class="field-label" for="modal-signup-password">Password (Minimum 8 chars)</label>
           <input type="password" class="field-input" id="modal-signup-password" required minlength="8" placeholder="••••••••••••" />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="modal-signup-retype-password">Retype Password</label>
+          <input type="password" class="field-input" id="modal-signup-retype-password" required minlength="8" placeholder="••••••••••••" />
         </div>
 
         <button type="submit" class="st-btn st-btn-primary" id="modal-signup-submit" style="margin-top: 14px; padding: 0.65rem 1.6rem; font-weight: 600;">
@@ -1181,6 +1187,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Client Application Scripts -->
-  <script type="module" src="js/app.js?v=3.0"></script>
+  <script type="module" src="js/app.js?v=3.1"></script>
 </body>
 </html>

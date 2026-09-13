@@ -41,8 +41,17 @@ const SIDEBAR_IMAGES = {
   cluster: "https://cdn.dribbble.com/userupload/20456242/file/original-f31f3824dec1d33b1abf5895ce03de45.gif",
 };
 
-// All portfolio routes are open for instant exploration (seamless guest session active by default)
-const PROTECTED_TABS = [];
+// Protected tabs requiring explicit user authentication
+const PROTECTED_TABS = [
+  "tab-stock",
+  "tab-harry",
+  "tab-tour",
+  "tab-voice",
+  "tab-yolo",
+  "tab-classifier",
+  "tab-cluster",
+  "tab-social"
+];
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("⚡ ambideXtrous AI Portfolio Initialized");
@@ -58,51 +67,44 @@ document.addEventListener("DOMContentLoaded", () => {
   let isLoggedIn = Boolean(token);
   let redirectAfterLogin = null;
 
-  // Seamless guest session auto-initialization
-  async function ensureSession() {
-    if (!token) {
-      try {
-        const res = await apiLogin("abc", "123");
-        token = res.access_token;
-        currentUser = res.user;
+  // Validate existing session token on load
+  if (token) {
+    apiGetMe()
+      .then((user) => {
+        currentUser = user;
+        setAuthUser(user);
         isLoggedIn = true;
         updateAuthUI();
-      } catch (err) {
-        console.warn("Guest session init deferred:", err);
-      }
-    } else {
-      apiGetMe()
-        .then((user) => {
-          currentUser = user;
-          setAuthUser(user);
-          isLoggedIn = true;
-          updateAuthUI();
-        })
-        .catch(() => {
-          // Token expired, silently re-login as demo
-          apiLogin("abc", "123")
-            .then((res) => {
-              token = res.access_token;
-              currentUser = res.user;
-              isLoggedIn = true;
-              updateAuthUI();
-            })
-            .catch(() => {
-              clearAuthToken();
-              currentUser = null;
-              isLoggedIn = false;
-              updateAuthUI();
-            });
-        });
-    }
+      })
+      .catch(() => {
+        clearAuthToken();
+        clearAuthUser();
+        token = null;
+        currentUser = null;
+        isLoggedIn = false;
+        updateAuthUI();
+        // If loaded on a protected view without valid token, return to home
+        navigateToTab("tab-home", "boom");
+      });
+  } else {
+    isLoggedIn = false;
+    currentUser = null;
+    updateAuthUI();
   }
 
-  // Ensure session is live immediately on load
-  ensureSession();
-
-  // Listen for unauthorized 401 events: quietly re-authenticate without disrupting user
-  window.addEventListener("portfolio:unauthorized", () => {
-    ensureSession();
+  // Listen for unauthorized 401 events: prompt user to sign in
+  window.addEventListener("portfolio:unauthorized", (e) => {
+    clearAuthToken();
+    clearAuthUser();
+    token = null;
+    currentUser = null;
+    isLoggedIn = false;
+    updateAuthUI();
+    activateView("tab-home", "boom");
+    openModal("auth-modal");
+    setAuthModalView("login");
+    const feature = e?.detail?.feature || "this AI feature";
+    showToast(`Authentication required. Please sign in to access ${feature}.`, "error");
   });
 
   updateAuthUI();
@@ -112,14 +114,26 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", () => {
       const targetTab = btn.getAttribute("data-tab");
       const imgKey = btn.getAttribute("data-img") || "boom";
+
+      if (PROTECTED_TABS.includes(targetTab) && !isLoggedIn) {
+        redirectAfterLogin = targetTab;
+        openModal("auth-modal");
+        setAuthModalView("login");
+        showToast("Please sign in or register to access this AI feature.", "info");
+        return;
+      }
+
       navigateToTab(targetTab, imgKey);
     });
   });
 
   function navigateToTab(targetTab, imgKey = "boom") {
-    // Ensure active session in background if not yet ready
-    if (!isLoggedIn && !token) {
-      ensureSession();
+    if (PROTECTED_TABS.includes(targetTab) && !isLoggedIn) {
+      redirectAfterLogin = targetTab;
+      openModal("auth-modal");
+      setAuthModalView("login");
+      showToast("Please sign in or register to access this AI feature.", "info");
+      return;
     }
     activateView(targetTab, imgKey);
   }
@@ -267,6 +281,11 @@ document.addEventListener("DOMContentLoaded", () => {
         updateAuthUI();
         closeAllModals();
         showToast(`Welcome back, ${currentUser.full_name || currentUser.email}!`, "success");
+        if (redirectAfterLogin) {
+          const dest = redirectAfterLogin;
+          redirectAfterLogin = null;
+          navigateToTab(dest, dest.replace("tab-", ""));
+        }
       } catch (err) {
         showToast(err.message, "error");
       } finally {
@@ -275,12 +294,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Modal 1-Click Demo button
-  document.getElementById("modal-btn-quick-demo")?.addEventListener("click", async () => {
-    closeAllModals();
-    await performQuickDemoLogin();
-  });
-
   // Modal Sign Up form submit
   if (formModalSignup) {
     formModalSignup.addEventListener("submit", async (e) => {
@@ -288,8 +301,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const name = document.getElementById("modal-signup-name")?.value?.trim();
       const email = document.getElementById("modal-signup-email")?.value?.trim();
       const password = document.getElementById("modal-signup-password")?.value?.trim();
+      const retypePassword = document.getElementById("modal-signup-retype-password")?.value?.trim();
       const submitBtn = document.getElementById("modal-signup-submit");
       if (!email || !password) return;
+
+      if (password !== retypePassword) {
+        showToast("Passwords do not match. Please retype your password.", "error");
+        return;
+      }
 
       if (submitBtn) submitBtn.disabled = true;
       try {
@@ -300,6 +319,11 @@ document.addEventListener("DOMContentLoaded", () => {
         updateAuthUI();
         closeAllModals();
         showToast("Account created and signed in! Welcome!", "success");
+        if (redirectAfterLogin) {
+          const dest = redirectAfterLogin;
+          redirectAfterLogin = null;
+          navigateToTab(dest, dest.replace("tab-", ""));
+        }
       } catch (err) {
         showToast(err.message, "error");
       } finally {
@@ -378,70 +402,67 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       localStorage.setItem("portfolio_chat_sessions_v2", JSON.stringify(recentSessions));
     } catch (_) {}
-    renderSidebarHistory();
+    renderAgentChatHistory();
   }
 
-  function renderSidebarHistory() {
-    const list = document.getElementById("sidebar-history-list");
-    if (!list) return;
-
-    if (recentSessions.length === 0) {
-      list.innerHTML = `<div style="padding: 10px 12px; font-size: 0.78rem; color: var(--st-text-muted);">No recent chats yet.</div>`;
-      return;
-    }
-
+  function renderAgentChatHistory() {
     const currentHpThread = localStorage.getItem("portfolio_hp_thread_id");
     const currentTourThread = localStorage.getItem("portfolio_tour_thread_id");
 
-    list.innerHTML = recentSessions.map((s) => {
-      const isActive = s.threadId === currentHpThread || s.threadId === currentTourThread;
-      const tag = s.agentName || (s.agent === "harry" ? "Harry" : "Tour");
-      return `
-        <div class="history-item ${isActive ? 'is-active' : ''}" data-thread-id="${escapeHtml(s.threadId)}" data-agent="${escapeHtml(s.agent)}">
-          <div class="history-item-title" title="${escapeHtml(s.title)}">
-            <span class="history-item-tag">[${escapeHtml(tag)}]</span>${escapeHtml(s.title)}
+    const renderAgentList = (containerId, agentKey, currentThread, reloadEvent) => {
+      const list = document.getElementById(containerId);
+      if (!list) return;
+
+      const sessions = recentSessions.filter((s) => (s.agent || "harry") === agentKey);
+      if (sessions.length === 0) {
+        list.innerHTML = `<div class="st-history-empty">No recent chats yet.</div>`;
+        return;
+      }
+
+      list.innerHTML = sessions.map((s) => {
+        const isActive = s.threadId === currentThread;
+        return `
+          <div class="history-item ${isActive ? 'is-active' : ''}" data-thread-id="${escapeHtml(s.threadId)}" data-agent="${escapeHtml(s.agent || agentKey)}">
+            <div class="history-item-title" title="${escapeHtml(s.title)}">
+              ${escapeHtml(s.title)}
+            </div>
+            <button type="button" class="history-item-delete" data-delete-thread="${escapeHtml(s.threadId)}" title="Delete conversation">&times;</button>
           </div>
-          <button type="button" class="history-item-delete" data-delete-thread="${escapeHtml(s.threadId)}" title="Delete conversation">&times;</button>
-        </div>
-      `;
-    }).join("");
+        `;
+      }).join("");
 
-    // Bind click handlers to switch sessions
-    list.querySelectorAll(".history-item").forEach((item) => {
-      item.addEventListener("click", () => {
-        const threadId = item.getAttribute("data-thread-id");
-        const agent = item.getAttribute("data-agent");
-        if (!threadId) return;
-
-        if (agent === "harry") {
-          navigateToTab("tab-harry", "harry");
-          window.dispatchEvent(new CustomEvent("portfolio:reload_harry_history", { detail: { threadId } }));
-        } else if (agent === "tour") {
-          navigateToTab("tab-tour", "tour");
-          window.dispatchEvent(new CustomEvent("portfolio:reload_tour_history", { detail: { threadId } }));
-        }
-        renderSidebarHistory();
+      // Bind click handlers to switch sessions
+      list.querySelectorAll(".history-item").forEach((item) => {
+        item.addEventListener("click", () => {
+          const threadId = item.getAttribute("data-thread-id");
+          if (!threadId) return;
+          window.dispatchEvent(new CustomEvent(reloadEvent, { detail: { threadId } }));
+          setTimeout(renderAgentChatHistory, 50);
+        });
       });
-    });
 
-    // Bind delete button handlers to open delete confirmation modal
-    list.querySelectorAll("[data-delete-thread]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const threadId = btn.getAttribute("data-delete-thread");
-        const session = recentSessions.find((s) => s.threadId === threadId);
-        if (!session) return;
+      // Bind delete button handlers to open delete confirmation modal
+      list.querySelectorAll("[data-delete-thread]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const threadId = btn.getAttribute("data-delete-thread");
+          const session = recentSessions.find((s) => s.threadId === threadId);
+          if (!session) return;
 
-        pendingDeleteThreadId = threadId;
-        pendingDeleteAgent = session.agent;
+          pendingDeleteThreadId = threadId;
+          pendingDeleteAgent = session.agent || agentKey;
 
-        const titleEl = document.getElementById("delete-chat-title");
-        if (titleEl) {
-          titleEl.textContent = `"${session.title}" (#${session.threadId})`;
-        }
-        openModal("delete-chat-modal");
+          const titleEl = document.getElementById("delete-chat-title");
+          if (titleEl) {
+            titleEl.textContent = `"${session.title}" (#${session.threadId})`;
+          }
+          openModal("delete-chat-modal");
+        });
       });
-    });
+    };
+
+    renderAgentList("harry-history-list", "harry", currentHpThread, "portfolio:reload_harry_history");
+    renderAgentList("tour-history-list", "tour", currentTourThread, "portfolio:reload_tour_history");
   }
 
   // Delete chat confirmation modal button
@@ -473,20 +494,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Start New Chat from sidebar button
-  document.getElementById("btn-sidebar-new-chat")?.addEventListener("click", () => {
-    const activeTabEl = document.querySelector(".st-tab-view.active");
-    const activeTabId = activeTabEl?.id;
+  // Dedicated Chat History Sidebar "➕ New" Buttons
+  document.getElementById("harry-btn-new-chat-sidebar")?.addEventListener("click", () => {
+    window.dispatchEvent(new CustomEvent("portfolio:reset_harry_chat"));
+    showToast("New Harry Potter Lore conversation started.", "info");
+    renderAgentChatHistory();
+  });
 
-    if (activeTabId === "tab-tour") {
-      window.dispatchEvent(new CustomEvent("portfolio:reset_tour_chat"));
-      showToast("New Tour Planner conversation started.", "info");
-    } else {
-      navigateToTab("tab-harry", "harry");
-      window.dispatchEvent(new CustomEvent("portfolio:reset_harry_chat"));
-      showToast("New Harry Potter Lore conversation started.", "info");
-    }
-    renderSidebarHistory();
+  document.getElementById("tour-btn-new-chat-sidebar")?.addEventListener("click", () => {
+    window.dispatchEvent(new CustomEvent("portfolio:reset_tour_chat"));
+    showToast("New Tour Planner conversation started.", "info");
+    renderAgentChatHistory();
   });
 
   // Listen to chat updates from harry.js and tour.js
@@ -518,7 +536,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   loadRecentSessions();
-  renderSidebarHistory();
+  renderAgentChatHistory();
+  window.addEventListener("portfolio:thread_switched", renderAgentChatHistory);
 
   // ───────────────────────────────────────────────────────────────────────────
   // Reactive Authentication State UI Updater
@@ -607,21 +626,23 @@ document.addEventListener("DOMContentLoaded", () => {
       if (topUserArea) {
         topUserArea.innerHTML = `
           <button class="st-session-btn" id="top-btn-login">Sign In</button>
-          <button class="st-demo-login-btn" id="top-btn-demo" style="padding: 4px 12px; font-size: 0.78rem;">⚡ 1-Click Demo</button>
+          <button class="st-session-btn" id="top-btn-signup" style="background: var(--st-primary); color: white; border-color: var(--st-primary); font-weight: 600;">Register</button>
         `;
         document.getElementById("top-btn-login")?.addEventListener("click", () => {
           openModal("auth-modal");
           setAuthModalView("login");
         });
-        document.getElementById("top-btn-demo")?.addEventListener("click", performQuickDemoLogin);
+        document.getElementById("top-btn-signup")?.addEventListener("click", () => {
+          openModal("auth-modal");
+          setAuthModalView("signup");
+        });
       }
 
       // 2. Update Left Sidebar Auth Section
       if (authContainer) {
         authContainer.innerHTML = `
-          <button class="st-auth-btn" id="btn-login">Login</button>
-          <button class="st-auth-btn" id="btn-signup">Signup</button>
-          <button class="st-auth-btn" id="btn-sidebar-demo" style="background: linear-gradient(135deg, rgba(30, 136, 229, 0.08), rgba(124, 77, 255, 0.08)); border-color: #1E88E5; color: #1565C0; font-weight: 700;" title="Instantly authenticate with pre-seeded demo credentials">⚡ Demo</button>
+          <button class="st-auth-btn" id="btn-login" style="flex: 1;">Login</button>
+          <button class="st-auth-btn" id="btn-signup" style="flex: 1; background: var(--st-primary); color: white; border-color: var(--st-primary); font-weight: 600;">Signup</button>
         `;
         document.getElementById("btn-login")?.addEventListener("click", () => {
           openModal("auth-modal");
@@ -631,14 +652,12 @@ document.addEventListener("DOMContentLoaded", () => {
           openModal("auth-modal");
           setAuthModalView("signup");
         });
-        document.getElementById("btn-sidebar-demo")?.addEventListener("click", performQuickDemoLogin);
       }
 
       // 3. Update Login Tab
       if (loggedInContainer) loggedInContainer.style.display = "none";
-      if (demoBanner) demoBanner.style.display = "flex";
+      if (demoBanner) demoBanner.style.display = "none";
       if (loginContainer) loginContainer.style.display = "block";
-      document.getElementById("btn-quick-demo-login")?.addEventListener("click", performQuickDemoLogin);
     }
   }
 
@@ -649,33 +668,6 @@ document.addEventListener("DOMContentLoaded", () => {
     updateAuthUI();
     showToast("Logged out. JWT token has been revoked.", "info");
     navigateToTab("tab-home", "boom");
-  }
-
-  async function performQuickDemoLogin() {
-    const bannerBtn = document.getElementById("btn-quick-demo-login");
-    const topBtn = document.getElementById("top-btn-demo");
-    const sideBtn = document.getElementById("btn-sidebar-demo");
-    if (bannerBtn) bannerBtn.textContent = "⏳ Signing in...";
-    if (topBtn) topBtn.textContent = "⏳...";
-    if (sideBtn) sideBtn.textContent = "⏳...";
-
-    try {
-      const res = await apiLogin("abc", "123");
-      isLoggedIn = true;
-      token = res.access_token;
-      currentUser = res.user;
-      updateAuthUI();
-      showToast("Signed in as Demo Explorer!", "success");
-      const dest = redirectAfterLogin || "tab-harry";
-      redirectAfterLogin = null;
-      navigateToTab(dest, dest.replace("tab-", ""));
-    } catch (err) {
-      showToast("Demo sign-in: " + err.message, "error");
-    } finally {
-      if (bannerBtn) bannerBtn.textContent = "⚡ Sign In as Demo User";
-      if (topBtn) topBtn.textContent = "⚡ 1-Click Demo";
-      if (sideBtn) sideBtn.textContent = "⚡ Demo";
-    }
   }
 
   // Handle in-page tab-login form submission
@@ -719,9 +711,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const fullname = document.getElementById("signup-fullname")?.value?.trim();
       const email = document.getElementById("signup-email")?.value?.trim();
       const password = document.getElementById("signup-password")?.value?.trim();
+      const retypePassword = document.getElementById("signup-retype-password")?.value?.trim();
       const submitBtn = document.getElementById("auth-signup-submit-btn");
 
       if (!email || !password) return;
+
+      if (password !== retypePassword) {
+        showToast("Passwords do not match. Please retype your password.", "error");
+        return;
+      }
       if (submitBtn) submitBtn.disabled = true;
 
       try {

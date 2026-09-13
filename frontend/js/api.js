@@ -140,23 +140,17 @@ export async function checkBackendHealth() {
 export async function fetchAPI(endpoint, options = {}) {
   const base = getAPIBase();
   const url = `${base}${endpoint}`;
-  let token = getAuthToken();
+  const token = getAuthToken();
 
-  // If unauthenticated and calling a protected endpoint, silently obtain demo session first
-  if (!token && !endpoint.includes("/system/health") && !endpoint.includes("/auth/login") && !endpoint.includes("/auth/signup")) {
-    try {
-      const loginRes = await fetch(`${base}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: "abc", password: "123" })
-      });
-      if (loginRes.ok) {
-        const loginData = await loginRes.json();
-        token = loginData.access_token;
-        setAuthToken(token);
-        if (loginData.user) setAuthUser(loginData.user);
-      }
-    } catch (_) {}
+  const isPublicEndpoint = endpoint.includes("/system/health") || 
+                          endpoint.includes("/auth/login") || 
+                          endpoint.includes("/auth/signup") ||
+                          endpoint.includes("/auth/forgot-password") ||
+                          endpoint.includes("/auth/reset-password");
+
+  if (!token && !isPublicEndpoint) {
+    window.dispatchEvent(new CustomEvent("portfolio:unauthorized", { detail: { endpoint } }));
+    throw new Error("Authentication required. Please sign in to access this feature.");
   }
 
   const headers = {
@@ -165,29 +159,10 @@ export async function fetchAPI(endpoint, options = {}) {
     ...(options.headers || {})
   };
   try {
-    let response = await fetch(url, {
+    const response = await fetch(url, {
       ...options,
       headers
     });
-
-    // If 401, attempt transparent one-time re-authentication with demo user
-    if (response.status === 401 && !endpoint.includes("/auth/login")) {
-      try {
-        const retryLoginRes = await fetch(`${base}/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: "abc", password: "123" })
-        });
-        if (retryLoginRes.ok) {
-          const retryData = await retryLoginRes.json();
-          token = retryData.access_token;
-          setAuthToken(token);
-          if (retryData.user) setAuthUser(retryData.user);
-          headers['Authorization'] = `Bearer ${token}`;
-          response = await fetch(url, { ...options, headers });
-        }
-      } catch (_) {}
-    }
 
     if (!response.ok) {
       let errDetail = response.statusText;
@@ -196,8 +171,10 @@ export async function fetchAPI(endpoint, options = {}) {
         errDetail = errJson.detail || errJson.message || JSON.stringify(errJson);
       } catch (_) {}
 
-      // If still unauthorized, broadcast auth required event
+      // If unauthorized, clear invalid token and broadcast auth event
       if (response.status === 401) {
+        clearAuthToken();
+        clearAuthUser();
         window.dispatchEvent(new CustomEvent("portfolio:unauthorized", { detail: { endpoint } }));
       }
 
@@ -221,7 +198,15 @@ export async function fetchAPI(endpoint, options = {}) {
 export function streamAgent(agentType, query, { sessionId, onStatus, onToolCall, onToolResult, onToken, onDone, onError }) {
   const base = getAPIBase();
   const token = getAuthToken();
-  const tokenParam = token ? `&token=${encodeURIComponent(token)}` : "";
+
+  // Guard against unauthenticated invocation
+  if (!token) {
+    window.dispatchEvent(new CustomEvent("portfolio:unauthorized", { detail: { agentType } }));
+    if (onError) onError("Authentication required. Please sign in to consult the agent.");
+    return { abort: () => {} };
+  }
+
+  const tokenParam = `&token=${encodeURIComponent(token)}`;
   const sessionParam = sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : "";
   const sseEndpoint = agentType === "tour" 
     ? `${base}/tour/stream?query=${encodeURIComponent(query)}${sessionParam}${tokenParam}`

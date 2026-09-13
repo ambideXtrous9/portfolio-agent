@@ -34,19 +34,12 @@ class AuthDatabaseManager:
         self._in_memory_reset_tokens: Dict[str, Dict[str, Any]] = {}
         self._is_in_memory: bool = True
         self._initialized: bool = False
-        try:
-            self._seed_default_demo_accounts()
-        except Exception as e:
-            logger.warning(f"Initial demo account seed note: {e}")
 
     async def initialize(self) -> None:
         """Initializes PostgreSQL connection pool and creates auth tables."""
         if self._initialized:
             return
         auth_uri = settings.effective_auth_db_uri
-
-        # 1. Always seed the default demo accounts in in-memory fallback
-        self._seed_default_demo_accounts()
 
         if not auth_uri or not PSYCOPG_AVAILABLE:
             logger.info("No PostgreSQL AUTH_DATABASE_URL configured or psycopg unavailable. Using resilient in-memory authentication.")
@@ -73,19 +66,13 @@ class AuthDatabaseManager:
             # Create Schema Tables
             await self._create_tables()
 
-            # Seed demo accounts into PostgreSQL if not present
-            await self._seed_postgres_demo_accounts()
-
-            # Sync any cached fallback accounts to PostgreSQL
-            await self._sync_fallback_to_postgres()
-
             self._is_in_memory = False
             logger.info("Auth Database (users, token_blacklist, password_reset_tokens) initialized successfully in PostgreSQL.")
 
         except Exception as e:
             logger.warning(
                 f"Failed to connect to PostgreSQL auth database: {e}. "
-                "Enabling In-Memory Auth Fallback mode with seeded accounts."
+                "Enabling In-Memory Auth Fallback mode."
             )
             if self.pool:
                 try:
@@ -96,90 +83,6 @@ class AuthDatabaseManager:
             self._is_in_memory = True
         finally:
             self._initialized = True
-
-    def _seed_default_demo_accounts(self) -> None:
-        """Seeds default user accounts into in-memory store."""
-        from backend.app.core.security import hash_password
-
-        now = datetime.now(timezone.utc)
-        demo_pwd_hash = hash_password("123")
-
-        # Demo user 'abc' (abc@example.com)
-        if "abc@example.com" not in self._in_memory_users:
-            self._in_memory_users["abc@example.com"] = {
-                "id": "11111111-1111-1111-1111-111111111111",
-                "email": "abc@example.com",
-                "username": "abc",
-                "full_name": "Demo Explorer",
-                "hashed_password": demo_pwd_hash,
-                "is_active": True,
-                "is_superuser": True,
-                "role": "admin",
-                "created_at": now,
-                "updated_at": now,
-            }
-        # Also alias 'abc' as a direct lookup key
-        if "abc" not in self._in_memory_users:
-            self._in_memory_users["abc"] = self._in_memory_users["abc@example.com"]
-
-    async def _seed_postgres_demo_accounts(self) -> None:
-        """Seeds default demo accounts into PostgreSQL table if not present."""
-        if not self.pool:
-            return
-        from backend.app.core.security import hash_password
-
-        demo_pwd_hash = hash_password("123")
-        try:
-            async with self.pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
-                        INSERT INTO users (id, email, full_name, hashed_password, is_active, is_superuser, role)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (email) DO NOTHING
-                        """,
-                        (
-                            "11111111-1111-1111-1111-111111111111",
-                            "abc@example.com",
-                            "Demo Explorer",
-                            demo_pwd_hash,
-                            True,
-                            True,
-                            "admin",
-                        ),
-                    )
-        except Exception as e:
-            logger.debug(f"Demo account seeding note: {e}")
-
-    async def _sync_fallback_to_postgres(self) -> None:
-        """Syncs cached in-memory users to PostgreSQL if any exist."""
-        if not self.pool or not self._in_memory_users:
-            return
-        try:
-            async with self.pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    for email, u in self._in_memory_users.items():
-                        if "@" not in email:
-                            continue
-                        await cur.execute(
-                            """
-                            INSERT INTO users (id, email, full_name, hashed_password, is_active, is_superuser, role)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
-                            ON CONFLICT (email) DO NOTHING
-                            """,
-                            (
-                                u.get("id", str(uuid.uuid4())),
-                                email,
-                                u.get("full_name", ""),
-                                u.get("hashed_password", ""),
-                                u.get("is_active", True),
-                                u.get("is_superuser", False),
-                                u.get("role", "user"),
-                            ),
-                        )
-            logger.info("Synced in-memory accounts into PostgreSQL users table.")
-        except Exception as e:
-            logger.warning(f"Could not sync fallback users into PostgreSQL: {e}")
 
     async def _create_tables(self) -> None:
         """Creates auth tables: users, token_blacklist, password_reset_tokens."""
@@ -229,6 +132,9 @@ class AuthDatabaseManager:
                     CREATE INDEX IF NOT EXISTS idx_reset_token_hash ON password_reset_tokens(token_hash);
                 """)
 
+                # Purge any legacy demo account from table
+                await cur.execute("DELETE FROM users WHERE email IN ('abc@example.com', 'abc');")
+
     async def close(self) -> None:
         """Closes the connection pool on application shutdown."""
         if self.pool:
@@ -240,20 +146,14 @@ class AuthDatabaseManager:
     # User Operations
     # --------------------------------------------------------------------------
     async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
-        """Finds user by email or username."""
+        """Finds user by email address."""
         normalized = email.strip().lower()
 
-        # Check demo user shortcuts immediately
-        if normalized in ("abc", "abc@example.com") and normalized in self._in_memory_users:
-            if self._is_in_memory or not self.pool:
-                return self._in_memory_users[normalized]
-
         if self._is_in_memory or not self.pool:
-            # Check direct match or username match
             if normalized in self._in_memory_users:
                 return self._in_memory_users[normalized]
             for u in self._in_memory_users.values():
-                if u.get("email") == normalized or u.get("username") == normalized:
+                if u.get("email") == normalized:
                     return u
             return None
 
@@ -270,35 +170,10 @@ class AuthDatabaseManager:
                         row_dict = dict(row)
                         row_dict["id"] = str(row_dict["id"])
                         return row_dict
-
-                    # Also allow login with 'abc' directly if email was abc@example.com
-                    if "@" not in normalized:
-                        await cur.execute(
-                            "SELECT id, email, full_name, hashed_password, is_active, is_superuser, role, created_at, updated_at "
-                            "FROM users WHERE LOWER(email) LIKE %s",
-                            (f"{normalized}@%",),
-                        )
-                        row = await cur.fetchone()
-                        if row:
-                            row_dict = dict(row)
-                            row_dict["id"] = str(row_dict["id"])
-                            return row_dict
-
-                    # Fallback to in-memory demo account if not found in db
-                    if normalized in self._in_memory_users:
-                        return self._in_memory_users[normalized]
-                    for u in self._in_memory_users.values():
-                        if u.get("email") == normalized or u.get("username") == normalized:
-                            return u
-                    return None
+                    return self._in_memory_users.get(normalized)
         except Exception as e:
             logger.warning(f"Error querying user by email in PostgreSQL: {e}. Falling back to in-memory store.")
-            if normalized in self._in_memory_users:
-                return self._in_memory_users[normalized]
-            for u in self._in_memory_users.values():
-                if u.get("email") == normalized or u.get("username") == normalized:
-                    return u
-            return None
+            return self._in_memory_users.get(normalized)
 
     async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Finds user by UUID identifier."""
