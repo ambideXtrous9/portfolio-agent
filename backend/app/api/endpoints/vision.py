@@ -6,9 +6,11 @@ import os
 import sys
 import time
 from typing import List, Dict, Any, Tuple
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
 from PIL import Image, ImageDraw
 
+from backend.app.api.deps import get_current_active_user
+from backend.app.schemas.auth import UserResponse
 from backend.app.schemas.vision import (
     ClassificationResponse,
     PredictionItem,
@@ -224,7 +226,10 @@ def run_single_inference(model_name: str, image: Image.Image) -> ModelEvaluation
 
 
 @router.post("/classify-all", response_model=MultiModelComparisonResponse)
-async def classify_all_models(file: UploadFile = File(...)):
+async def classify_all_models(
+    file: UploadFile = File(...),
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """
     Evaluates an uploaded image across all 4 Transfer Learning models:
     Xception, InceptionV3, MobileNetV2, and EfficientNet.
@@ -261,9 +266,12 @@ async def classify_all_models(file: UploadFile = File(...)):
 
 
 @router.post("/classify", response_model=ClassificationResponse)
-async def classify_brand_image(file: UploadFile = File(...)):
+async def classify_brand_image(
+    file: UploadFile = File(...),
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """Legacy single classifier endpoint for backward compatibility."""
-    res = await classify_all_models(file)
+    res = await classify_all_models(file, current_user=current_user)
     eff = next((m for m in res.models if m.model_name == "EfficientNet"), res.models[0])
     return ClassificationResponse(
         model_name=eff.model_name,
@@ -277,7 +285,10 @@ async def classify_brand_image(file: UploadFile = File(...)):
 
 
 @router.post("/yolo", response_model=YoloDetectionResponse)
-async def detect_logo_yolo(file: UploadFile = File(...)):
+async def detect_logo_yolo(
+    file: UploadFile = File(...),
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """Runs YOLOv8.1 brand logo object detection with bounding box annotations."""
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File uploaded is not a valid image")

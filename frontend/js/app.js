@@ -4,7 +4,20 @@
  * URL query param synchronization, authentication state (abc:123), and controller initialization.
  */
 
-import { fetchAPI, checkBackendHealth, setBackendURL } from "./api.js";
+import {
+  fetchAPI,
+  checkBackendHealth,
+  setBackendURL,
+  getAuthToken,
+  setAuthToken,
+  clearAuthToken,
+  getAuthUser,
+  setAuthUser,
+  apiLogin,
+  apiSignup,
+  apiLogout,
+  apiGetMe,
+} from "./api.js";
 import { initTourAgent } from "./tour.js";
 import { initHarryScholar } from "./harry.js";
 import { initStockScreener } from "./stock.js";
@@ -24,8 +37,16 @@ const SIDEBAR_IMAGES = {
   cluster: "https://cdn.dribbble.com/userupload/20456242/file/original-f31f3824dec1d33b1abf5895ce03de45.gif",
 };
 
-// Protected routes requiring authentication
-const PROTECTED_TABS = ["tab-stock", "tab-harry", "tab-tour"];
+// Protected routes requiring PostgreSQL JWT authentication
+const PROTECTED_TABS = [
+  "tab-stock",
+  "tab-harry",
+  "tab-tour",
+  "tab-voice",
+  "tab-yolo",
+  "tab-classifier",
+  "tab-cluster",
+];
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("⚡ ambideXtrous AI Portfolio Initialized");
@@ -35,9 +56,41 @@ document.addEventListener("DOMContentLoaded", () => {
   const tabViews = document.querySelectorAll(".st-tab-view");
   const authContainer = document.querySelector(".st-sidebar-auth");
 
-  // State
-  let isLoggedIn = localStorage.getItem("portfolio_logged_in") !== "false"; // Default logged in for immediate review, fully functional auth
+  // Authentication State
+  let token = getAuthToken();
+  let currentUser = getAuthUser();
+  let isLoggedIn = Boolean(token);
   let redirectAfterLogin = null;
+
+  // Verify stored session with backend on startup
+  if (token) {
+    apiGetMe()
+      .then((user) => {
+        currentUser = user;
+        setAuthUser(user);
+        isLoggedIn = true;
+        updateAuthUI();
+      })
+      .catch(() => {
+        clearAuthToken();
+        currentUser = null;
+        isLoggedIn = false;
+        updateAuthUI();
+      });
+  }
+
+  // Listen for unauthorized 401 events triggered by any protected endpoint
+  window.addEventListener("portfolio:unauthorized", () => {
+    clearAuthToken();
+    currentUser = null;
+    isLoggedIn = false;
+    updateAuthUI();
+    const authFeedback = document.getElementById("auth-msg-feedback");
+    if (authFeedback) {
+      authFeedback.innerHTML = `<div style="background: #F8D7DA; color: #721C24; padding: 0.6rem 0.8rem; border-radius: 6px; font-weight: 500;">🔒 Session expired or authentication required. Please sign in to access protected features.</div>`;
+    }
+    activateView("tab-login", "boom");
+  });
 
   updateAuthUI();
 
@@ -94,17 +147,47 @@ document.addEventListener("DOMContentLoaded", () => {
     window.history.replaceState({}, "", url);
   }
 
+  // Dual view toggling between Login and Sign Up tabs
+  const loginContainer = document.getElementById("auth-login-container");
+  const signupContainer = document.getElementById("auth-signup-container");
+  const tabBtnLogin = document.getElementById("tab-btn-show-login");
+  const tabBtnSignup = document.getElementById("tab-btn-show-signup");
+  const btnSwitchToSignup = document.getElementById("btn-switch-to-signup");
+  const btnSwitchToLogin = document.getElementById("btn-switch-to-login");
+
+  const showLoginView = () => {
+    if (loginContainer) loginContainer.style.display = "block";
+    if (signupContainer) signupContainer.style.display = "none";
+    if (tabBtnLogin) tabBtnLogin.classList.add("st-btn-primary");
+    if (tabBtnSignup) tabBtnSignup.classList.remove("st-btn-primary");
+  };
+
+  const showSignupView = () => {
+    if (loginContainer) loginContainer.style.display = "none";
+    if (signupContainer) signupContainer.style.display = "block";
+    if (tabBtnSignup) tabBtnSignup.classList.add("st-btn-primary");
+    if (tabBtnLogin) tabBtnLogin.classList.remove("st-btn-primary");
+  };
+
+  if (tabBtnLogin) tabBtnLogin.addEventListener("click", showLoginView);
+  if (tabBtnSignup) tabBtnSignup.addEventListener("click", showSignupView);
+  if (btnSwitchToSignup) btnSwitchToSignup.addEventListener("click", showSignupView);
+  if (btnSwitchToLogin) btnSwitchToLogin.addEventListener("click", showLoginView);
+
   function updateAuthUI() {
     if (!authContainer) return;
     if (isLoggedIn) {
+      const userLabel = currentUser ? (currentUser.full_name || currentUser.email) : "Authenticated";
       authContainer.innerHTML = `
-        <button class="st-auth-btn" id="btn-logout" style="width: 100%; justify-content: center;">Logout</button>
+        <div style="font-size: 0.75rem; color: var(--st-text-muted); margin-bottom: 4px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 190px;" title="${userLabel}">👤 ${userLabel}</div>
+        <button class="st-auth-btn" id="btn-logout" style="width: 100%; justify-content: center; font-size: 0.82rem;">Logout</button>
       `;
       const btnLogout = document.getElementById("btn-logout");
       if (btnLogout) {
-        btnLogout.addEventListener("click", () => {
+        btnLogout.addEventListener("click", async () => {
+          await apiLogout();
           isLoggedIn = false;
-          localStorage.setItem("portfolio_logged_in", "false");
+          currentUser = null;
           updateAuthUI();
           navigateToTab("tab-home", "boom");
         });
@@ -116,37 +199,95 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
       const btnLogin = document.getElementById("btn-login");
       const btnSignup = document.getElementById("btn-signup");
-      if (btnLogin) btnLogin.addEventListener("click", () => activateView("tab-login", "boom"));
-      if (btnSignup) btnSignup.addEventListener("click", () => activateView("tab-login", "boom"));
+      if (btnLogin) btnLogin.addEventListener("click", () => {
+        showLoginView();
+        activateView("tab-login", "boom");
+      });
+      if (btnSignup) btnSignup.addEventListener("click", () => {
+        showSignupView();
+        activateView("tab-login", "boom");
+      });
     }
   }
 
-  // Handle Login form
+  // Handle Login form submission
   const loginForm = document.getElementById("auth-login-form");
   const authFeedback = document.getElementById("auth-msg-feedback");
   if (loginForm) {
-    loginForm.addEventListener("submit", (e) => {
+    loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const u = document.getElementById("auth-username")?.value?.trim();
       const p = document.getElementById("auth-password")?.value?.trim();
+      const submitBtn = document.getElementById("auth-login-submit-btn");
 
-      if ((u === "abc" && p === "123") || (u && p)) {
+      if (!u || !p) return;
+
+      if (authFeedback) {
+        authFeedback.innerHTML = `<div style="color: var(--st-text-muted);">Authenticating credentials with PostgreSQL...</div>`;
+      }
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        const res = await apiLogin(u, p);
         isLoggedIn = true;
-        localStorage.setItem("portfolio_logged_in", "true");
+        currentUser = res.user;
         updateAuthUI();
         if (authFeedback) {
-          authFeedback.innerHTML = `<div style="color: #28A745; font-weight: 600;">✅ Logged in successfully! Redirecting...</div>`;
+          authFeedback.innerHTML = `<div style="background: #D4EDDA; color: #155724; padding: 0.6rem 0.8rem; border-radius: 6px; font-weight: 600;">✅ Logged in successfully! Welcome, ${res.user.full_name || res.user.email}. Redirecting...</div>`;
         }
         setTimeout(() => {
           const dest = redirectAfterLogin || "tab-stock";
           redirectAfterLogin = null;
-          navigateToTab(dest, dest === "tab-stock" ? "stock" : (dest === "tab-harry" ? "harry" : (dest === "tab-tour" ? "tour" : "boom")));
+          navigateToTab(dest, dest.replace("tab-", ""));
           if (authFeedback) authFeedback.innerHTML = "";
         }, 600);
-      } else {
+      } catch (err) {
         if (authFeedback) {
-          authFeedback.innerHTML = `<div style="color: #DC3545; font-weight: 600;">❌ Invalid credentials. Use Temporary Account: abc / 123.</div>`;
+          authFeedback.innerHTML = `<div style="background: #F8D7DA; color: #721C24; padding: 0.6rem 0.8rem; border-radius: 6px; font-weight: 500;">❌ ${err.message}</div>`;
         }
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  // Handle Signup form submission
+  const signupForm = document.getElementById("auth-signup-form");
+  if (signupForm) {
+    signupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fullname = document.getElementById("signup-fullname")?.value?.trim();
+      const email = document.getElementById("signup-email")?.value?.trim();
+      const password = document.getElementById("signup-password")?.value?.trim();
+      const submitBtn = document.getElementById("auth-signup-submit-btn");
+
+      if (!email || !password) return;
+
+      if (authFeedback) {
+        authFeedback.innerHTML = `<div style="color: var(--st-text-muted);">Creating account in PostgreSQL database...</div>`;
+      }
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        const res = await apiSignup(email, fullname || "AI Explorer", password);
+        isLoggedIn = true;
+        currentUser = res.user;
+        updateAuthUI();
+        if (authFeedback) {
+          authFeedback.innerHTML = `<div style="background: #D4EDDA; color: #155724; padding: 0.6rem 0.8rem; border-radius: 6px; font-weight: 600;">✅ Account registered and authenticated! Welcome, ${res.user.full_name || res.user.email}. Redirecting...</div>`;
+        }
+        setTimeout(() => {
+          const dest = redirectAfterLogin || "tab-stock";
+          redirectAfterLogin = null;
+          navigateToTab(dest, dest.replace("tab-", ""));
+          if (authFeedback) authFeedback.innerHTML = "";
+        }, 600);
+      } catch (err) {
+        if (authFeedback) {
+          authFeedback.innerHTML = `<div style="background: #F8D7DA; color: #721C24; padding: 0.6rem 0.8rem; border-radius: 6px; font-weight: 500;">❌ ${err.message}</div>`;
+        }
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
       }
     });
   }

@@ -41,15 +41,65 @@ export function setBackendURL(url) {
 
 export const API_BASE = getAPIBase();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Authentication & JWT State Management
+// ─────────────────────────────────────────────────────────────────────────────
+export function getAuthToken() {
+  try {
+    return localStorage.getItem("portfolio_auth_token") || "";
+  } catch (_) {
+    return "";
+  }
+}
+
+export function setAuthToken(token) {
+  try {
+    if (token) {
+      localStorage.setItem("portfolio_auth_token", token);
+    } else {
+      localStorage.removeItem("portfolio_auth_token");
+    }
+  } catch (_) {}
+}
+
+export function clearAuthToken() {
+  try {
+    localStorage.removeItem("portfolio_auth_token");
+    localStorage.removeItem("portfolio_auth_user");
+  } catch (_) {}
+}
+
+export function getAuthUser() {
+  try {
+    const raw = localStorage.getItem("portfolio_auth_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function setAuthUser(user) {
+  try {
+    if (user) {
+      localStorage.setItem("portfolio_auth_user", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("portfolio_auth_user");
+    }
+  } catch (_) {}
+}
+
 // Detect WebSocket Base URL matching the active backend
 export function getWebSocketURL(path) {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  const token = getAuthToken();
+  const tokenQuery = token ? (cleanPath.includes("?") ? `&token=${encodeURIComponent(token)}` : `?token=${encodeURIComponent(token)}`) : "";
+
   try {
     const custom = localStorage.getItem("ai_portfolio_backend_url");
     if (custom && custom.trim()) {
       const wsProto = custom.startsWith("https") ? "wss:" : "ws:";
       const host = custom.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-      return `${wsProto}//${host}/ws${cleanPath}`;
+      return `${wsProto}//${host}/ws${cleanPath}${tokenQuery}`;
     }
   } catch (_) {}
 
@@ -57,13 +107,13 @@ export function getWebSocketURL(path) {
   
   if (window.location.port === "3000" || window.location.port === "80" || window.location.port === "") {
     // Via Nginx or Vercel reverse proxy
-    return `${wsProtocol}//${window.location.host}/ws${cleanPath}`;
+    return `${wsProtocol}//${window.location.host}/ws${cleanPath}${tokenQuery}`;
   } else if (window.location.port === "8000") {
     // Direct to FastAPI backend
-    return `${wsProtocol}//${window.location.host}/ws${cleanPath}`;
+    return `${wsProtocol}//${window.location.host}/ws${cleanPath}${tokenQuery}`;
   } else {
     // External dev server fallback to port 8000
-    return `${wsProtocol}//${window.location.hostname}:8000/ws${cleanPath}`;
+    return `${wsProtocol}//${window.location.hostname}:8000/ws${cleanPath}${tokenQuery}`;
   }
 }
 
@@ -85,18 +135,21 @@ export async function checkBackendHealth() {
 }
 
 /**
- * REST Fetch utility
+ * REST Fetch utility with automatic Authorization Bearer token header
  */
 export async function fetchAPI(endpoint, options = {}) {
   const base = getAPIBase();
   const url = `${base}${endpoint}`;
+  const token = getAuthToken();
+  const headers = {
+    'Accept': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(options.headers || {})
+  };
   try {
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Accept': 'application/json',
-        ...(options.headers || {})
-      }
+      headers
     });
     if (!response.ok) {
       let errDetail = response.statusText;
@@ -104,6 +157,12 @@ export async function fetchAPI(endpoint, options = {}) {
         const errJson = await response.json();
         errDetail = errJson.detail || errJson.message || JSON.stringify(errJson);
       } catch (_) {}
+
+      // If unauthorized, broadcast auth required event
+      if (response.status === 401) {
+        window.dispatchEvent(new CustomEvent("portfolio:unauthorized", { detail: { endpoint } }));
+      }
+
       throw new Error(`API Error (${response.status}): ${errDetail}`);
     }
     return await response.json();
@@ -122,10 +181,11 @@ export async function fetchAPI(endpoint, options = {}) {
  * @param {object} callbacks - { onStatus, onToolCall, onToolResult, onToken, onDone, onError }
  */
 export function streamAgent(agentType, query, { onStatus, onToolCall, onToolResult, onToken, onDone, onError }) {
-  const base = getAPIBase();
+  const token = getAuthToken();
+  const tokenParam = token ? `&token=${encodeURIComponent(token)}` : "";
   const sseEndpoint = agentType === "tour" 
-    ? `${base}/tour/stream?query=${encodeURIComponent(query)}`
-    : `${base}/harry/ask/stream?query=${encodeURIComponent(query)}`;
+    ? `${base}/tour/stream?query=${encodeURIComponent(query)}${tokenParam}`
+    : `${base}/harry/ask/stream?query=${encodeURIComponent(query)}${tokenParam}`;
 
   console.log(`📡 [streamAgent] Starting SSE stream for ${agentType}: ${sseEndpoint}`);
 
@@ -341,5 +401,45 @@ export function streamWS(endpoint, payload, { onStatus, onToolCall, onToolResult
   };
 
   return socket;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Authentication API Operations
+// ─────────────────────────────────────────────────────────────────────────────
+export async function apiSignup(email, fullName, password) {
+  const data = await fetchAPI("/auth/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, full_name: fullName, password }),
+  });
+  if (data.access_token) {
+    setAuthToken(data.access_token);
+    setAuthUser(data.user);
+  }
+  return data;
+}
+
+export async function apiLogin(email, password) {
+  const data = await fetchAPI("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (data.access_token) {
+    setAuthToken(data.access_token);
+    setAuthUser(data.user);
+  }
+  return data;
+}
+
+export async function apiLogout() {
+  try {
+    await fetchAPI("/auth/logout", { method: "POST" });
+  } catch (_) {}
+  clearAuthToken();
+}
+
+export async function apiGetMe() {
+  return await fetchAPI("/auth/me", { method: "GET" });
 }
 

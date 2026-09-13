@@ -7,10 +7,10 @@ import re
 import time
 import uuid
 from typing import TypedDict, Optional, Dict, Any, Literal, AsyncGenerator
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from sse_starlette.sse import EventSourceResponse
 from pydantic import BaseModel, Field
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_core.output_parsers.pydantic import PydanticOutputParser
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import create_react_agent
@@ -19,6 +19,9 @@ from langgraph.checkpoint.memory import MemorySaver
 from backend.app.config import settings
 from backend.app.core.llm import get_llm
 from backend.app.core.mcp import get_pinecone_tools
+from backend.app.core.database import db_manager
+from backend.app.api.deps import get_current_active_user, validate_token_and_get_user
+from backend.app.schemas.auth import UserResponse
 from backend.app.schemas.harry import HarryAskRequest, HarryAskResponse
 
 router = APIRouter(prefix="/harry", tags=["Harry Potter Lore"])
@@ -268,22 +271,30 @@ def build_hp_graph(checkpointer=None):
     return graph.compile(checkpointer=checkpointer)
 
 
-# Global singleton graph compiled with memory saver
-_hp_checkpointer = MemorySaver()
-hp_agent_graph = build_hp_graph(_hp_checkpointer)
+# Global graph factory supporting active PostgreSQL checkpointer
+def get_hp_agent_graph():
+    checkpointer = getattr(db_manager, "checkpointer", None) or MemorySaver()
+    return build_hp_graph(checkpointer=checkpointer)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 🌐 8. Endpoints: REST, SSE, and WebSocket (Matches Streamlit ChatBot)
 # ─────────────────────────────────────────────────────────────────────────────
 @router.post("/ask", response_model=HarryAskResponse)
-async def ask_harry_agent(request: HarryAskRequest):
-    """Runs the exact LangGraph Multi-Agent pipeline and returns complete synthesized output."""
+async def ask_harry_agent(
+    request: HarryAskRequest,
+    current_user: UserResponse = Depends(get_current_active_user),
+):
+    """Runs the exact LangGraph Multi-Agent pipeline with PostgreSQL checkpointer and auth guard."""
     start_time = time.time()
     thread_id = str(uuid.uuid4())
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "metadata": {"user_id": current_user.id, "email": current_user.email},
+    }
 
-    final_state = await hp_agent_graph.ainvoke(
+    graph = get_hp_agent_graph()
+    final_state = await graph.ainvoke(
         {"topic": request.query, "review": "Write an awesome article on the topic."},
         config=config
     )
@@ -291,6 +302,16 @@ async def ask_harry_agent(request: HarryAskRequest):
     cls_info = final_state.get("classification") or {}
     is_generic = cls_info.get("classification") == "generic"
     final_text = cls_info.get("reply", "") if is_generic else (final_state.get("draft") or "No response generated.")
+
+    # Persist conversation to PostgreSQL chat history
+    try:
+        history = await db_manager.get_chat_history(thread_id)
+        await history.aadd_messages([
+            HumanMessage(content=request.query),
+            AIMessage(content=final_text),
+        ])
+    except Exception as e:
+        print(f"Chat history saving note: {e}")
 
     elapsed = round(time.time() - start_time, 2)
     return HarryAskResponse(
@@ -312,6 +333,16 @@ async def websocket_harry(websocket: WebSocket):
     - Node output state events
     - Live token streaming for writer & mythologist nodes
     """
+    token = websocket.query_params.get("token")
+    if token:
+        try:
+            await validate_token_and_get_user(token)
+        except Exception:
+            await websocket.accept()
+            await websocket.send_json({"type": "error", "message": "Authentication required. Invalid or expired token."})
+            await websocket.close()
+            return
+
     await websocket.accept()
     try:
         while True:
@@ -320,6 +351,15 @@ async def websocket_harry(websocket: WebSocket):
             if not topic:
                 await websocket.send_json({"type": "error", "message": "Empty query received"})
                 continue
+
+            # Verify authentication token if not supplied at handshake
+            msg_token = data.get("token") or token
+            if not token and msg_token:
+                try:
+                    await validate_token_and_get_user(msg_token)
+                except Exception:
+                    await websocket.send_json({"type": "error", "message": "Authentication required. Invalid or expired token."})
+                    continue
 
             thread_id = data.get("thread_id") or str(uuid.uuid4())
             config = {
@@ -342,7 +382,8 @@ async def websocket_harry(websocket: WebSocket):
             generic_reply = ""
             is_generic = False
 
-            async for event in hp_agent_graph.astream_events(
+            graph = get_hp_agent_graph()
+            async for event in graph.astream_events(
                 input={"topic": topic, "review": "Write an awesome article on the topic."},
                 config=config,
                 version="v2"
@@ -397,6 +438,16 @@ async def websocket_harry(websocket: WebSocket):
             else:
                 final_content = "No response generated."
 
+            # Persist to PostgreSQL Chat Message History
+            try:
+                chat_hist = await db_manager.get_chat_history(thread_id)
+                await chat_hist.aadd_messages([
+                    HumanMessage(content=topic),
+                    AIMessage(content=final_content),
+                ])
+            except Exception as e:
+                print(f"WebSocket chat history saving note: {e}")
+
             total_elapsed = round(time.time() - start_time, 2)
             await websocket.send_json({
                 "type": "done",
@@ -417,11 +468,17 @@ async def websocket_harry(websocket: WebSocket):
 
 
 @router.get("/ask/stream")
-async def stream_harry_sse(query: str):
-    """Server-Sent Events streaming endpoint matching WebSocket functionality."""
+async def stream_harry_sse(
+    query: str,
+    current_user: UserResponse = Depends(get_current_active_user),
+):
+    """Server-Sent Events streaming endpoint backed by PostgreSQL checkpointer and auth guard."""
     async def event_generator() -> AsyncGenerator[Dict[str, Any], None]:
         thread_id = str(uuid.uuid4())
-        config = {"configurable": {"thread_id": thread_id}}
+        config = {
+            "configurable": {"thread_id": thread_id},
+            "metadata": {"user_id": current_user.id, "email": current_user.email},
+        }
         start_time = time.time()
 
         yield {
@@ -435,7 +492,8 @@ async def stream_harry_sse(query: str):
         is_generic = False
 
         try:
-            async for event in hp_agent_graph.astream_events(
+            graph = get_hp_agent_graph()
+            async for event in graph.astream_events(
                 input={"topic": query, "review": "Write an awesome article on the topic."},
                 config=config,
                 version="v2"
@@ -484,6 +542,16 @@ async def stream_harry_sse(query: str):
                     res = final_draft
             else:
                 res = "Analysis complete."
+
+            # Persist to PostgreSQL Chat Message History
+            try:
+                chat_hist = await db_manager.get_chat_history(thread_id)
+                await chat_hist.aadd_messages([
+                    HumanMessage(content=query),
+                    AIMessage(content=res),
+                ])
+            except Exception as e:
+                print(f"SSE chat history saving note: {e}")
 
             yield {
                 "event": "done",

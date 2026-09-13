@@ -4,7 +4,10 @@ import math
 import numpy as np
 import pandas as pd
 from typing import List
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from backend.app.api.deps import get_current_active_user
+from backend.app.schemas.auth import UserResponse
+
 try:
     from sklearn.cluster import KMeans, DBSCAN
     from sklearn.metrics import silhouette_score
@@ -47,7 +50,9 @@ _cached_df = generate_cluster_dataset()
 
 
 @router.get("/dataset")
-async def get_raw_dataset():
+async def get_raw_dataset(
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """Returns the unclustered concentric circle dataset points."""
     pts = [Point(x=round(float(row["x"]), 2), y=round(float(row["y"]), 2), cluster=0) for _, row in _cached_df.iterrows()]
     return {
@@ -109,7 +114,10 @@ def _numpy_dbscan(X, eps, min_samples):
 
 
 @router.post("/run", response_model=ClusterResponse)
-async def run_clustering(request: ClusterRequest):
+async def run_clustering(
+    request: ClusterRequest,
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """Executes K-Means or DBSCAN clustering on the 2D benchmark dataset."""
     X = _cached_df[["x", "y"]].values
 
@@ -157,7 +165,9 @@ async def run_clustering(request: ClusterRequest):
 
 
 @router.get("/kdist")
-async def get_kdist_graph():
+async def get_kdist_graph(
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """Computes sorted 2nd nearest neighbor distances for DBSCAN epsilon tuning."""
     X = _cached_df[["x", "y"]].values
     try:

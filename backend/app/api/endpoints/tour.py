@@ -10,11 +10,11 @@ import uuid
 import requests
 from typing import Any, Annotated, List, Dict, Optional, AsyncGenerator
 from typing_extensions import TypedDict
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from sse_starlette.sse import EventSourceResponse
 from pydantic import BaseModel, Field
 from langchain_core.tools import tool, Tool
-from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage
+from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, AIMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import create_react_agent
@@ -23,6 +23,9 @@ from langgraph.checkpoint.memory import InMemorySaver
 from backend.app.config import settings
 from backend.app.core.llm import get_llm
 from backend.app.core.mcp import get_airbnb_tools
+from backend.app.core.database import db_manager
+from backend.app.api.deps import get_current_active_user, validate_token_and_get_user
+from backend.app.schemas.auth import UserResponse
 from backend.app.schemas.tour import TourPlanRequest, TourPlanResponse
 
 router = APIRouter(prefix="/tour", tags=["Tour Agent"])
@@ -355,29 +358,48 @@ def build_tour_graph(checkpointer=None):
     return graph.compile(checkpointer=checkpointer)
 
 
-_tour_checkpointer = InMemorySaver()
-tour_agent_graph = build_tour_graph(_tour_checkpointer)
+# Global graph factory supporting active PostgreSQL checkpointer
+def get_tour_agent_graph():
+    checkpointer = getattr(db_manager, "checkpointer", None) or InMemorySaver()
+    return build_tour_graph(checkpointer=checkpointer)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 🚀 6. Endpoints: REST, SSE, and WebSocket (Matches Streamlit _run_app_async)
 # ─────────────────────────────────────────────────────────────────────────────
 @router.post("/plan", response_model=TourPlanResponse)
-async def generate_tour_plan(request: TourPlanRequest):
-    """Executes the multi-agent travel graph and returns synthesized plan."""
+async def generate_tour_plan(
+    request: TourPlanRequest,
+    current_user: UserResponse = Depends(get_current_active_user),
+):
+    """Executes the multi-agent travel graph with PostgreSQL checkpointer and auth guard."""
     start_time = time.time()
     query = request.query
     location, checkin, checkout, duration = parse_trip_query(query)
     thread_id = str(uuid.uuid4())
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "metadata": {"user_id": current_user.id, "email": current_user.email},
+    }
 
-    final_state = await tour_agent_graph.ainvoke(
+    graph = get_tour_agent_graph()
+    final_state = await graph.ainvoke(
         {"topic": query},
         config=config
     )
 
     summary_md = final_state.get("summary", "")
     elapsed = round(time.time() - start_time, 2)
+
+    # Persist to PostgreSQL Chat Message History
+    try:
+        history = await db_manager.get_chat_history(thread_id)
+        await history.aadd_messages([
+            HumanMessage(content=query),
+            AIMessage(content=summary_md),
+        ])
+    except Exception as e:
+        print(f"Tour chat history saving note: {e}")
 
     return TourPlanResponse(
         query=query,
@@ -400,6 +422,16 @@ async def websocket_tour(websocket: WebSocket):
     - Node progress: weatherAgent, airbnbAgent, tourAgent
     - Live token streaming for tourAgent synthesis
     """
+    token = websocket.query_params.get("token")
+    if token:
+        try:
+            await validate_token_and_get_user(token)
+        except Exception:
+            await websocket.accept()
+            await websocket.send_json({"type": "error", "message": "Authentication required. Invalid or expired token."})
+            await websocket.close()
+            return
+
     await websocket.accept()
     try:
         while True:
@@ -408,6 +440,15 @@ async def websocket_tour(websocket: WebSocket):
             if not query:
                 await websocket.send_json({"type": "error", "message": "Empty query received"})
                 continue
+
+            # Verify authentication token if not supplied at handshake
+            msg_token = data.get("token") or token
+            if not token and msg_token:
+                try:
+                    await validate_token_and_get_user(msg_token)
+                except Exception:
+                    await websocket.send_json({"type": "error", "message": "Authentication required. Invalid or expired token."})
+                    continue
 
             thread_id = data.get("thread_id") or str(uuid.uuid4())
             config = {
@@ -427,7 +468,8 @@ async def websocket_tour(websocket: WebSocket):
 
             full_text = ""
 
-            async for event in tour_agent_graph.astream_events(
+            graph = get_tour_agent_graph()
+            async for event in graph.astream_events(
                 input={"topic": query},
                 config=config,
                 version="v2"
@@ -473,6 +515,16 @@ async def websocket_tour(websocket: WebSocket):
                     if isinstance(output_data, dict) and "summary" in output_data:
                         full_text = output_data["summary"]
 
+            # Persist to PostgreSQL Chat Message History
+            try:
+                chat_hist = await db_manager.get_chat_history(thread_id)
+                await chat_hist.aadd_messages([
+                    HumanMessage(content=query),
+                    AIMessage(content=full_text or "Trip plan generated."),
+                ])
+            except Exception as e:
+                print(f"Tour WebSocket chat history saving note: {e}")
+
             total_elapsed = round(time.time() - start_time, 2)
             await websocket.send_json({
                 "type": "done",
@@ -492,11 +544,17 @@ async def websocket_tour(websocket: WebSocket):
 
 
 @router.get("/stream")
-async def stream_tour_sse(query: str):
-    """Server-Sent Events streaming endpoint matching WebSocket functionality."""
+async def stream_tour_sse(
+    query: str,
+    current_user: UserResponse = Depends(get_current_active_user),
+):
+    """Server-Sent Events streaming endpoint backed by PostgreSQL checkpointer and auth guard."""
     async def event_generator() -> AsyncGenerator[Dict[str, Any], None]:
         thread_id = str(uuid.uuid4())
-        config = {"configurable": {"thread_id": thread_id}}
+        config = {
+            "configurable": {"thread_id": thread_id},
+            "metadata": {"user_id": current_user.id, "email": current_user.email},
+        }
         start_time = time.time()
 
         yield {
@@ -507,7 +565,8 @@ async def stream_tour_sse(query: str):
         full_text = ""
 
         try:
-            async for event in tour_agent_graph.astream_events(
+            graph = get_tour_agent_graph()
+            async for event in graph.astream_events(
                 input={"topic": query},
                 config=config,
                 version="v2"
@@ -544,6 +603,16 @@ async def stream_tour_sse(query: str):
                     output_data = event.get("data", {}).get("output", {})
                     if isinstance(output_data, dict) and "summary" in output_data:
                         full_text = output_data["summary"]
+
+            # Persist to PostgreSQL Chat Message History
+            try:
+                chat_hist = await db_manager.get_chat_history(thread_id)
+                await chat_hist.aadd_messages([
+                    HumanMessage(content=query),
+                    AIMessage(content=full_text or "Trip plan generated."),
+                ])
+            except Exception as e:
+                print(f"Tour SSE chat history saving note: {e}")
 
             yield {
                 "event": "done",

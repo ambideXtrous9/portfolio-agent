@@ -5,10 +5,12 @@ import os
 import time
 import uuid
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 
 from backend.app.config import settings
+from backend.app.api.deps import get_current_active_user
+from backend.app.schemas.auth import UserResponse
 try:
     from backend.app.voice_agent.telemetry import is_langfuse_configured
     from backend.app.voice_agent.tools import agent_tools
@@ -91,12 +93,13 @@ async def get_voice_token(
     room: Optional[str] = Query(None, description="Target room name"),
     name: Optional[str] = Query(None, description="Participant display name"),
     identity: Optional[str] = Query(None, description="Unique caller identifier"),
+    current_user: UserResponse = Depends(get_current_active_user),
 ):
     """Generate and return a LiveKit WebRTC access token via GET request."""
     url = settings.LIVEKIT_URL or os.getenv("LIVEKIT_URL", "wss://my-voice-agent-6wug4ta7.livekit.cloud")
     room_name = (room or "").strip() or f"voice-tour-{uuid.uuid4().hex[:6]}"
-    participant_name = (name or "").strip() or "Traveler"
-    caller_identity = (identity or "").strip() or f"caller-{uuid.uuid4().hex[:4]}"
+    participant_name = (name or "").strip() or (current_user.full_name or "Traveler")
+    caller_identity = (identity or "").strip() or f"user-{current_user.id[:8]}"
 
     jwt_token = generate_livekit_token(room_name, participant_name, caller_identity)
     logger.info("Issued LiveKit token for %s in room %s", caller_identity, room_name)
@@ -111,17 +114,23 @@ async def get_voice_token(
 
 
 @router.post("/token", response_model=TokenResponse)
-async def post_voice_token(payload: TokenRequest):
+async def post_voice_token(
+    payload: TokenRequest,
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """Generate and return a LiveKit WebRTC access token via POST request."""
     return await get_voice_token(
         room=payload.room,
         name=payload.name,
         identity=payload.identity,
+        current_user=current_user,
     )
 
 
 @router.get("/status")
-async def get_voice_status():
+async def get_voice_status(
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """Health & configuration status of the LiveKit voice integration."""
     api_key = settings.LIVEKIT_API_KEY or os.getenv("LIVEKIT_API_KEY", "")
     api_secret = settings.LIVEKIT_API_SECRET or os.getenv("LIVEKIT_API_SECRET", "")

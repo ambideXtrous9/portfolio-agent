@@ -864,26 +864,65 @@
         <!-- 🔐 Tab 9: Login & Signup (Matches login.py)                        -->
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-login">
-          <h2>Login</h2>
-          <div style="background-color: #FFF3CD; color: #856404; border: 1px solid #FFEEBA; border-radius: var(--st-radius); padding: 0.75rem 1rem; margin: 1rem 0; font-size: 0.95rem;">
-            Please login to access protected AI features. Use Temporary Account: <strong>[username: abc, password: 123]</strong>.
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--st-border-card); padding-bottom: 0.8rem; margin-bottom: 1.5rem;">
+            <div>
+              <h2 style="margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">🔐 User Authentication & Access Control</h2>
+              <div style="font-size: 0.88rem; color: var(--st-text-muted);">PostgreSQL JWT Bearer Authentication & Role-Based Access Control (RBAC)</div>
+            </div>
+            <div style="display: flex; gap: 8px; background: rgba(0,0,0,0.06); padding: 4px; border-radius: var(--st-radius);">
+              <button type="button" id="tab-btn-show-login" class="st-btn st-btn-primary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Sign In</button>
+              <button type="button" id="tab-btn-show-signup" class="st-btn" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Register (Sign Up)</button>
+            </div>
           </div>
 
-          <form id="auth-login-form" style="max-width: 480px; margin-top: 1.5rem;">
-            <div style="margin-bottom: 1.25rem;">
-              <label style="display: block; font-weight: 600; margin-bottom: 6px;">Username</label>
-              <input type="text" id="auth-username" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.55rem 0.8rem;" placeholder="e.g. abc" value="abc" required />
-            </div>
-            <div style="margin-bottom: 1.5rem;">
-              <label style="display: block; font-weight: 600; margin-bottom: 6px;">Password</label>
-              <input type="password" id="auth-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.55rem 0.8rem;" placeholder="e.g. 123" value="123" required />
-            </div>
-            <div style="display: flex; gap: 12px; align-items: center;">
-              <button type="submit" class="st-btn st-btn-primary" style="padding: 0.55rem 1.5rem; font-weight: 600;">Submit Login</button>
-              <button type="button" class="st-btn" id="btn-toggle-signup" style="padding: 0.55rem 1rem;">Create Account (Signup)</button>
-            </div>
-            <div id="auth-msg-feedback" style="margin-top: 1rem;"></div>
-          </form>
+          <div style="background-color: #FFF3CD; color: #856404; border: 1px solid #FFEEBA; border-radius: var(--st-radius); padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.92rem; line-height: 1.5;">
+            🛡️ <strong>Auth-Guarded Architecture:</strong> All AI agents (Harry Potter Lore Scholar, Tour Guide Agent, Stock Screener, Vision AI Studio, Cluster Sandbox, Voice Agent) require a valid JWT Bearer token.<br />
+            ⚡ <strong>Instant Demo Access:</strong> Use pre-seeded account: <strong>[Username: <code>abc</code> or <code>abc@example.com</code>, Password: <code>123</code>]</strong> or create your own account below.
+          </div>
+
+          <!-- Login Form Container -->
+          <div id="auth-login-container" style="max-width: 480px;">
+            <h3 style="margin-top: 0; font-size: 1.2rem; margin-bottom: 1rem;">Sign In to your Account</h3>
+            <form id="auth-login-form">
+              <div style="margin-bottom: 1.25rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px;">Email or Username</label>
+                <input type="text" id="auth-username" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="e.g. abc or user@example.com" value="abc" required />
+              </div>
+              <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px;">Password</label>
+                <input type="password" id="auth-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="e.g. 123" value="123" required />
+              </div>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <button type="submit" id="auth-login-submit-btn" class="st-btn st-btn-primary" style="padding: 0.6rem 1.8rem; font-weight: 600;">Sign In</button>
+                <button type="button" class="st-btn" id="btn-switch-to-signup" style="padding: 0.6rem 1rem;">Create Account</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Signup Form Container -->
+          <div id="auth-signup-container" style="max-width: 480px; display: none;">
+            <h3 style="margin-top: 0; font-size: 1.2rem; margin-bottom: 1rem;">Create a New Account</h3>
+            <form id="auth-signup-form">
+              <div style="margin-bottom: 1.25rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px;">Full Name</label>
+                <input type="text" id="signup-fullname" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="e.g. Harry Potter" required />
+              </div>
+              <div style="margin-bottom: 1.25rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px;">Email Address</label>
+                <input type="email" id="signup-email" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="e.g. scholar@hogwarts.edu" required />
+              </div>
+              <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px;">Password</label>
+                <input type="password" id="signup-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="At least 6 characters" required />
+              </div>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <button type="submit" id="auth-signup-submit-btn" class="st-btn st-btn-primary" style="padding: 0.6rem 1.8rem; font-weight: 600;">Register Account</button>
+                <button type="button" class="st-btn" id="btn-switch-to-login" style="padding: 0.6rem 1rem;">Already have an account? Sign In</button>
+              </div>
+            </form>
+          </div>
+
+          <div id="auth-msg-feedback" style="margin-top: 1.25rem; max-width: 480px;"></div>
         </section>
 
 
