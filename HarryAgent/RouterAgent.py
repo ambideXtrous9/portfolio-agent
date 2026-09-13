@@ -2,16 +2,17 @@ from langchain_core.output_parsers.pydantic import PydanticOutputParser
 from pydantic import ValidationError
 from pydantic import BaseModel, Field
 from typing import Literal
-from langchain_groq import ChatGroq
-from langchain_ollama import ChatOllama
 import streamlit as st
 from dotenv import load_dotenv
 import os 
 
 load_dotenv()
 
-if "GROQ_API_KEY" in st.secrets:
-    os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+try:
+    if "GROQ_API_KEY" in st.secrets:
+        os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+except Exception:
+    pass
 
 temperature = 0
 

@@ -4,13 +4,8 @@ from langgraph.prebuilt import create_react_agent
 from typing import TypedDict, Optional, Dict
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_core.messages import AIMessage, SystemMessage, HumanMessage
-from langchain_qdrant import QdrantVectorStore
-from qdrant_client import QdrantClient
-from langchain_openai import OpenAIEmbeddings
 import time
 import streamlit as st
-from langchain_groq import ChatGroq
-from langchain_ollama import ChatOllama
 from dotenv import load_dotenv
 import os
 from HarryAgent.RouterAgent import classify_node
@@ -21,8 +16,11 @@ load_dotenv()
 ddg_search = DuckDuckGoSearchRun()
 
 
-if "GROQ_API_KEY" in st.secrets:
-    os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+try:
+    if "GROQ_API_KEY" in st.secrets:
+        os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+except Exception:
+    pass
 
 temperature = 0.7
 
@@ -55,67 +53,26 @@ class AgentState(TypedDict):
 
 
 
-from langchain_core.tools import tool
+from mcp_utils import get_pinecone_tools
 
-# --- OpenAI Cloud Embeddings ---
-openai_key = st.secrets.get("OPENAI_API_KEY") or st.secrets.get("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
-base_url = "https://openrouter.ai/api/v1" if ("OPENAI_API_KEY" not in st.secrets and "OPENROUTER_API_KEY" in st.secrets) else None
-
-if base_url:
-    embeddings = OpenAIEmbeddings(openai_api_key=openai_key, openai_api_base=base_url, model="openai/text-embedding-3-small")
-else:
-    embeddings = OpenAIEmbeddings(openai_api_key=openai_key, model="text-embedding-3-small")
-
-# --- Load Qdrant Vector Store ---
-qdrant_url = st.secrets.get("QDRANT_URL") or st.secrets.get("QDRANT_ENDPOINT") or os.getenv("QDRANT_URL") or os.getenv("QDRANT_ENDPOINT")
-qdrant_api_key = st.secrets.get("QDRANT_API_KEY") or os.getenv("QDRANT_API_KEY")
-
-qdrant_client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key, timeout=60)
-
-vectordb_vectr = QdrantVectorStore(
-    client=qdrant_client,
-    collection_name="HPVdb_openai",
-    embedding=embeddings
-)
-
-# --- Cohere Cloud Reranker ---
-cohere_api_key = st.secrets.get("COHERE_API_KEY") or os.getenv("COHERE_API_KEY")
-cohere_reranker = None
-if cohere_api_key:
-    try:
-        from langchain_cohere import CohereRerank
-        cohere_reranker = CohereRerank(cohere_api_key=cohere_api_key, model="rerank-v3.5")
-    except Exception as ex:
-        print(f"Cohere Reranker initialization note: {ex}")
-
-@tool
-# --- Retrieval + Reranking ---
-def retrieve_context(query, n_docs=8):
-    """Retrieve and rerank documents from Qdrant Cloud Vector Store using OpenAI Embeddings and Cohere Reranker API"""
-    if cohere_reranker:
-        try:
-            retrieved_docs = vectordb_vectr.similarity_search(query, k=15)
-            reranked_docs = cohere_reranker.compress_documents(documents=retrieved_docs, query=query)
-            return [doc.page_content for doc in reranked_docs[:n_docs]]
-        except Exception as ex:
-            print(f"Cohere Rerank API note: {ex}")
-
-    retrieved_docs = vectordb_vectr.similarity_search(query, k=n_docs)
-    return [doc.page_content for doc in retrieved_docs]
-
-
-
-# ---------------------------
-# ---------------------------
-# 🧑‍🔬 Researcher Agent
-# ---------------------------
-def researcher_node(state: AgentState) -> AgentState:
+async def researcher_node(state: AgentState) -> AgentState:
     query = state["topic"]
     try:
-        docs = retrieve_context.invoke({"query": query})
-        research_text = "\n\n".join(docs)
+        tools = await get_pinecone_tools()
+        if tools:
+            prompt = (
+                "You are an expert Harry Potter Lore Retrieval Agent connected to Pinecone via MCP tools.\n"
+                "Use the Pinecone MCP tools (e.g. describe-index-stats, search-docs, rerank-documents) "
+                "to research canonical facts for the query.\n"
+                "Provide a clear, detailed summary of the findings."
+            )
+            agent = create_react_agent(llm, tools, prompt=prompt)
+            response = await agent.ainvoke({"messages": [{"role": "user", "content": query}]})
+            research_text = response["messages"][-1].content
+        else:
+            research_text = f"Canonical context for: {query}"
     except Exception as e:
-        print(f"⚠️ Researcher node retrieval note: {e}")
+        print(f"⚠️ Researcher node note: {e}")
         research_text = f"Context for topic: {query}"
     return {**state, "research": research_text}
 

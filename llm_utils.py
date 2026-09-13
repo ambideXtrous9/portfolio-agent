@@ -3,6 +3,9 @@ import os
 import urllib.request
 
 import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def _probe(host: str, token: str | None = None) -> dict | None:
@@ -22,14 +25,17 @@ LOCAL_MODEL_PRIORITY = ["deepseek-v4-flash:cloud", "gpt-oss:20b-cloud", "glm-4.6
 OLLAMA_CLOUD_HOST = "https://ollama.com"
 CLOUD_MODEL_PRIORITY = ["deepseek-v4-flash", "gpt-oss:20b", "gpt-oss:120b", "glm-5.1"]
 
-GROQ_MODEL = "llama-3.1-8b-instant"
+GROQ_MODEL = os.getenv("DEFAULT_MODEL", "openai/gpt-oss-120b")
 OPENROUTER_MODEL = "qwen/qwen3-4b:free"
 
 
 def _build_chain(models: list[str], temperature: float, groq, *, base_url: str | None = None,
                  client_kwargs: dict | None = None):
     """Build an Ollama chain over `models` with Groq as the final fallback."""
-    from langchain_ollama import ChatOllama
+    try:
+        from langchain_ollama import ChatOllama
+    except ImportError:
+        return groq
 
     chain = ChatOllama(model=models[0], base_url=base_url, temperature=temperature,
                        client_kwargs=client_kwargs or {}, validate_model_on_init=False)
@@ -44,6 +50,15 @@ def _build_chain(models: list[str], temperature: float, groq, *, base_url: str |
 def _pick_models(status: dict, priority: list[str]) -> list[str]:
     available = {m.get("name") for m in status.get("models", [])}
     return [m for m in priority if m in available]
+
+
+def _get_secret_or_env(key: str, default: str | None = None) -> str | None:
+    try:
+        if hasattr(st, "secrets") and key in st.secrets:
+            return st.secrets[key]
+    except Exception:
+        pass
+    return os.getenv(key, default)
 
 
 def build_llm(temperature: float = 0.1, tags: list[str] | None = None, seed: int = 42):
@@ -61,14 +76,15 @@ def build_llm(temperature: float = 0.1, tags: list[str] | None = None, seed: int
     from langchain_groq import ChatGroq
     from langchain_openai import ChatOpenAI
 
-    groq = ChatGroq(model_name=GROQ_MODEL, temperature=temperature, seed=seed, tags=tags)
+    groq_key = _get_secret_or_env("GROQ_API_KEY")
+    groq = ChatGroq(model_name=GROQ_MODEL, temperature=temperature, seed=seed, tags=tags, api_key=groq_key)
 
     local_status = _probe(LOCAL_OLLAMA_HOST)
     local_models = _pick_models(local_status, LOCAL_MODEL_PRIORITY) if local_status else []
     if local_models:
         return _build_chain(local_models, temperature, groq)
 
-    cloud_key = st.secrets.get("OLLAMA_API_KEY") or os.getenv("OLLAMA_API_KEY")
+    cloud_key = _get_secret_or_env("OLLAMA_API_KEY")
     if cloud_key:
         cloud_status = _probe(OLLAMA_CLOUD_HOST, cloud_key)
         cloud_models = _pick_models(cloud_status, CLOUD_MODEL_PRIORITY) if cloud_status else []
@@ -79,7 +95,7 @@ def build_llm(temperature: float = 0.1, tags: list[str] | None = None, seed: int
                 client_kwargs={"headers": {"Authorization": f"Bearer {cloud_key}"}},
             )
 
-    openrouter_key = st.secrets.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+    openrouter_key = _get_secret_or_env("OPENROUTER_API_KEY")
     if openrouter_key:
         openrouter = ChatOpenAI(
             model=OPENROUTER_MODEL,

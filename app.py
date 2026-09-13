@@ -81,13 +81,19 @@ def _log(msg):
 _log("🚀 Starting ambideXtrous AI Portfolio...")
 _log("⏳ Loading core modules (Streamlit, LangChain, LangGraph)...")
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import streamlit as st
 
 # Sync all Streamlit secrets to os.environ for unified application-wide access
-if hasattr(st, "secrets"):
-    for k, v in st.secrets.items():
-        if isinstance(v, str):
-            os.environ[k] = v
+try:
+    if hasattr(st, "secrets"):
+        for k, v in st.secrets.items():
+            if isinstance(v, str):
+                os.environ[k] = v
+except Exception:
+    pass
 
 import pandas as pd
 import numpy as np
@@ -99,10 +105,19 @@ _log("⏳ Loading Langfuse tracing...")
 
 from langfuse import Langfuse, get_client
 
-# Debug: show what secrets are actually loaded
-_pk = st.secrets.get("LANGFUSE_PUBLIC_KEY")
-_sk = st.secrets.get("LANGFUSE_SECRET_KEY")
-_log(f"🔑 Langfuse PUBLIC_KEY found: {'✅ yes' if _pk else '❌ no (value: ' + str(_pk)[:20] + ')'}")
+# Debug: show what secrets/env are actually loaded
+def _get_secret_or_env(key: str, default: str | None = None) -> str | None:
+    try:
+        if hasattr(st, "secrets") and key in st.secrets:
+            return st.secrets[key]
+    except Exception:
+        pass
+    return os.getenv(key, default)
+
+_pk = _get_secret_or_env("LANGFUSE_PUBLIC_KEY")
+_sk = _get_secret_or_env("LANGFUSE_SECRET_KEY")
+_host = _get_secret_or_env("LANGFUSE_HOST", "https://us.cloud.langfuse.com")
+_log(f"🔑 Langfuse PUBLIC_KEY found: {'✅ yes' if _pk else '❌ no'}")
 _log(f"🔑 Langfuse SECRET_KEY found: {'✅ yes' if _sk else '❌ no'}")
 
 if _pk and _sk:
@@ -110,7 +125,7 @@ if _pk and _sk:
         Langfuse(
             public_key=_pk,
             secret_key=_sk,
-            host="https://us.cloud.langfuse.com"
+            host=_host
         )
         langfuse = get_client()
         _log("✅ Langfuse client initialized (auth deferred to background)")
@@ -118,7 +133,7 @@ if _pk and _sk:
         _log(f"⚠️ Langfuse connection failed: {type(e).__name__}. Continuing without tracing.")
         langfuse = None
 else:
-    _log("⚠️ Langfuse keys missing from .streamlit/secrets.toml. Tracing disabled.")
+    _log("⚠️ Langfuse keys missing from .streamlit/secrets.toml or .env. Tracing disabled.")
     langfuse = None
 
 from sidebar import SideBar

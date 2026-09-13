@@ -101,7 +101,7 @@ def ChatBot():
                         if node == "classify":
                             current_label = "🔍 Router Agent: Analyzing & classifying query..."
                         elif node == "researcher":
-                            current_label = "📚 Researcher Agent: Searching Qdrant Cloud vector database..."
+                            current_label = "📚 Researcher Agent: Searching Pinecone vector database via MCP..."
                         elif node == "mythologist":
                             current_label = "🕉️ Mythology Agent: Analyzing Indian Mythology & HP parallels..."
                         elif node == "writer":

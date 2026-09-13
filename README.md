@@ -71,15 +71,14 @@ streamlit run app.py -- "?page=stockscreener"
 
 ### 🗺️ Airbnb Tour Agent (MCP + Weather)
 - LangGraph composition: parallel weather agent + Airbnb MCP agent → tour synthesis
-- MCP stdio to `@openbnb/mcp-server-airbnb` via `npx`
-- Weather tool formats a concise forecast report
+- MCP stdio to `@openbnb/mcp-server-airbnb` via system `npx`
+- Weather tool with WeatherAPI and automated Open-Meteo fallback
 - Streams tour synthesis updates to the UI
-- Uses system Node 20 or bundled `nodev20/` for reliable MCP execution
 
-### 📖 HarryAgent (LLM multi-agent, RAG + critique)
+### 📖 HarryAgent (LLM multi-agent, Pinecone MCP RAG + critique)
 - Thematic blend: Harry Potter × Indian Mythology
 - LangGraph workflow: classify → researcher → mythologist → writer → critic (with loop)
-- Retrieval via FAISS index in `HPVdb/` with CrossEncoder reranking
+- Retrieval via Pinecone vector index (`hpvdb-openai`) and `@pinecone-database/mcp` with Pinecone Neural Reranking (`pinecone-rerank-v0`)
 - Checkpointing in SQLite; observability via Langfuse
 
 ### 🧠 Image Classifier
