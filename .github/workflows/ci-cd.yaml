@@ -17,6 +17,14 @@ on:
         options:
           - production
           - preview
+      chat_id:
+        description: 'Telegram Chat ID to notify (optional)'
+        required: false
+        default: ''
+      trigger_source:
+        description: 'Trigger Source (optional)'
+        required: false
+        default: 'Manual'
 
 permissions:
   contents: read
@@ -26,6 +34,10 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ inputs.chat_id || secrets.TELEGRAM_CHAT_ID }}
 
 jobs:
   # ============================================================================
@@ -42,6 +54,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Telegram Notification (Pipeline Started)
+        if: always()
+        run: python3 backend/scripts/telegram_notify.py --event pipeline_start
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          ACTOR: ${{ github.actor }}
+          EVENT_NAME: ${{ github.event_name }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
 
       - name: Validate JSON Configuration Files
         run: |
@@ -62,6 +85,14 @@ jobs:
           test -f frontend/css/style.css || { echo "❌ frontend/css/style.css missing"; exit 1; }
           test -f frontend/js/app.js || { echo "❌ frontend/js/app.js missing"; exit 1; }
           echo "✅ Frontend static directory structure verified"
+
+      - name: Telegram Notification (Validation Passed)
+        if: success()
+        run: python3 backend/scripts/telegram_notify.py --event validation_pass
+
+      - name: Telegram Notification (Validation Failed)
+        if: failure()
+        run: python3 backend/scripts/telegram_notify.py --event validation_fail
 
   # ============================================================================
   # 2. CD Preview: Deploy Preview on Pull Requests
@@ -121,6 +152,15 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Set up Python 3.12 (For Telegram Alerts)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Telegram Notification (Deployment Started)
+        if: always()
+        run: python3 backend/scripts/telegram_notify.py --event deploy_start
+
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -148,3 +188,11 @@ jobs:
           echo "**Alias URL:** [https://ambidextrous-portfolio.vercel.app](https://ambidextrous-portfolio.vercel.app)" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment Alias:** $DEPLOYMENT_URL" >> $GITHUB_STEP_SUMMARY
           echo "**Commit SHA:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Telegram Notification (Deployment Succeeded)
+        if: success()
+        run: python3 backend/scripts/telegram_notify.py --event deploy_success --url "${{ steps.deploy.outputs.url }}"
+
+      - name: Telegram Notification (Deployment Failed)
+        if: failure()
+        run: python3 backend/scripts/telegram_notify.py --event deploy_fail

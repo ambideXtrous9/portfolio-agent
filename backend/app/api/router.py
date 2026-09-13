@@ -10,6 +10,7 @@ from backend.app.api.endpoints import (
     cluster,
     health,
     voice,
+    telegram,
 )
 
 api_router = APIRouter()
@@ -22,3 +23,4 @@ api_router.include_router(stock.router)
 api_router.include_router(vision.router)
 api_router.include_router(cluster.router)
 api_router.include_router(health.router)
+api_router.include_router(telegram.router)

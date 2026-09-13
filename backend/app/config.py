@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     LIVEKIT_API_KEY: str = os.getenv("LIVEKIT_API_KEY", "")
     LIVEKIT_API_SECRET: str = os.getenv("LIVEKIT_API_SECRET", "")
     
+    # Telegram Bot & CI/CD Automation
+    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
+    GITHUB_DISPATCH_TOKEN: str = os.getenv("GITHUB_DISPATCH_TOKEN", "")
+    GITHUB_REPO: str = os.getenv("GITHUB_REPO", "ambideXtrous9/portfolio-agent")
+    
     # CORS
     CORS_ORIGINS: List[str] = ["*"]
 
