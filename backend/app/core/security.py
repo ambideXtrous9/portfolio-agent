@@ -37,31 +37,43 @@ from backend.app.config import settings
 def hash_password(password: str) -> str:
     """Hashes a plaintext password using Argon2id or salted PBKDF2-HMAC-SHA256."""
     if USE_PWDLIB and password_hasher:
-        return password_hasher.hash(password)
+        try:
+            return password_hasher.hash(password)
+        except Exception:
+            pass
 
     # Robust stdlib fallback
     salt = secrets.token_hex(16)
     key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000)
-    return f"pbkdf2:sha256:100000${salt}${key.hex()}"
+    return f"pbkdf2$sha256$100000${salt}${key.hex()}"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifies a plaintext password against Argon2id or PBKDF2 hash."""
-    if not hashed_password:
+    if not hashed_password or not plain_password:
         return False
 
-    if USE_PWDLIB and password_hasher and not hashed_password.startswith("pbkdf2:"):
+    if USE_PWDLIB and password_hasher and not hashed_password.startswith("pbkdf2"):
         try:
             return password_hasher.verify(plain_password, hashed_password)
         except Exception as e:
             logger.debug(f"Argon2 verification failed: {e}")
 
-    # Check for PBKDF2 format fallback
-    if hashed_password.startswith("pbkdf2:"):
+    # Check for PBKDF2 format fallback (handles both pbkdf2$algo$iters$salt$hash and pbkdf2:algo:iters$salt$hash)
+    if hashed_password.startswith("pbkdf2"):
         try:
-            _, algo, iters, salt, hash_val = hashed_password.split("$")
-            computed = hashlib.pbkdf2_hmac("sha256", plain_password.encode("utf-8"), salt.encode("utf-8"), int(iters))
-            return secrets.compare_digest(computed.hex(), hash_val)
+            parts = hashed_password.split("$")
+            if len(parts) == 5:
+                _, algo, iters, salt, hash_val = parts
+                computed = hashlib.pbkdf2_hmac(algo, plain_password.encode("utf-8"), salt.encode("utf-8"), int(iters))
+                return secrets.compare_digest(computed.hex(), hash_val)
+            elif len(parts) == 3:
+                header, salt, hash_val = parts
+                subparts = header.split(":")
+                algo = subparts[1] if len(subparts) > 1 else "sha256"
+                iters = int(subparts[2]) if len(subparts) > 2 else 100000
+                computed = hashlib.pbkdf2_hmac(algo, plain_password.encode("utf-8"), salt.encode("utf-8"), iters)
+                return secrets.compare_digest(computed.hex(), hash_val)
         except Exception as e:
             logger.warning(f"PBKDF2 verification note: {e}")
             return False
