@@ -1,8 +1,8 @@
-# ── Streamlit & UI ───────────────────────────────────────────────────
-streamlit==1.60.0
-st_social_media_links==0.1.5
-streamlit-authenticator==0.4.2
-extra-streamlit-components==0.1.81
+# ── FastAPI Backend ───────────────────────────────────────────────────
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.18
+sse-starlette>=2.2.0
 
 # ── Data Science ─────────────────────────────────────────────────────
 pandas==3.0.5

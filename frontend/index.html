@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ambideXtrous · AI Portfolio & Multi-Agent Intelligence</title>
+  <link rel="icon" href="assets/images/boom.png" type="image/png">
+  <link rel="stylesheet" href="css/style.css">
+  
+  <!-- Markdown & Interactive Charting CDNs -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <div class="brand-title">ambideXtrous</div>
+          <div class="brand-subtitle">AI & Multi-Agent Portfolio</div>
+        </div>
+      </div>
+
+      <div class="nav-section-title">Navigation</div>
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <a class="nav-link active" data-tab="tab-portfolio">
+            <span class="nav-icon">⚡</span>
+            <span>Profile & Bio</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-tab="tab-tour">
+            <span class="nav-icon">🏡</span>
+            <span>Tour Agent</span>
+            <span class="nav-badge">MCP</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-tab="tab-harry">
+            <span class="nav-icon">🪄</span>
+            <span>Harry Potter Lore</span>
+            <span class="nav-badge">Pinecone</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-tab="tab-stock">
+            <span class="nav-icon">📈</span>
+            <span>Stock Screener</span>
+            <span class="nav-badge">Quant</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-tab="tab-vision">
+            <span class="nav-icon">👁️</span>
+            <span>Vision AI Studio</span>
+            <span class="nav-badge">YOLO</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-tab="tab-cluster">
+            <span class="nav-icon">🐙</span>
+            <span>Cluster Sandbox</span>
+            <span class="nav-badge">ML</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-tab="tab-social">
+            <span class="nav-icon">🌐</span>
+            <span>Social & Links</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          <span id="footer-status-text">Connecting to FastAPI...</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <main class="main-wrapper">
+      <header class="top-bar">
+        <div class="top-title" id="top-tab-title">
+          ⚡ Developer Profile & Bio
+        </div>
+        <div class="top-actions">
+          <span class="badge-tag" id="active-model-badge">Model: Loading...</span>
+          <span class="badge-tag" id="mcp-status-badge">MCP: Connecting...</span>
+        </div>
+      </header>
+
+      <div class="content-canvas">
+        
+        <!-- ── Tab 1: Profile & Bio ──────────────────────────────────── -->
+        <section class="tab-view active" id="tab-portfolio">
+          <div class="card" style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+            <img src="assets/images/thor.gif" alt="Thor Animation" style="width: 140px; height: 140px; border-radius: var(--radius-lg); border: 2px solid var(--primary);" />
+            <div style="flex: 1; min-width: 280px;">
+              <h1 style="font-size: 28px; font-weight: 800; margin-bottom: 4px;">Sushovan Saha</h1>
+              <p style="color: var(--primary); font-weight: 600; font-size: 15px; margin-bottom: 8px;">
+                Founding AI Engineer · M.Tech in Data Science, IIT Guwahati
+              </p>
+              <p style="color: var(--text-secondary); font-size: 14px;" id="profile-bio">
+                Passionate Machine Learning practitioner specializing in Agentic Workflows, LLM Systems, Computer Vision, and production-grade MLOps. Kaggle Notebooks Expert.
+              </p>
+            </div>
+          </div>
+
+          <!-- GitHub Stats Row -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div class="card" style="margin-bottom: 0; text-align: center;">
+              <div style="font-size: 28px; font-weight: 800; color: var(--primary);" id="gh-repos">—</div>
+              <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Public Repositories</div>
+            </div>
+            <div class="card" style="margin-bottom: 0; text-align: center;">
+              <div style="font-size: 28px; font-weight: 800; color: var(--accent-emerald);" id="gh-followers">—</div>
+              <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">GitHub Followers</div>
+            </div>
+            <div class="card" style="margin-bottom: 0; text-align: center;">
+              <div style="font-size: 28px; font-weight: 800; color: var(--accent-amber);" id="gh-following">—</div>
+              <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Following</div>
+            </div>
+          </div>
+
+          <!-- Skills Grid -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">🛠️ Technical Arsenal & Skills</h2>
+            </div>
+            <div id="profile-skills-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;">
+              <!-- Dynamic skills loaded from API -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Tab 2: Tour Agent (Airbnb MCP) ────────────────────────── -->
+        <section class="tab-view" id="tab-tour">
+          <div class="chat-container">
+            <div class="stepper-banner" id="tour-status-banner" style="display: none;">
+              <span class="spinner"></span>
+              <span id="tour-status-msg">Processing request...</span>
+            </div>
+
+            <div class="chip-group" id="tour-chips">
+              <!-- Travel suggestions rendered dynamically -->
+            </div>
+
+            <div class="chat-history" id="tour-chat-history">
+              <div class="chat-bubble assistant">
+                <div class="chat-avatar">🏡</div>
+                <div class="chat-content markdown-body">
+                  <h3>Welcome to the MCP-Powered Travel Agent!</h3>
+                  <p>I connect directly to the <strong>Airbnb MCP Server</strong> (<code>@openbnb/mcp-server-airbnb</code>) and real-time meteorology APIs to synthesize comprehensive, verified itineraries with live stay rates and weather forecasts.</p>
+                  <p>Pick a query suggestion above or describe your dream trip!</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="chat-input-bar">
+              <input type="text" id="tour-input" placeholder="Ask about your trip (e.g., 3 days trip to Munnar from tomorrow)..." />
+              <button class="btn btn-primary" id="tour-send-btn">Send 🚀</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Tab 3: Harry Potter Lore (Pinecone MCP) ──────────────── -->
+        <section class="tab-view" id="tab-harry">
+          <div class="chat-container">
+            <div class="stepper-banner" id="harry-status-banner" style="display: none;">
+              <span class="spinner"></span>
+              <span id="harry-status-msg">Processing lore query...</span>
+            </div>
+
+            <div class="chip-group" id="harry-chips">
+              <!-- Lore suggestions rendered dynamically -->
+            </div>
+
+            <div class="chat-history" id="harry-chat-history">
+              <div class="chat-bubble assistant">
+                <div class="chat-avatar">🪄</div>
+                <div class="chat-content markdown-body">
+                  <h3>Welcome to the Harry Potter Lore Scholar!</h3>
+                  <p>This agent searches the canonical 7-book Harry Potter vector database (<code>hpvdb-openai</code>) using <strong>Pinecone MCP</strong> (<code>@pinecone-database/mcp</code>) and synthesizes philosophical parallels with <strong>Indian Ancient Mythology</strong> (Ramayana, Mahabharata, Puranas, Dharma).</p>
+                  <p>Select an inquiry above or ask any question about wizarding lore!</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="chat-input-bar">
+              <input type="text" id="harry-input" placeholder="Ask about Harry Potter lore, wands, or mythological parallels..." />
+              <button class="btn btn-primary" id="harry-send-btn">Ask 🔮</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Tab 4: Stock Screener ─────────────────────────────────── -->
+        <section class="tab-view" id="tab-stock">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">📈 Range Breakout & Volume Expansion Scanner</h2>
+              <div id="stock-scan-summary" style="font-size: 13px; color: var(--text-muted);">
+                Ready to scan Indian equities (Nifty 500 & Microcap 250).
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 20px;">
+              <div style="flex: 1; min-width: 180px;">
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Universe</label>
+                <select class="select-input" id="stock-universe-select">
+                  <option value="nifty500">Nifty 500</option>
+                  <option value="microcap250">Nifty Microcap 250</option>
+                </select>
+              </div>
+
+              <div style="flex: 1; min-width: 180px;">
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Min Volume Ratio (vs 20-DMA)</label>
+                <input type="number" class="input-text" id="stock-min-vol" value="1.5" step="0.1" min="1.0" max="10.0" />
+              </div>
+
+              <div style="flex: 1; min-width: 180px;">
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Filter Results</label>
+                <input type="text" class="input-text" id="stock-search-filter" placeholder="Search symbol or company..." />
+              </div>
+
+              <div style="margin-top: 18px;">
+                <button class="btn btn-primary" id="stock-scan-btn">🚀 Run Breakout Scanner</button>
+              </div>
+            </div>
+
+            <div class="data-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Symbol</th>
+                    <th>Company</th>
+                    <th>LTP</th>
+                    <th>1D Change</th>
+                    <th>Volume</th>
+                    <th>Vol Expansion</th>
+                    <th>RSI (14)</th>
+                    <th>Signal</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="stock-table-body">
+                  <tr>
+                    <td colspan="9" style="text-align: center; padding: 24px; color: var(--text-muted);">
+                      Click "Run Breakout Scanner" to fetch real-time volume expansion data.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Tab 5: Vision AI Studio ───────────────────────────────── -->
+        <section class="tab-view" id="tab-vision">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">👁️ Vision AI Studio</h2>
+              <div style="display: flex; gap: 16px;">
+                <label style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                  <input type="radio" name="vision-mode" value="classifier" checked />
+                  <span>PyTorch Brand Classifier</span>
+                </label>
+                <label style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                  <input type="radio" name="vision-mode" value="yolo" />
+                  <span>YOLO Object Detection</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="dropzone" id="vision-dropzone">
+              <div class="dropzone-icon">📁</div>
+              <div style="font-weight: 600; margin-bottom: 4px;">Drag & drop image here or click to browse</div>
+              <div style="font-size: 12px; color: var(--text-muted);">Supports brand logos, product photos (JPG, PNG, WebP)</div>
+              <input type="file" id="vision-file-input" style="display: none;" accept="image/*" />
+            </div>
+
+            <div class="image-preview-box" id="vision-preview-box" style="display: none;">
+              <div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">Uploaded Image:</div>
+                <img id="vision-original-preview" class="preview-img" alt="Uploaded Preview" />
+                <div style="margin-top: 10px;">
+                  <button class="btn btn-primary" id="vision-process-btn">🚀 Run Vision Inference</button>
+                </div>
+              </div>
+              <div style="flex: 1;" id="vision-result-panel">
+                <!-- Dynamic inference results rendered here -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Tab 6: Cluster Sandbox ────────────────────────────────── -->
+        <section class="tab-view" id="tab-cluster">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">🐙 Interactive Clustering Sandbox</h2>
+              <div style="display: flex; gap: 16px;">
+                <label style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                  <input type="radio" name="cluster-algo" value="kmeans" checked />
+                  <span>K-Means</span>
+                </label>
+                <label style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                  <input type="radio" name="cluster-algo" value="dbscan" />
+                  <span>DBSCAN</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Parameters Grid -->
+            <div style="background: var(--bg-surface); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px; border: 1px solid var(--border-color);">
+              <div id="kmeans-controls">
+                <label style="font-size: 13px; display: flex; justify-content: space-between; margin-bottom: 6px;">
+                  <span>Number of Clusters (k):</span>
+                  <strong id="cluster-k-val" style="color: var(--primary);">3</strong>
+                </label>
+                <input type="range" id="cluster-k-slider" min="1" max="10" value="3" style="width: 100%; cursor: pointer;" />
+              </div>
+
+              <div id="dbscan-controls" style="display: none;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                  <div>
+                    <label style="font-size: 13px; display: flex; justify-content: space-between; margin-bottom: 6px;">
+                      <span>Epsilon (Distance Threshold):</span>
+                      <strong id="cluster-eps-val" style="color: var(--primary);">25</strong>
+                    </label>
+                    <input type="range" id="cluster-eps-slider" min="5" max="60" value="25" style="width: 100%; cursor: pointer;" />
+                  </div>
+                  <div>
+                    <label style="font-size: 13px; display: flex; justify-content: space-between; margin-bottom: 6px;">
+                      <span>Min Samples:</span>
+                      <strong id="cluster-minpts-val" style="color: var(--primary);">5</strong>
+                    </label>
+                    <input type="range" id="cluster-minpts-slider" min="2" max="20" value="5" style="width: 100%; cursor: pointer;" />
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+                <button class="btn btn-secondary" id="cluster-run-btn" style="padding: 4px 12px; font-size: 12px;">Recalculate 🔄</button>
+              </div>
+            </div>
+
+            <!-- Plot Canvas -->
+            <div id="cluster-plot-canvas" style="width: 100%; height: 480px; border-radius: var(--radius-md); overflow: hidden;"></div>
+
+            <div id="cluster-stats"></div>
+          </div>
+        </section>
+
+        <!-- ── Tab 7: Social Networks ────────────────────────────────── -->
+        <section class="tab-view" id="tab-social">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">🌐 Connect & Collaborate</h2>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 24px;">
+              Let's connect, discuss state-of-the-art AI research, and collaborate on intelligent agent workflows!
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+              <a href="https://www.linkedin.com/in/sushovan-saha-29a00a113" target="_blank" class="card" style="margin-bottom: 0; text-decoration: none; border-color: rgba(0, 119, 181, 0.4); transition: var(--transition);">
+                <div style="font-size: 24px; margin-bottom: 8px;">💼</div>
+                <div style="font-weight: 700; color: #fff; font-size: 16px;">LinkedIn Profile</div>
+                <div style="font-size: 13px; color: var(--text-muted);">Connect professionally and follow updates</div>
+              </a>
+
+              <a href="https://github.com/ambideXtrous9" target="_blank" class="card" style="margin-bottom: 0; text-decoration: none; border-color: rgba(255, 255, 255, 0.2); transition: var(--transition);">
+                <div style="font-size: 24px; margin-bottom: 8px;">🐙</div>
+                <div style="font-weight: 700; color: #fff; font-size: 16px;">GitHub Repositories</div>
+                <div style="font-size: 13px; color: var(--text-muted);">Explore open source agents and models</div>
+              </a>
+
+              <a href="https://www.kaggle.com/sushovansaha9" target="_blank" class="card" style="margin-bottom: 0; text-decoration: none; border-color: rgba(32, 190, 255, 0.4); transition: var(--transition);">
+                <div style="font-size: 24px; margin-bottom: 8px;">🏅</div>
+                <div style="font-weight: 700; color: #fff; font-size: 16px;">Kaggle Notebooks</div>
+                <div style="font-size: 13px; color: var(--text-muted);">Kaggle Notebooks Expert solutions</div>
+              </a>
+
+              <a href="https://medium.com/@sushovansaha95" target="_blank" class="card" style="margin-bottom: 0; text-decoration: none; border-color: rgba(0, 171, 107, 0.4); transition: var(--transition);">
+                <div style="font-size: 24px; margin-bottom: 8px;">✍️</div>
+                <div style="font-weight: 700; color: #fff; font-size: 16px;">Medium Articles</div>
+                <div style="font-size: 13px; color: var(--text-muted);">Practical deep dives into machine learning</div>
+              </a>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Stock Institutional Report Modal -->
+  <div class="modal-overlay" id="stock-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="stock-modal-title">Institutional Equity Research</h3>
+        <button class="modal-close" id="stock-modal-close">&times;</button>
+      </div>
+      <div class="modal-body markdown-body" id="stock-modal-content">
+        <!-- Markdown report rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Main JavaScript App Entrypoint -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

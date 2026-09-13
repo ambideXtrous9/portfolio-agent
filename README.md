@@ -1,127 +1,126 @@
-# Streamlit Applications Hub
+# ambideXtrous · AI Portfolio & Multi-Agent Intelligence Hub
 
-[![Streamlit App](https://img.shields.io/badge/Streamlit-App-blue?logo=streamlit)](https://ambidextrous.streamlit.app/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Python](https://img.shields.io/badge/Python-3.12+-blue)](https://www.python.org/)
+[![Model Context Protocol](https://img.shields.io/badge/MCP-Unified%20MultiServer-purple)](https://modelcontextprotocol.io/)
+[![Pinecone](https://img.shields.io/badge/Pinecone-hpvdb--openai-000000?logo=pinecone)](https://www.pinecone.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-![image](https://github.com/user-attachments/assets/1f390447-0618-4523-9655-9b99f0ec93e3)
-
-
-## 🚀 About This Project
-
-A curated hub of interactive Streamlit applications showcasing practical AI and data science. Each app is designed for clarity, fast iteration, and hands-on exploration.
-
-## 📋 Key Features
-
-- 📊 **Stock Screener**: AI-assisted equity research with indicators, charts, and reports
-- 🗺️ **Airbnb Tour Agent (MCP + Weather)**: Trip plans from Airbnb listings + weather via MCP
-- 📖 **HarryAgent**: LLM multi-agent research and writing with retrieval + critique loop
-- 🎯 **Logo Detection**: YOLO-based logo recognition
-- 📈 **Clustering**: Interactive clustering demos (KMeans/DBSCAN)
-- 🧠 **Image Classifier**: Multi-backbone image classification
-
-## 📁 Project Structure
-
-```
-Streamlit-AI-Portfolio/
-├── StockScreener/        # Stock market analysis tools
-├── HarryAgent/           # Harry Potter X Mythology
-├── LogoYolo/            # Logo detection system
-├── Clustering/          # Clustering algorithms
-├── HPVdb/              # Harry Potter Books
-├── app.py              # Main Streamlit application
-└── requirements.txt    # Project dependencies
-```
-
-## 🛠️ Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/ambideXtrous9/Streamlit-App.git
-
-cd Streamlit-App
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the application
-streamlit run app.py
-```
-
-## 🎮 Usage
-
-- Launch: `streamlit run app.py` → open `http://localhost:8501`
-- Navigate via the sidebar between applications
-- Open a specific page directly:
-
-```bash
-streamlit run app.py -- "?page=stockscreener"
-# pages: home | stockscreener | newsqa | tourAgent | yolologo | image_classifer | clusterplay | login
-```
-
-## 📚 Project Details
-
-### 📊 AI Stock Screener
-- Real-time price data via yfinance
-- Fundamentals/shareholding scraped from screener.in
-- News context via GNews
-- Technical indicators: EMA, SMA, RSI, MACD; breakout heuristics
-- Interactive tables and charts (mlpchart)
-- AI stock research report powered by ChatGroq
-
-### 🗺️ Airbnb Tour Agent (MCP + Weather)
-- LangGraph composition: parallel weather agent + Airbnb MCP agent → tour synthesis
-- MCP stdio to `@openbnb/mcp-server-airbnb` via system `npx`
-- Weather tool with WeatherAPI and automated Open-Meteo fallback
-- Streams tour synthesis updates to the UI
-
-### 📖 HarryAgent (LLM multi-agent, Pinecone MCP RAG + critique)
-- Thematic blend: Harry Potter × Indian Mythology
-- LangGraph workflow: classify → researcher → mythologist → writer → critic (with loop)
-- Retrieval via Pinecone vector index (`hpvdb-openai`) and `@pinecone-database/mcp` with Pinecone Neural Reranking (`pinecone-rerank-v0`)
-- Checkpointing in SQLite; observability via Langfuse
-
-### 🧠 Image Classifier
-- Multiple backbones: Xception, InceptionV3, MobileNetV2, EfficientNet
-- Loads checkpoints (`*.ckpt`) and runs per-model inference
-- Displays per-model metrics for comparison
-
-### 🎯 Logo Detection
-- Ultralyics YOLO-based logo recognition with bundled weights (`LogoYolobest.pt`)
-- Integrated into the app via shared utilities
-- Real-time inference on uploaded images
-
-### 📈 Clustering
-- KMeans and DBSCAN demos with synthetic data
-- Interactive visualizations with seaborn/matplotlib
-- K-distance graph to explore cluster structure
-
-
-
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request or open an Issue for any improvements or bug fixes.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- [Streamlit](https://streamlit.io/) - For the amazing framework
-- [Python](https://www.python.org/) - The language that makes it all possible
-- [Machine Learning Community](https://www.kaggle.com/) - For continuous learning and inspiration
-
-## 📞 Contact
-
-For any questions or collaborations, feel free to reach out!
+A decoupled, production-grade **FastAPI Backend** and high-performance **Modern Single-Page Application (SPA)** showcasing cutting-edge Agentic AI, Multi-Server Model Context Protocol (MCP), Pinecone Vector Retrieval, Quantitative Equities Screener, and Vision AI.
 
 ---
 
-🌟 Star this repository if you find it useful!
+## 🏗️ Decoupled Architecture
 
-[![GitHub stars](https://img.shields.io/github/stars/ambideXtrous9/Streamlit-App.svg?style=social&label=Star)](https://github.com/ambideXtrous9/Streamlit-App)
-[![GitHub forks](https://img.shields.io/github/forks/ambideXtrous9/Streamlit-App.svg?style=social&label=Fork)](https://github.com/ambideXtrous9/Streamlit-App/fork)
-[![GitHub watchers](https://img.shields.io/github/watchers/ambideXtrous9/Streamlit-App.svg?style=social&label=Watch)](https://github.com/ambideXtrous9/Streamlit-App/watchers)
-[![GitHub followers](https://img.shields.io/github/followers/ambideXtrous9.svg?style=social&label=Follow)](https://github.com/ambideXtrous9/followers)
+The repository provides full separation of concerns between backend services and the frontend client:
+
+```
+Streamlit-AI-Portfolio/
+├── backend/
+│   └── app/
+│       ├── main.py                  # FastAPI entry point, CORS, static mounting
+│       ├── config.py                # Environment & Pydantic settings
+│       ├── core/
+│       │   ├── llm.py               # Groq / OpenRouter LLM factory
+│       │   └── mcp.py               # Unified MultiServerMCPClient (Airbnb & Pinecone)
+│       ├── schemas/                 # Pydantic request & response schemas
+│       └── api/
+│           ├── router.py            # Master API router (/api/...)
+│           └── endpoints/
+│               ├── portfolio.py     # Profile, bio & live GitHub stats
+│               ├── tour.py          # Airbnb MCP + Weather SSE streaming agent
+│               ├── harry.py         # Harry Potter Lore & Mythology Pinecone MCP agent
+│               ├── stock.py         # Breakout scanner & Institutional Equity report
+│               ├── vision.py        # Image classification & YOLO logo detection
+│               ├── cluster.py       # K-Means & DBSCAN clustering algorithms
+│               └── health.py        # System health & MCP readiness
+├── frontend/
+│   ├── index.html                   # Responsive SPA with Sidebar & Tab Navigation
+│   ├── css/
+│   │   └── style.css                # Obsidian Dark Theme, glassmorphism & typography
+│   ├── js/
+│   │   ├── api.js                   # REST fetch & Server-Sent Events (SSE) client
+│   │   ├── app.js                   # Application coordinator & tab router
+│   │   ├── tour.js                  # Travel agent UI with live streaming tokens
+│   │   ├── harry.js                 # Lore Scholar UI with comparative analysis
+│   │   ├── stock.js                 # Equities screener & institutional report modal
+│   │   ├── vision.js                # Vision AI Studio with dropzone & bounding boxes
+│   │   └── cluster.js               # Interactive Plotly.js 2D clustering canvas
+│   └── assets/images/               # Visual assets (thor.gif, boom.png, etc.)
+├── legacy_streamlit/                # Archived Streamlit files & legacy notebooks
+├── run.py                           # Single-command application launcher
+├── requirements.txt                 # FastAPI, LangChain, MCP & ML dependencies
+├── .env.example                     # Environment configuration template
+└── README.md
+```
+
+---
+
+## 📋 Key Modules & Features
+
+### 1. 🏡 MCP Powered Tour Agent (`/api/tour/plan`, `/api/tour/stream`)
+- **Unified MultiServerMCPClient**: Connects directly to `@openbnb/mcp-server-airbnb` using standard system Node/npx.
+- **Meteorological Intelligence**: Live weather forecast and 3-day conditions via Open-Meteo geocoding and WeatherAPI.
+- **Real-Time Streaming**: Tokens stream live to the frontend via Server-Sent Events (SSE).
+
+### 2. 🪄 Harry Potter Lore Scholar (`/api/harry/ask`, `/api/harry/stream`)
+- **Pinecone MCP Vector Search**: Semantic retrieval on the 8,970-vector canonical index `hpvdb-openai` using `@pinecone-database/mcp`.
+- **Mythological Comparative Synthesis**: Explores philosophical archetypes between the Harry Potter universe and Indian Ancient Epics (Ramayana, Mahabharata, Dharma, Astras).
+- **Critic Verification**: Automatic multi-node critique and refinement loop.
+
+### 3. 📈 Stock Screener & Institutional Research (`/api/stock/scan`, `/api/stock/report`)
+- **Volume Expansion Breakout**: Scans Nifty 500 and Nifty Microcap 250 for volume expansion (relative to 20-DMA) and price momentum.
+- **Quantitative Indicators**: Real-time RSI(14), High/Low range, Moving Averages, and Volume Ratio.
+- **Institutional Equity Report**: Wall Street-grade analyst research report modal generated dynamically.
+
+### 4. 👁️ Vision AI Studio (`/api/vision/classify`, `/api/vision/yolo`)
+- **Multi-Brand Classifier**: Neural network classifier recognizing 27 top corporate brands with confidence scores.
+- **YOLO Logo Detection**: Object detection with bounding box annotations rendered onto uploaded images.
+
+### 5. 🐙 Clustering Sandbox (`/api/cluster/dataset`, `/api/cluster/run`)
+- **Interactive 2D Sandbox**: Concentric circle and noise benchmarks rendered via Plotly.js.
+- **Algorithm Switch**: Real-time parameter tuning for K-Means (number of clusters) and DBSCAN (Epsilon and Min Samples) with Silhouette scores.
+
+---
+
+## 🛠️ Quickstart & Installation
+
+### 1. Clone & Configure Environment
+```bash
+git clone https://github.com/ambideXtrous9/Streamlit-AI-Portfolio.git
+cd Streamlit-AI-Portfolio
+
+# Copy environment template
+cp .env.example .env
+# Fill in your GROQ_API_KEY and PINECONE_API_KEY in .env
+```
+
+### 2. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Launch Application
+```bash
+python run.py
+```
+
+- **Frontend Application UI**: Open [http://localhost:8000](http://localhost:8000)
+- **Interactive OpenAPI Documentation**: Open [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+## 🌐 Running Frontend Separately (Optional)
+
+The frontend is completely decoupled. You can also run it using any static server:
+```bash
+cd frontend
+python -m http.server 3000
+# Open http://localhost:3000 (communicates with FastAPI backend on port 8000)
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.
