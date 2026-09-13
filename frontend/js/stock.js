@@ -1,120 +1,125 @@
 /**
  * Stock Screener & Institutional Research Tab Controller
+ * Matches Streamlit StockScan tabs and report generator.
  */
 
 import { fetchAPI } from "./api.js";
 
 export function initStockScreener() {
-  const universeSelect = document.getElementById("stock-universe-select");
-  const minVolInput = document.getElementById("stock-min-vol");
-  const scanBtn = document.getElementById("stock-scan-btn");
-  const tableBody = document.getElementById("stock-table-body");
-  const scanSummary = document.getElementById("stock-scan-summary");
-  const searchInput = document.getElementById("stock-search-filter");
+  const runBtn = document.getElementById("btn-run-stock-scan");
+  const resultsContainer = document.getElementById("stock-results-container");
+  const modalOverlay = document.getElementById("stock-modal-overlay");
+  const modalClose = document.getElementById("modal-close-btn");
+  const modalContent = document.getElementById("modal-report-content");
+  const subtabs = document.querySelectorAll("#stock-subtabs .st-tab-trigger");
+  const manualBtn = document.getElementById("btn-manual-report");
+  const manualInput = document.getElementById("manual-stock-input");
 
-  // Modal elements
-  const modalOverlay = document.getElementById("stock-modal");
-  const modalTitle = document.getElementById("stock-modal-title");
-  const modalContent = document.getElementById("stock-modal-content");
-  const modalClose = document.getElementById("stock-modal-close");
+  if (!runBtn) return;
 
-  let currentStocks = [];
-
-  modalClose.addEventListener("click", () => {
-    modalOverlay.classList.remove("active");
+  // Sub-tabs navigation
+  subtabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      subtabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      const target = tab.getAttribute("data-subtab");
+      document.querySelectorAll(".stock-subtab-content").forEach(c => c.style.display = "none");
+      const activeContent = document.getElementById(target);
+      if (activeContent) activeContent.style.display = "block";
+    });
   });
-  modalOverlay.addEventListener("click", (e) => {
-    if (e.target === modalOverlay) modalOverlay.classList.remove("active");
-  });
 
-  scanBtn.addEventListener("click", handleScan);
-  searchInput.addEventListener("input", filterStocks);
-
-  async function handleScan() {
-    scanBtn.disabled = true;
-    scanBtn.innerHTML = `<span class="spinner"></span> Scanning...`;
-    scanSummary.innerText = "Analyzing volume expansions and price breakouts...";
-
-    try {
-      const payload = {
-        universe: universeSelect.value,
-        min_volume_ratio: parseFloat(minVolInput.value) || 1.5,
-        limit: 30
-      };
-      const res = await fetchAPI("/stock/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      currentStocks = res.stocks || [];
-      scanSummary.innerText = `Found ${res.breakouts_found} breakouts across ${res.total_scanned} scanned candidates in ${res.universe.toUpperCase()}.`;
-      renderTable(currentStocks);
-    } catch (err) {
-      scanSummary.innerHTML = `<span class="badge-negative">⚠️ Scan failed: ${err.message}</span>`;
-    } finally {
-      scanBtn.disabled = false;
-      scanBtn.innerHTML = `🚀 Run Breakout Scanner`;
-    }
+  // Modal close handlers
+  if (modalClose) {
+    modalClose.addEventListener("click", () => modalOverlay.classList.remove("open"));
   }
-
-  function renderTable(stocks) {
-    if (!stocks || stocks.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);">No breakout stocks detected meeting criteria. Try lowering the volume ratio threshold.</td></tr>`;
-      return;
-    }
-
-    tableBody.innerHTML = stocks.map(s => {
-      const chgClass = s.change_pct >= 0 ? "badge-positive" : "badge-negative";
-      const chgSign = s.change_pct >= 0 ? "+" : "";
-      const rsiBadge = s.rsi ? (s.rsi > 70 ? `<span class="badge-negative">${s.rsi} (OB)</span>` : (s.rsi < 35 ? `<span class="badge-positive">${s.rsi} (OS)</span>` : `${s.rsi}`)) : "—";
-      
-      return `
-        <tr>
-          <td><strong>${s.symbol}</strong></td>
-          <td>${s.company_name}</td>
-          <td>₹${s.current_price.toLocaleString()}</td>
-          <td><span class="${chgClass}">${chgSign}${s.change_pct}%</span></td>
-          <td>${s.volume.toLocaleString()}</td>
-          <td><strong>${s.volume_ratio}x</strong></td>
-          <td>${rsiBadge}</td>
-          <td><span class="badge-tag">${s.breakout_signal}</span></td>
-          <td>
-            <button class="btn btn-secondary btn-analyze" data-symbol="${s.symbol}" style="padding: 4px 10px; font-size: 11px;">
-              Analyze 📊
-            </button>
-          </td>
-        </tr>
-      `;
-    }).join("");
-
-    tableBody.querySelectorAll(".btn-analyze").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const sym = btn.getAttribute("data-symbol");
-        openReportModal(sym);
-      });
+  if (modalOverlay) {
+    modalOverlay.addEventListener("click", (e) => {
+      if (e.target === modalOverlay) modalOverlay.classList.remove("open");
     });
   }
 
-  function filterStocks() {
-    const q = searchInput.value.toLowerCase().trim();
-    if (!q) {
-      renderTable(currentStocks);
-      return;
+  // Run scan handler
+  runBtn.addEventListener("click", handleRunScan);
+
+  // Manual report handler
+  if (manualBtn && manualInput) {
+    manualBtn.addEventListener("click", () => {
+      const sym = manualInput.value.trim();
+      if (sym) openReportModal(sym);
+    });
+  }
+
+  async function handleRunScan() {
+    const universe = document.querySelector("input[name='stock-universe']:checked")?.value || "NIFTY500";
+    runBtn.disabled = true;
+    runBtn.innerHTML = `<span class="st-spinner"></span> Running Scan on ${universe}...`;
+    resultsContainer.innerHTML = `<div class="st-caption"><span class="st-spinner"></span> Scanning ${universe} breakout momentum and volume ratio...</div>`;
+
+    try {
+      const res = await fetchAPI("/stock/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          universe: universe,
+          min_volume_ratio: 1.5,
+          limit: 25
+        })
+      });
+
+      const stocks = res.stocks || [];
+      if (stocks.length === 0) {
+        resultsContainer.innerHTML = `<div class="st-caption">No volume breakout stocks detected meeting criteria in ${universe}.</div>`;
+        return;
+      }
+
+      resultsContainer.innerHTML = `
+        <div style="background-color: #D4EDDA; color: #155724; border: 1px solid #C3E6CB; border-radius: var(--st-radius); padding: 0.75rem 1rem; margin-bottom: 1rem; font-weight: 600;">
+          ✅ Scan Complete: ${stocks.length} Stocks Found in ${universe}
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1.5rem;">
+          ${stocks.map(s => `
+            <div style="padding: 0.35rem 0.5rem; background: #F8F9FA; border-radius: 4px; font-size: 0.95rem;">
+              <strong>${s.symbol}</strong> — ₹${s.current_price.toLocaleString()} (${s.change_pct >= 0 ? '+' : ''}${s.change_pct}%) • Vol Ratio: <strong>${s.volume_ratio}x</strong>
+            </div>
+          `).join("")}
+        </div>
+
+        <div style="margin: 1.5rem 0 0.5rem; font-weight: 600;">Select a Stock for Institutional Analysis:</div>
+        <div style="display: flex; gap: 10px; max-width: 500px;">
+          <select id="stock-select-dropdown" class="st-chat-input-field" style="border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.4rem 0.8rem; background: #FFF;">
+            <option value="">-- Choose Stock --</option>
+            ${stocks.map(s => `<option value="${s.symbol}">${s.symbol} - ${s.company_name}</option>`).join("")}
+          </select>
+          <button class="st-btn st-btn-primary" id="btn-generate-report">Generate Report 📊</button>
+        </div>
+      `;
+
+      const genBtn = document.getElementById("btn-generate-report");
+      const dropdown = document.getElementById("stock-select-dropdown");
+      if (genBtn && dropdown) {
+        genBtn.addEventListener("click", () => {
+          const sym = dropdown.value;
+          if (sym) openReportModal(sym);
+        });
+      }
+
+    } catch (err) {
+      console.error("Scan error:", err);
+      resultsContainer.innerHTML = `<div style="color: #D32F2F;">⚠️ Scan error: ${err.message}</div>`;
+    } finally {
+      runBtn.disabled = false;
+      runBtn.innerHTML = "Run Scan";
     }
-    const filtered = currentStocks.filter(s =>
-      s.symbol.toLowerCase().includes(q) || s.company_name.toLowerCase().includes(q)
-    );
-    renderTable(filtered);
   }
 
   async function openReportModal(symbol) {
-    modalOverlay.classList.add("active");
-    modalTitle.innerText = `Institutional Equity Report: ${symbol}`;
+    modalOverlay.classList.add("open");
     modalContent.innerHTML = `
-      <div style="display:flex; align-items:center; gap: 12px; padding: 30px 0; justify-content:center;">
-        <span class="spinner"></span>
-        <span>Gathering fundamentals & generating institutional research report...</span>
+      <div style="display:flex; align-items:center; gap: 12px; padding: 40px 0; justify-content:center;">
+        <span class="st-spinner"></span>
+        <span>Generating Wall Street analyst research report for <strong>${symbol}</strong>...</span>
       </div>
     `;
 
@@ -131,7 +136,12 @@ export function initStockScreener() {
         modalContent.innerText = res.report_markdown;
       }
     } catch (err) {
-      modalContent.innerHTML = `<div class="badge-negative">⚠️ Report generation error: ${err.message}</div>`;
+      modalContent.innerHTML = `<div style="color: #D32F2F;">⚠️ Report generation error: ${err.message}</div>`;
     }
   }
+
+  // Expose helper to window for other subtab buttons
+  window.runCustomScan = (type) => {
+    handleRunScan();
+  };
 }

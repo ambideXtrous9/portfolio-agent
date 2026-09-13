@@ -1,67 +1,92 @@
 /**
- * Clustering Sandbox Tab Controller (K-Means & DBSCAN with Plotly.js)
+ * Clustering Sandbox Tab Controller (K-Means & DBSCAN)
+ * Matches Streamlit clusterapp.py layout, interactive charts, and feedback notes.
  */
 
 import { fetchAPI } from "./api.js";
 
 export function initClusterSandbox() {
   const algoRadios = document.querySelectorAll("input[name='cluster-algo']");
-  const kmeansParams = document.getElementById("kmeans-controls");
-  const dbscanParams = document.getElementById("dbscan-controls");
-  
-  const kSlider = document.getElementById("cluster-k-slider");
-  const kVal = document.getElementById("cluster-k-val");
-  const epsSlider = document.getElementById("cluster-eps-slider");
-  const epsVal = document.getElementById("cluster-eps-val");
-  const minPtsSlider = document.getElementById("cluster-minpts-slider");
-  const minPtsVal = document.getElementById("cluster-minpts-val");
+  const kmeansControls = document.getElementById("kmeans-controls");
+  const dbscanControls = document.getElementById("dbscan-controls");
+  const kmeansSlider = document.getElementById("kmeans-slider");
+  const kmeansVal = document.getElementById("kmeans-val-display");
+  const dbscanSlider = document.getElementById("dbscan-slider");
+  const dbscanVal = document.getElementById("dbscan-val-display");
+  const notesEl = document.getElementById("cluster-notes");
 
-  const runBtn = document.getElementById("cluster-run-btn");
-  const statsContainer = document.getElementById("cluster-stats");
+  if (!kmeansSlider || !dbscanSlider) return;
 
-  algoRadios.forEach(r => {
-    r.addEventListener("change", (e) => {
-      if (e.target.value === "kmeans") {
-        kmeansParams.style.display = "block";
-        dbscanParams.style.display = "none";
+  // Render initial raw data plot
+  loadInitialDataset();
+
+  algoRadios.forEach(radio => {
+    radio.addEventListener("change", (e) => {
+      if (e.target.value === "K-Means") {
+        kmeansControls.style.display = "block";
+        dbscanControls.style.display = "none";
+        notesEl.innerText = "💡 Why don't you try DBSCAN..!!";
       } else {
-        kmeansParams.style.display = "none";
-        dbscanParams.style.display = "block";
+        kmeansControls.style.display = "none";
+        dbscanControls.style.display = "block";
+        updateDbscanNotes(parseInt(dbscanSlider.value));
       }
-      executeClustering();
+      runClustering();
     });
   });
 
-  kSlider.addEventListener("input", (e) => {
-    kVal.innerText = e.target.value;
+  kmeansSlider.addEventListener("input", (e) => {
+    kmeansVal.innerText = e.target.value;
   });
-  kSlider.addEventListener("change", executeClustering);
+  kmeansSlider.addEventListener("change", runClustering);
 
-  epsSlider.addEventListener("input", (e) => {
-    epsVal.innerText = e.target.value;
+  dbscanSlider.addEventListener("input", (e) => {
+    dbscanVal.innerText = e.target.value;
+    updateDbscanNotes(parseInt(e.target.value));
   });
-  epsSlider.addEventListener("change", executeClustering);
+  dbscanSlider.addEventListener("change", runClustering);
 
-  minPtsSlider.addEventListener("input", (e) => {
-    minPtsVal.innerText = e.target.value;
-  });
-  minPtsSlider.addEventListener("change", executeClustering);
+  // Initial run
+  runClustering();
 
-  runBtn.addEventListener("click", executeClustering);
+  async function loadInitialDataset() {
+    try {
+      const data = await fetchAPI("/cluster/dataset");
+      const points = data.points || [];
+      const trace = {
+        x: points.map(p => p.x),
+        y: points.map(p => p.y),
+        mode: 'markers',
+        type: 'scatter',
+        marker: { size: 6, color: '#1E88E5', opacity: 0.75 }
+      };
+      const layout = {
+        title: 'Input Concentric & Noise Benchmark Dataset',
+        paper_bgcolor: '#FFFFFF',
+        plot_bgcolor: '#F8F9FA',
+        margin: { l: 40, r: 20, t: 40, b: 40 },
+        xaxis: { gridcolor: '#E6E9EF', zerolinecolor: '#CCD0D9' },
+        yaxis: { gridcolor: '#E6E9EF', zerolinecolor: '#CCD0D9' },
+        font: { family: '"Source Sans Pro", sans-serif', color: '#31333F' },
+        autosize: true
+      };
+      if (window.Plotly) {
+        window.Plotly.newPlot('cluster-raw-plot', [trace], layout, { responsive: true, displayModeBar: false });
+      }
+    } catch (err) {
+      console.error("Failed to load initial dataset:", err);
+    }
+  }
 
-  // Initial run on mount
-  executeClustering();
-
-  async function executeClustering() {
-    const algo = document.querySelector("input[name='cluster-algo']:checked").value;
+  async function runClustering() {
+    const selectedAlgo = document.querySelector("input[name='cluster-algo']:checked")?.value || "K-Means";
     const payload = {
-      algorithm: algo,
-      n_clusters: parseInt(kSlider.value),
-      eps: parseFloat(epsSlider.value),
-      min_samples: parseInt(minPtsSlider.value)
+      algorithm: selectedAlgo.toLowerCase().replace("-", ""),
+      n_clusters: parseInt(kmeansSlider.value),
+      eps: parseFloat(dbscanSlider.value),
+      min_samples: 5
     };
 
-    runBtn.disabled = true;
     try {
       const data = await fetchAPI("/cluster/run", {
         method: "POST",
@@ -69,34 +94,28 @@ export function initClusterSandbox() {
         body: JSON.stringify(payload)
       });
 
-      renderPlot(data);
-      renderStats(data);
+      renderClusterPlot(data, selectedAlgo);
     } catch (err) {
-      console.error("Clustering error:", err);
-    } finally {
-      runBtn.disabled = false;
+      console.error("Clustering execution error:", err);
     }
   }
 
-  function renderStats(data) {
-    statsContainer.innerHTML = `
-      <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px;">
-        <span class="badge-tag">Algorithm: <strong>${data.algorithm}</strong></span>
-        <span class="badge-tag">Identified Clusters: <strong>${data.num_clusters}</strong></span>
-        ${data.num_noise > 0 ? `<span class="badge-tag" style="border-color: var(--accent-rose); color: var(--accent-rose);">Noise Points: <strong>${data.num_noise}</strong></span>` : ''}
-        ${data.silhouette_score !== null ? `<span class="badge-positive">Silhouette Score: <strong>${data.silhouette_score}</strong></span>` : ''}
-      </div>
-    `;
+  function updateDbscanNotes(eps) {
+    if (eps <= 5) {
+      notesEl.innerText = "🌟 Interesting! If all the data points are treated as noise, it means the value of epsilon is very small and parameters need tuning.";
+    } else if (eps > 5 && eps < 30) {
+      notesEl.innerText = "💡 Change eps till 30 and see the result!";
+    } else if (eps >= 30 && eps < 34) {
+      notesEl.innerText = "🚀 DBSCAN did its job..!!";
+    } else {
+      notesEl.innerText = "🛑 Don't go beyond.. Outlier..!!";
+    }
   }
 
-  function renderPlot(data) {
+  function renderClusterPlot(data, algoName) {
     const points = data.points || [];
-    const colors = [
-      '#00d2ff', '#7928ca', '#10b981', '#f59e0b', '#ec4899',
-      '#6366f1', '#14b8a6', '#f43f5e', '#8b5cf6', '#eab308'
-    ];
+    const colors = ['#FF4B4B', '#1E88E5', '#00C853', '#FF9900', '#9C27B0', '#00BCD4', '#795548', '#607D8B'];
 
-    // Group points by cluster
     const clusterMap = {};
     points.forEach(p => {
       const c = p.cluster;
@@ -116,28 +135,26 @@ export function initClusterSandbox() {
         name: isNoise ? 'Noise' : `Cluster ${cNum + 1}`,
         marker: {
           size: 7,
-          color: isNoise ? '#64748b' : colors[cNum % colors.length],
-          opacity: isNoise ? 0.4 : 0.8,
-          line: { width: 1, color: isNoise ? '#334155' : '#ffffff' }
+          color: isNoise ? '#A0A4B0' : colors[cNum % colors.length],
+          opacity: isNoise ? 0.45 : 0.85
         }
       };
     });
 
     const layout = {
-      paper_bgcolor: '#121820',
-      plot_bgcolor: '#0a0d12',
-      font: { color: '#94a3b8', family: 'Inter, sans-serif' },
-      margin: { l: 40, r: 20, t: 30, b: 40 },
-      xaxis: { gridcolor: '#1f2937', zerolinecolor: '#374151' },
-      yaxis: { gridcolor: '#1f2937', zerolinecolor: '#374151' },
+      title: `${algoName} Output (${data.num_clusters} clusters identified)`,
+      paper_bgcolor: '#FFFFFF',
+      plot_bgcolor: '#F8F9FA',
+      margin: { l: 40, r: 20, t: 40, b: 40 },
+      xaxis: { gridcolor: '#E6E9EF', zerolinecolor: '#CCD0D9' },
+      yaxis: { gridcolor: '#E6E9EF', zerolinecolor: '#CCD0D9' },
+      font: { family: '"Source Sans Pro", sans-serif', color: '#31333F' },
       legend: { orientation: 'h', y: 1.12 },
       autosize: true
     };
 
-    const config = { responsive: true, displayModeBar: false };
-
     if (window.Plotly) {
-      window.Plotly.newPlot('cluster-plot-canvas', traces, layout, config);
+      window.Plotly.newPlot('cluster-result-plot', traces, layout, { responsive: true, displayModeBar: false });
     }
   }
 }

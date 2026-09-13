@@ -3,415 +3,615 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ambideXtrous · AI Portfolio & Multi-Agent Intelligence</title>
+  <title>ambideXtrous</title>
   <link rel="icon" href="assets/images/boom.png" type="image/png">
   <link rel="stylesheet" href="css/style.css">
   
-  <!-- Markdown & Interactive Charting CDNs -->
+  <!-- CDNs for Plotly and Marked -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
-  <div class="app-container">
-    <!-- Left Navigation Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="brand-icon">⚡</div>
-        <div>
-          <div class="brand-title">ambideXtrous</div>
-          <div class="brand-subtitle">AI & Multi-Agent Portfolio</div>
-        </div>
+  <div class="st-app">
+    
+    <!-- ── Streamlit Left Sidebar ────────────────────────────────────────── -->
+    <aside class="st-sidebar">
+      
+      <!-- Dynamic Top Circular Avatar / Banner -->
+      <div class="st-sidebar-image-container">
+        <img id="sidebar-banner-img" class="st-sidebar-image" src="assets/images/boom.png" alt="Sidebar Banner" />
       </div>
 
-      <div class="nav-section-title">Navigation</div>
-      <ul class="nav-menu">
-        <li class="nav-item">
-          <a class="nav-link active" data-tab="tab-portfolio">
-            <span class="nav-icon">⚡</span>
-            <span>Profile & Bio</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" data-tab="tab-tour">
-            <span class="nav-icon">🏡</span>
-            <span>Tour Agent</span>
-            <span class="nav-badge">MCP</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" data-tab="tab-harry">
-            <span class="nav-icon">🪄</span>
-            <span>Harry Potter Lore</span>
-            <span class="nav-badge">Pinecone</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" data-tab="tab-stock">
-            <span class="nav-icon">📈</span>
-            <span>Stock Screener</span>
-            <span class="nav-badge">Quant</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" data-tab="tab-vision">
-            <span class="nav-icon">👁️</span>
-            <span>Vision AI Studio</span>
-            <span class="nav-badge">YOLO</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" data-tab="tab-cluster">
-            <span class="nav-icon">🐙</span>
-            <span>Cluster Sandbox</span>
-            <span class="nav-badge">ML</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" data-tab="tab-social">
-            <span class="nav-icon">🌐</span>
-            <span>Social & Links</span>
-          </a>
-        </li>
-      </ul>
-
-      <div class="sidebar-footer">
-        <div class="status-pill">
-          <span class="status-dot"></span>
-          <span id="footer-status-text">Connecting to FastAPI...</span>
-        </div>
+      <!-- Social Media Icons Row -->
+      <div class="st-sidebar-social">
+        <a href="https://www.linkedin.com/in/sushovan-saha-29a00a113" target="_blank" class="st-social-icon-btn" title="LinkedIn">
+          <svg viewBox="0 0 24 24"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.45c-.9 0-1.63.73-1.63 1.63s.73 1.63 1.63 1.63 1.63-.73 1.63-1.63-.73-1.63-1.63-1.63Z"/></svg>
+        </a>
+        <a href="https://github.com/ambideXtrous9" target="_blank" class="st-social-icon-btn" title="GitHub">
+          <svg viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg>
+        </a>
+        <a href="https://medium.com/@sushovansaha95" target="_blank" class="st-social-icon-btn" title="Medium">
+          <svg viewBox="0 0 24 24"><path d="M13.54 12a6.8 6.8 0 0 1-6.77 6.82A6.8 6.8 0 0 1 0 12a6.8 6.8 0 0 1 6.77-6.82A6.8 6.8 0 0 1 13.54 12zM20.96 12c0 3.54-1.51 6.42-3.38 6.42-1.87 0-3.39-2.88-3.39-6.42s1.52-6.42 3.39-6.42 3.38 2.88 3.38 6.42M24 12c0 3.17-.53 5.75-1.19 5.75-.66 0-1.19-2.58-1.19-5.75s.53-5.75 1.19-5.75C23.47 6.25 24 8.83 24 12z"/></svg>
+        </a>
       </div>
+
+      <h3 class="st-sidebar-heading">Menu</h3>
+
+      <!-- Streamlit Button Navigation -->
+      <nav class="st-sidebar-nav">
+        <button class="st-nav-btn active" data-tab="tab-home" data-img="boom">
+          <span class="st-nav-btn-icon">🎃</span> Home
+        </button>
+        <button class="st-nav-btn" data-tab="tab-stock" data-img="stock">
+          <span class="st-nav-btn-icon">💹</span> AI Stock Research Agent
+        </button>
+        <button class="st-nav-btn" data-tab="tab-harry" data-img="harry">
+          <span class="st-nav-btn-icon">🪄</span> Harry Potter X Mythology
+        </button>
+        <button class="st-nav-btn" data-tab="tab-tour" data-img="tour">
+          <span class="st-nav-btn-icon">🏡</span> Tour Agent
+        </button>
+        <button class="st-nav-btn" data-tab="tab-yolo" data-img="yolo">
+          <span class="st-nav-btn-icon">🚀</span> Yolo for Logo
+        </button>
+        <button class="st-nav-btn" data-tab="tab-classifier" data-img="classifier">
+          <span class="st-nav-btn-icon">🏆</span> Play with Image Classifier
+        </button>
+        <button class="st-nav-btn" data-tab="tab-cluster" data-img="cluster">
+          <span class="st-nav-btn-icon">🐙</span> Play with Cluster
+        </button>
+        <button class="st-nav-btn" data-tab="tab-social" data-img="boom">
+          <span class="st-nav-btn-icon">🌐</span> Social
+        </button>
+      </nav>
+
+      <!-- Auth Action Buttons -->
+      <div class="st-sidebar-auth">
+        <button class="st-auth-btn" id="btn-login">Login</button>
+        <button class="st-auth-btn" id="btn-signup">Signup</button>
+      </div>
+
     </aside>
 
-    <!-- Main Content Wrapper -->
-    <main class="main-wrapper">
-      <header class="top-bar">
-        <div class="top-title" id="top-tab-title">
-          ⚡ Developer Profile & Bio
-        </div>
-        <div class="top-actions">
-          <span class="badge-tag" id="active-model-badge">Model: Loading...</span>
-          <span class="badge-tag" id="mcp-status-badge">MCP: Connecting...</span>
-        </div>
-      </header>
+    <!-- ── Main Workspace Content ────────────────────────────────────────── -->
+    <main class="st-main">
+      <div class="st-block-container">
 
-      <div class="content-canvas">
-        
-        <!-- ── Tab 1: Profile & Bio ──────────────────────────────────── -->
-        <section class="tab-view active" id="tab-portfolio">
-          <div class="card" style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
-            <img src="assets/images/thor.gif" alt="Thor Animation" style="width: 140px; height: 140px; border-radius: var(--radius-lg); border: 2px solid var(--primary);" />
-            <div style="flex: 1; min-width: 280px;">
-              <h1 style="font-size: 28px; font-weight: 800; margin-bottom: 4px;">Sushovan Saha</h1>
-              <p style="color: var(--primary); font-weight: 600; font-size: 15px; margin-bottom: 8px;">
-                Founding AI Engineer · M.Tech in Data Science, IIT Guwahati
-              </p>
-              <p style="color: var(--text-secondary); font-size: 14px;" id="profile-bio">
-                Passionate Machine Learning practitioner specializing in Agentic Workflows, LLM Systems, Computer Vision, and production-grade MLOps. Kaggle Notebooks Expert.
-              </p>
-            </div>
+        <!-- ================================================================== -->
+        <!-- 🎃 Tab 1: Home Page (Exact match to HomePage() in util.py)         -->
+        <!-- ================================================================== -->
+        <section class="st-tab-view active" id="tab-home">
+          <!-- Centered Thor Animation -->
+          <div style="text-align: center; margin-bottom: 2rem;">
+            <a href="https://in.linkedin.com/in/sushovan-saha-29a00a113" target="_blank">
+              <img src="assets/images/thor.gif" width="380" height="380" style="object-fit: contain; max-width: 100%; border-radius: 8px;" alt="Thor Animation" />
+            </a>
           </div>
 
-          <!-- GitHub Stats Row -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-            <div class="card" style="margin-bottom: 0; text-align: center;">
-              <div style="font-size: 28px; font-weight: 800; color: var(--primary);" id="gh-repos">—</div>
-              <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Public Repositories</div>
-            </div>
-            <div class="card" style="margin-bottom: 0; text-align: center;">
-              <div style="font-size: 28px; font-weight: 800; color: var(--accent-emerald);" id="gh-followers">—</div>
-              <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">GitHub Followers</div>
-            </div>
-            <div class="card" style="margin-bottom: 0; text-align: center;">
-              <div style="font-size: 28px; font-weight: 800; color: var(--accent-amber);" id="gh-following">—</div>
-              <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Following</div>
-            </div>
+          <h1 style="display: flex; align-items: center; gap: 10px;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/People/Man%20Technologist.png" alt="Man Technologist" width="40" height="40" />
+            About Me
+          </h1>
+
+          <p style="font-size: 1.05rem;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Hand%20gestures/Waving%20Hand%20Medium-Light%20Skin%20Tone.png" alt="Waving Hand" width="26" height="26" style="vertical-align: middle; margin-right: 4px;" />
+            Hi there! I'm <strong>Sushovan Saha</strong> — a passionate <strong>Machine Learning (ML)</strong> practitioner with deep interests in <strong>Machine Learning (ML)</strong>, <strong>Deep Learning</strong>, <strong>Natural Language Processing (NLP)</strong>, <strong>Computer Vision (CV)</strong>, and the transformative capabilities of <strong>Large Language Models (LLMs)</strong> and <strong>Gen AI</strong>.
+            Currently working as a founding <strong>AI Engineer</strong> at a Stealth Startup.
+          </p>
+
+          <p style="font-size: 1.05rem; margin-top: 0.75rem;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Graduation%20Cap.webp" alt="Graduation Cap" width="26" height="26" style="vertical-align: middle; margin-right: 4px;" />
+            I hold an <strong>M.Tech in Data Science from IIT Guwahati</strong> and I’m currently a <strong>Kaggle Notebook Expert</strong> with a strong inclination toward solving real-world challenges using intelligent systems.
+          </p>
+
+          <h2 style="display: flex; align-items: center; gap: 8px; margin-top: 1.75rem;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Rocket.png" alt="Rocket" width="30" height="30" />
+            My Skills:
+          </h2>
+
+          <ul style="font-size: 1.02rem; line-height: 1.8;">
+            <li><strong>LLMs & Generative AI:</strong> Proficient in <strong>RAG, Agentic RAG, LangChain, LangGraph, Crew AI</strong>, and building <strong>Agentic Workflows</strong></li>
+            <li><strong>Applied ML & Deep Learning:</strong> End-to-end project experience across NLP and CV domains</li>
+            <li><strong>Model Fine-Tuning:</strong> Experience in fine-tuning models on custom datasets in <strong>HuggingFace, Unsloth, PyTorch and PyTorch Lightning</strong></li>
+            <li><strong>MLOps & Scalable ML Systems:</strong> Focus on production-grade pipelines, model deployment, and monitoring with <strong>MLflow</strong></li>
+            <li><strong>API & Deployment:</strong> Experience in deploying models as APIs using <strong>FastAPI</strong> and deploying on cloud platforms like <strong>AWS and GCP</strong></li>
+            <li><strong>CI/CD:</strong> Experience in setting up CI/CD pipelines using <strong>GitHub Actions</strong></li>
+            <li><strong>Data Science:</strong> Experience in data analysis, statistical analysis, data visualization, and data preprocessing using <strong>Pandas, NumPy, Matplotlib, Seaborn, and Scikit-learn</strong></li>
+          </ul>
+
+          <hr />
+
+          <div style="margin: 1.5rem 0;">
+            <a href="https://skillicons.dev" target="_blank">
+              <img src="https://skillicons.dev/icons?i=cpp,python,pytorch,vscode,git,github,docker,gcp,aws,githubactions&perline=10" alt="Tech Stack Icons" style="max-width: 100%;" />
+            </a>
           </div>
 
-          <!-- Skills Grid -->
-          <div class="card">
-            <div class="card-header">
-              <h2 class="card-title">🛠️ Technical Arsenal & Skills</h2>
-            </div>
-            <div id="profile-skills-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;">
-              <!-- Dynamic skills loaded from API -->
-            </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 1.25rem 0 2rem;">
+            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/anaconda/anaconda-original.svg" width="45" height="45" alt="Anaconda" />
+            <img src="https://colab.research.google.com/img/colab_favicon_256px.png" width="45" height="45" alt="Google Colab" />
+            <img src="https://cdn3.iconfinder.com/data/icons/logos-and-brands-adobe/512/189_Kaggle-512.png" width="45" height="45" alt="Kaggle" />
+            <img src="https://cdn-avatars.huggingface.co/v1/production/uploads/62ecdc18b72a69615d6bd857/E4lkPz1TZNLzIFr_dR273.png" width="45" height="45" alt="Hugging Face" />
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Keras_logo.svg/1200px-Keras_logo.svg.png" width="45" height="45" alt="Keras" />
+            <img src="https://newrelic.com/sites/default/files/styles/medium/public/quickstarts/images/icons/langchain--logo.png" width="45" height="45" alt="LangChain" />
+            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" width="45" height="45" alt="Linux" />
           </div>
-        </section>
 
-        <!-- ── Tab 2: Tour Agent (Airbnb MCP) ────────────────────────── -->
-        <section class="tab-view" id="tab-tour">
-          <div class="chat-container">
-            <div class="stepper-banner" id="tour-status-banner" style="display: none;">
-              <span class="spinner"></span>
-              <span id="tour-status-msg">Processing request...</span>
+          <hr />
+
+          <ul style="font-size: 1.02rem; line-height: 1.8;">
+            <li>Contributing to the ML community on <a href="https://www.kaggle.com/sushovansaha9" target="_blank">Kaggle</a></li>
+            <li>Writing practical ML blogs on <a href="https://medium.com/@sushovansaha95" target="_blank">Medium</a></li>
+            <li>Exploring new AI tools, frameworks, and academic papers to stay at the cutting edge</li>
+          </ul>
+
+          <p style="font-size: 1.05rem; margin-top: 1rem;">
+            ⚡ I'm always eager to collaborate on innovative projects, exchange ideas, and learn from the community. Let’s build something amazing with AI! 🤝
+          </p>
+
+          <hr />
+
+          <!-- Glowing Social Footer (From icons.py) -->
+          <div class="glowing-footer">
+            <div class="inner-container">
+              <a href="https://www.kaggle.com/sushovansaha9" target="_blank">
+                <img src="https://cdn4.iconfinder.com/data/icons/logos-and-brands/512/189_Kaggle_logo_logos-512.png" class="glowing-image" alt="Kaggle" />
+              </a>
             </div>
-
-            <div class="chip-group" id="tour-chips">
-              <!-- Travel suggestions rendered dynamically -->
+            <div class="inner-container">
+              <a href="https://github.com/ambideXtrous9" target="_blank">
+                <img src="https://qph.cf2.quoracdn.net/main-qimg-729a22aba98d1235fdce4883accaf81e" class="glowing-image" alt="GitHub" />
+              </a>
             </div>
-
-            <div class="chat-history" id="tour-chat-history">
-              <div class="chat-bubble assistant">
-                <div class="chat-avatar">🏡</div>
-                <div class="chat-content markdown-body">
-                  <h3>Welcome to the MCP-Powered Travel Agent!</h3>
-                  <p>I connect directly to the <strong>Airbnb MCP Server</strong> (<code>@openbnb/mcp-server-airbnb</code>) and real-time meteorology APIs to synthesize comprehensive, verified itineraries with live stay rates and weather forecasts.</p>
-                  <p>Pick a query suggestion above or describe your dream trip!</p>
-                </div>
-              </div>
+            <div class="inner-container">
+              <a href="https://www.linkedin.com/in/sushovan-saha-29a00a113" target="_blank">
+                <img src="https://images.rawpixel.com/image_png_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvdjk4Mi1kMy0xMC5wbmc.png" class="glowing-image" alt="LinkedIn" />
+              </a>
             </div>
-
-            <div class="chat-input-bar">
-              <input type="text" id="tour-input" placeholder="Ask about your trip (e.g., 3 days trip to Munnar from tomorrow)..." />
-              <button class="btn btn-primary" id="tour-send-btn">Send 🚀</button>
+            <div class="inner-container">
+              <a href="https://leetcode.com/u/ambideXtrous9/" target="_blank">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/8/8e/LeetCode_Logo_1.png" class="glowing-image" alt="LeetCode" />
+              </a>
             </div>
-          </div>
-        </section>
-
-        <!-- ── Tab 3: Harry Potter Lore (Pinecone MCP) ──────────────── -->
-        <section class="tab-view" id="tab-harry">
-          <div class="chat-container">
-            <div class="stepper-banner" id="harry-status-banner" style="display: none;">
-              <span class="spinner"></span>
-              <span id="harry-status-msg">Processing lore query...</span>
-            </div>
-
-            <div class="chip-group" id="harry-chips">
-              <!-- Lore suggestions rendered dynamically -->
-            </div>
-
-            <div class="chat-history" id="harry-chat-history">
-              <div class="chat-bubble assistant">
-                <div class="chat-avatar">🪄</div>
-                <div class="chat-content markdown-body">
-                  <h3>Welcome to the Harry Potter Lore Scholar!</h3>
-                  <p>This agent searches the canonical 7-book Harry Potter vector database (<code>hpvdb-openai</code>) using <strong>Pinecone MCP</strong> (<code>@pinecone-database/mcp</code>) and synthesizes philosophical parallels with <strong>Indian Ancient Mythology</strong> (Ramayana, Mahabharata, Puranas, Dharma).</p>
-                  <p>Select an inquiry above or ask any question about wizarding lore!</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="chat-input-bar">
-              <input type="text" id="harry-input" placeholder="Ask about Harry Potter lore, wands, or mythological parallels..." />
-              <button class="btn btn-primary" id="harry-send-btn">Ask 🔮</button>
+            <div class="inner-container">
+              <a href="https://medium.com/@sushovansaha95" target="_blank">
+                <img src="https://cdn4.iconfinder.com/data/icons/social-media-2210/24/Medium-512.png" class="glowing-image" alt="Medium" />
+              </a>
             </div>
           </div>
         </section>
 
-        <!-- ── Tab 4: Stock Screener ─────────────────────────────────── -->
-        <section class="tab-view" id="tab-stock">
-          <div class="card">
-            <div class="card-header">
-              <h2 class="card-title">📈 Range Breakout & Volume Expansion Scanner</h2>
-              <div id="stock-scan-summary" style="font-size: 13px; color: var(--text-muted);">
-                Ready to scan Indian equities (Nifty 500 & Microcap 250).
-              </div>
+
+        <!-- ================================================================== -->
+        <!-- 💹 Tab 2: AI Stock Research Agent                                   -->
+        <!-- ================================================================== -->
+        <section class="st-tab-view" id="tab-stock">
+          <h1>🚀 <span style="color: #1E88E5;">Stock Screener</span></h1>
+          <p style="color: var(--st-text-muted);">This is a Stock Screener that can help you find stocks that are breaking out with volume.</p>
+          <h2 style="margin-top: 1rem;">Range Breakout with Volume</h2>
+
+          <!-- Streamlit Screener Sub-Tabs -->
+          <div class="st-tabs-nav" id="stock-subtabs">
+            <button class="st-tab-trigger active" data-subtab="subtab-vol">📈 Volume Breakout</button>
+            <button class="st-tab-trigger" data-subtab="subtab-eps">💰 Highest EPS</button>
+            <button class="st-tab-trigger" data-subtab="subtab-debt">🏦 Low Debt Companies</button>
+            <button class="st-tab-trigger" data-subtab="subtab-bull">📈 Bullish Engulfing</button>
+            <button class="st-tab-trigger" data-subtab="subtab-profit">🚀 Profit Jump 200%+</button>
+            <button class="st-tab-trigger" data-subtab="subtab-analysis">📋 Stocks Analysis</button>
+          </div>
+
+          <!-- Subtab 1: Volume Breakout -->
+          <div class="stock-subtab-content active" id="subtab-vol">
+            <div class="st-radio-group">
+              <span style="font-weight: 600;">Universe:</span>
+              <label class="st-radio-label">
+                <input type="radio" name="stock-universe" value="NIFTY500" checked> NIFTY500
+              </label>
+              <label class="st-radio-label">
+                <input type="radio" name="stock-universe" value="MICROCAP250"> MICROCAP250
+              </label>
             </div>
 
-            <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 20px;">
-              <div style="flex: 1; min-width: 180px;">
-                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Universe</label>
-                <select class="select-input" id="stock-universe-select">
-                  <option value="nifty500">Nifty 500</option>
-                  <option value="microcap250">Nifty Microcap 250</option>
-                </select>
-              </div>
-
-              <div style="flex: 1; min-width: 180px;">
-                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Min Volume Ratio (vs 20-DMA)</label>
-                <input type="number" class="input-text" id="stock-min-vol" value="1.5" step="0.1" min="1.0" max="10.0" />
-              </div>
-
-              <div style="flex: 1; min-width: 180px;">
-                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Filter Results</label>
-                <input type="text" class="input-text" id="stock-search-filter" placeholder="Search symbol or company..." />
-              </div>
-
-              <div style="margin-top: 18px;">
-                <button class="btn btn-primary" id="stock-scan-btn">🚀 Run Breakout Scanner</button>
-              </div>
+            <div style="margin: 1rem 0;">
+              <button class="st-btn st-btn-primary" id="btn-run-stock-scan">Run Scan</button>
             </div>
 
-            <div class="data-table-container">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Symbol</th>
-                    <th>Company</th>
-                    <th>LTP</th>
-                    <th>1D Change</th>
-                    <th>Volume</th>
-                    <th>Vol Expansion</th>
-                    <th>RSI (14)</th>
-                    <th>Signal</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="stock-table-body">
-                  <tr>
-                    <td colspan="9" style="text-align: center; padding: 24px; color: var(--text-muted);">
-                      Click "Run Breakout Scanner" to fetch real-time volume expansion data.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div id="stock-results-container" style="margin-top: 1.5rem;">
+              <div class="st-caption">Click 'Run Scan' to scan stocks breaking out with high volume.</div>
+            </div>
+          </div>
+
+          <!-- Other subtabs placeholders -->
+          <div class="stock-subtab-content" id="subtab-eps" style="display: none;">
+            <h3>💰 Highest EPS Screener</h3>
+            <p class="st-caption">Filters stocks with positive trailing EPS, sorted highest first.</p>
+            <button class="st-btn st-btn-primary" onclick="window.runCustomScan('eps')">Run Scan</button>
+            <div id="eps-results" style="margin-top: 1rem;"></div>
+          </div>
+          <div class="stock-subtab-content" id="subtab-debt" style="display: none;">
+            <h3>🏦 Low Debt Companies Screener</h3>
+            <p class="st-caption">Filters stocks with Debt/Equity ratio &lt; 0.5.</p>
+            <button class="st-btn st-btn-primary" onclick="window.runCustomScan('debt')">Run Scan</button>
+            <div id="debt-results" style="margin-top: 1rem;"></div>
+          </div>
+          <div class="stock-subtab-content" id="subtab-bull" style="display: none;">
+            <h3>📈 Bullish Engulfing Screener</h3>
+            <p class="st-caption">Detects bullish engulfing pattern with volume &gt; 1.5x average.</p>
+            <button class="st-btn st-btn-primary" onclick="window.runCustomScan('bullish')">Run Scan</button>
+            <div id="bull-results" style="margin-top: 1rem;"></div>
+          </div>
+          <div class="stock-subtab-content" id="subtab-profit" style="display: none;">
+            <h3>🚀 Profit Jump 200%+ Screener</h3>
+            <p class="st-caption">Finds stocks where latest quarter profit jumped ≥ 200% vs previous quarter.</p>
+            <button class="st-btn st-btn-primary" onclick="window.runCustomScan('profit')">Run Scan</button>
+            <div id="profit-results" style="margin-top: 1rem;"></div>
+          </div>
+          <div class="stock-subtab-content" id="subtab-analysis" style="display: none;">
+            <h3>📋 Individual Stock Analysis</h3>
+            <div style="display: flex; gap: 10px; margin: 1rem 0;">
+              <input type="text" id="manual-stock-input" class="st-chat-input-field" style="border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.4rem 0.8rem;" placeholder="Enter Symbol (e.g. RELIANCE, TATASTEEL)" />
+              <button class="st-btn st-btn-primary" id="btn-manual-report">Generate Wall St Report</button>
             </div>
           </div>
         </section>
 
-        <!-- ── Tab 5: Vision AI Studio ───────────────────────────────── -->
-        <section class="tab-view" id="tab-vision">
-          <div class="card">
-            <div class="card-header">
-              <h2 class="card-title">👁️ Vision AI Studio</h2>
-              <div style="display: flex; gap: 16px;">
-                <label style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                  <input type="radio" name="vision-mode" value="classifier" checked />
-                  <span>PyTorch Brand Classifier</span>
-                </label>
-                <label style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                  <input type="radio" name="vision-mode" value="yolo" />
-                  <span>YOLO Object Detection</span>
-                </label>
+
+        <!-- ================================================================== -->
+        <!-- 🪄 Tab 3: Harry Potter X Mythology (WebSocket Streaming)           -->
+        <!-- ================================================================== -->
+        <section class="st-tab-view" id="tab-harry">
+          <h1>🪄 <span style="color: #1E88E5;">Harry Potter X Mythology</span></h1>
+          <p style="color: var(--st-text-muted);">Ask anything about Harry Potter and Indian Mythology</p>
+
+          <!-- Chat messages area -->
+          <div class="st-chat-container" id="harry-chat-history">
+            <!-- Initial Welcome Message -->
+            <div class="st-chat-message assistant">
+              <div class="st-chat-avatar">🪄</div>
+              <div class="st-chat-content">
+                <strong>Welcome to the Harry Potter & Indian Mythology Lore Scholar!</strong><br>
+                I utilize Pinecone vector retrieval (<code>hpvdb-openai</code>) via MCP to cross-examine characters, Astras, Dharma, and wizarding lore with Indian ancient epics.
               </div>
             </div>
+          </div>
 
-            <div class="dropzone" id="vision-dropzone">
-              <div class="dropzone-icon">📁</div>
-              <div style="font-weight: 600; margin-bottom: 4px;">Drag & drop image here or click to browse</div>
-              <div style="font-size: 12px; color: var(--text-muted);">Supports brand logos, product photos (JPG, PNG, WebP)</div>
-              <input type="file" id="vision-file-input" style="display: none;" accept="image/*" />
+          <!-- Bottom Chat Input (Fixed) -->
+          <div class="st-chat-footer-fixed" id="harry-footer-bar">
+            <div class="st-chat-suggestions">
+              <button class="st-suggestion-chip" data-query="Compare Ron Weasley vs Lakshmana in narrative, duty, and loyalty context">🧙‍♂️ Ron vs Lakshmana</button>
+              <button class="st-suggestion-chip" data-query="Relate Deathly Hallows to Hindu concepts of Samsara, Karma, and Immortality">🔮 Deathly Hallows & Samsara</button>
+              <button class="st-suggestion-chip" data-query="Explore parallels between Lord Rama's exile and Harry Potter's quest for Horcruxes">⚡ Rama's Exile & Horcrux Quest</button>
+              <button class="st-suggestion-chip" data-query="Explore the symbolism and ethical constraints of Brahmastra vs Avada Kedavra">📜 Brahmastra vs Avada Kedavra</button>
             </div>
-
-            <div class="image-preview-box" id="vision-preview-box" style="display: none;">
-              <div>
-                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">Uploaded Image:</div>
-                <img id="vision-original-preview" class="preview-img" alt="Uploaded Preview" />
-                <div style="margin-top: 10px;">
-                  <button class="btn btn-primary" id="vision-process-btn">🚀 Run Vision Inference</button>
-                </div>
-              </div>
-              <div style="flex: 1;" id="vision-result-panel">
-                <!-- Dynamic inference results rendered here -->
-              </div>
+            <div class="st-chat-input-bar">
+              <input type="text" id="harry-user-input" class="st-chat-input-field" placeholder="Ask a question or topic (e.g. Harry Potter, mythology, or general questions)..." />
+              <button class="st-chat-send-btn" id="harry-send-btn">Ask 🪄</button>
             </div>
           </div>
         </section>
 
-        <!-- ── Tab 6: Cluster Sandbox ────────────────────────────────── -->
-        <section class="tab-view" id="tab-cluster">
-          <div class="card">
-            <div class="card-header">
-              <h2 class="card-title">🐙 Interactive Clustering Sandbox</h2>
-              <div style="display: flex; gap: 16px;">
-                <label style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                  <input type="radio" name="cluster-algo" value="kmeans" checked />
-                  <span>K-Means</span>
-                </label>
-                <label style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                  <input type="radio" name="cluster-algo" value="dbscan" />
-                  <span>DBSCAN</span>
-                </label>
+
+        <!-- ================================================================== -->
+        <!-- 🏡 Tab 4: Tour Agent (WebSocket Streaming)                         -->
+        <!-- ================================================================== -->
+        <section class="st-tab-view" id="tab-tour">
+          <h1>🏡 <span style="color: #1E88E5;">MCP Powered Tour Agent</span></h1>
+          <p style="color: var(--st-text-muted);">This is a Weather and MCP powered Airbnb tour agent that can help you plan your next vacation.</p>
+
+          <!-- Chat messages area -->
+          <div class="st-chat-container" id="tour-chat-history">
+            <!-- Initial Welcome Message -->
+            <div class="st-chat-message assistant">
+              <div class="st-chat-avatar">🏡</div>
+              <div class="st-chat-content">
+                <strong>Welcome to the MCP-Powered Travel Agent!</strong><br>
+                I query live accommodations via the <strong>Airbnb MCP Server</strong> (<code>@openbnb/mcp-server-airbnb</code>) and real-time meteorology APIs to synthesize comprehensive, verified itineraries with live stay rates and weather forecasts.
               </div>
             </div>
+          </div>
 
-            <!-- Parameters Grid -->
-            <div style="background: var(--bg-surface); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px; border: 1px solid var(--border-color);">
-              <div id="kmeans-controls">
-                <label style="font-size: 13px; display: flex; justify-content: space-between; margin-bottom: 6px;">
-                  <span>Number of Clusters (k):</span>
-                  <strong id="cluster-k-val" style="color: var(--primary);">3</strong>
-                </label>
-                <input type="range" id="cluster-k-slider" min="1" max="10" value="3" style="width: 100%; cursor: pointer;" />
-              </div>
-
-              <div id="dbscan-controls" style="display: none;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                  <div>
-                    <label style="font-size: 13px; display: flex; justify-content: space-between; margin-bottom: 6px;">
-                      <span>Epsilon (Distance Threshold):</span>
-                      <strong id="cluster-eps-val" style="color: var(--primary);">25</strong>
-                    </label>
-                    <input type="range" id="cluster-eps-slider" min="5" max="60" value="25" style="width: 100%; cursor: pointer;" />
-                  </div>
-                  <div>
-                    <label style="font-size: 13px; display: flex; justify-content: space-between; margin-bottom: 6px;">
-                      <span>Min Samples:</span>
-                      <strong id="cluster-minpts-val" style="color: var(--primary);">5</strong>
-                    </label>
-                    <input type="range" id="cluster-minpts-slider" min="2" max="20" value="5" style="width: 100%; cursor: pointer;" />
-                  </div>
-                </div>
-              </div>
-
-              <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
-                <button class="btn btn-secondary" id="cluster-run-btn" style="padding: 4px 12px; font-size: 12px;">Recalculate 🔄</button>
-              </div>
+          <!-- Bottom Chat Input (Fixed) -->
+          <div class="st-chat-footer-fixed" id="tour-footer-bar">
+            <div class="st-chat-suggestions">
+              <button class="st-suggestion-chip" data-query="3 days trip to Munnar from tomorrow">🌴 Munnar 3-Day Trip</button>
+              <button class="st-suggestion-chip" data-query="4 days weekend getaway to Manali for 2 adults">⛰️ Manali Weekend Getaway</button>
+              <button class="st-suggestion-chip" data-query="3 days relaxing beach vacation in Goa with weather forecast">🌊 Goa Beach Vacation</button>
+              <button class="st-suggestion-chip" data-query="5 days heritage and culture tour in Jaipur starting next Monday">🏰 Jaipur Cultural Tour</button>
             </div>
-
-            <!-- Plot Canvas -->
-            <div id="cluster-plot-canvas" style="width: 100%; height: 480px; border-radius: var(--radius-md); overflow: hidden;"></div>
-
-            <div id="cluster-stats"></div>
+            <div class="st-chat-input-bar">
+              <input type="text" id="tour-user-input" class="st-chat-input-field" placeholder="Ask about your trip (e.g. 3 days trip to Munnar from tomorrow)..." />
+              <button class="st-chat-send-btn" id="tour-send-btn">Send 🚀</button>
+            </div>
           </div>
         </section>
 
-        <!-- ── Tab 7: Social Networks ────────────────────────────────── -->
-        <section class="tab-view" id="tab-social">
-          <div class="card">
-            <div class="card-header">
-              <h2 class="card-title">🌐 Connect & Collaborate</h2>
+
+        <!-- ================================================================== -->
+        <!-- 🚀 Tab 5: Yolo for Logo                                             -->
+        <!-- ================================================================== -->
+        <section class="st-tab-view" id="tab-yolo">
+          <h1>🚀 <span style="color: #1E88E5;">YOLO for Logo!</span> 😎</h1>
+
+          <div style="font-size: 1rem; line-height: 1.7; margin-bottom: 1.5rem;">
+            <h3>🚀 <strong>YOLOv8.1: The Latest in Object Detection</strong></h3>
+            <ul>
+              <li>🆕 <strong>YOLOv8.1 is out!</strong> The newest update in the YOLO series, maintaining its position as state-of-the-art for Object Detection, Instance Segmentation, and Classification.</li>
+            </ul>
+
+            <h3>⚠️ <strong>Main Challenge: Custom Dataset Preparation</strong></h3>
+            <ul>
+              <li>🔍 <strong>Dataset Selection:</strong> Using <strong>Flickr27</strong> as our image dataset.</li>
+              <li>📸 <strong>Flickr27 Overview:</strong> Contains 27 different brand logos, perfect for training YOLO on custom data.</li>
+              <li>💼 <strong>Custom Dataset Prep:</strong> The most crucial step in training YOLO models.</li>
+              <li>🛠️ <strong>Get Ready to Train:</strong> With YOLOv8.1 and Flickr27, you'll be well-equipped to handle custom object detection tasks!</li>
+            </ul>
+          </div>
+
+          <!-- File Uploader -->
+          <div class="st-file-uploader" id="yolo-dropzone">
+            <input type="file" id="yolo-file-input" accept="image/jpeg, image/png, image/jpg" style="display: none;" />
+            <div class="st-uploader-icon">📁</div>
+            <div class="st-uploader-text">Upload an Image containing Brand Logo</div>
+            <div class="st-uploader-subtext">Limit 200MB per file • JPG, JPEG, PNG</div>
+          </div>
+
+          <!-- Results: 2 Side-by-Side Columns -->
+          <div id="yolo-results-row" style="display: none; margin-top: 1.5rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+              <div style="text-align: center;">
+                <img id="yolo-uploaded-preview" class="st-uploaded-img" src="" alt="Uploaded Image" />
+                <div class="st-caption">Uploaded Image</div>
+              </div>
+              <div style="text-align: center;">
+                <img id="yolo-predicted-preview" class="st-uploaded-img" src="" alt="Predicted Image" />
+                <div class="st-caption">Predicted Image (YOLO Annotations)</div>
+              </div>
             </div>
-            <p style="color: var(--text-secondary); margin-bottom: 24px;">
-              Let's connect, discuss state-of-the-art AI research, and collaborate on intelligent agent workflows!
+            <div id="yolo-boxes-summary" style="margin-top: 1rem;"></div>
+          </div>
+
+          <!-- Glowing Logo Footer (glowingYolo from icons.py) -->
+          <div class="glowing-footer" style="justify-content: flex-end; margin-top: 3rem;">
+            <div class="inner-container">
+              <a href="https://medium.com/@sushovansaha95/yolov8-1-on-custom-dataset-logo-detection-8915286999ef" target="_blank">
+                <img src="https://miro.medium.com/v2/resize:fit:4800/format:webp/1*x4eteo0X9VqrLEHAYyCX8Q.jpeg" class="glowing-image" alt="YOLO Article" />
+              </a>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ================================================================== -->
+        <!-- 🏆 Tab 6: Play with Image Classifier (Exact match to Screenshot 5)  -->
+        <!-- ================================================================== -->
+        <section class="st-tab-view" id="tab-classifier">
+          <h1>🚀 <span style="color: #1E88E5;">Image Classification</span> 😎</h1>
+
+          <div style="font-size: 1rem; line-height: 1.7; margin-bottom: 1.5rem;">
+            <h3>🚀 <strong>Exploring Image Classification Models with Transfer Learning!</strong></h3>
+            <ul>
+              <li>🆕 <strong>Models Evaluated:</strong> We've assessed the following state-of-the-art models using the Flickr27 dataset:
+                <ul>
+                  <li><strong>Xception</strong> ☕</li>
+                  <li><strong>InceptionV3</strong> 🌈</li>
+                  <li><strong>MobileNetV2</strong> 📱</li>
+                  <li><strong>EfficientNet</strong> ⚡</li>
+                </ul>
+              </li>
+            </ul>
+
+            <h3>🔍 <strong>Performance Aspects Compared</strong></h3>
+            <ul>
+              <li><strong>⚡ Inference Time:</strong> How quickly each model makes predictions.</li>
+              <li><strong>📦 Model Size:</strong> The storage requirements of each model.</li>
+              <li><strong>🔢 Number of Parameters:</strong> The complexity and capacity of each model.</li>
+              <li><strong>📈 Accuracy:</strong> How well each model performs in classifying images.</li>
+              <li><strong>🏷️ Predicted Class:</strong> The class each model predicts for the input images.</li>
+              <li><strong>📚 Understanding Trade-Offs:</strong> These comparisons will help us understand the trade-offs between speed, efficiency, and accuracy for each model.</li>
+            </ul>
+
+            <p>
+              💡 <strong>You can train your own model on any dataset following the link below:</strong><br>
+              <a href="https://github.com/ambideXtrous9/Brand-Logo-Classification-using-TransferLearning-Flickr27/tree/main/Final%20Model" target="_blank">Train Your Model</a>
             </p>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
-              <a href="https://www.linkedin.com/in/sushovan-saha-29a00a113" target="_blank" class="card" style="margin-bottom: 0; text-decoration: none; border-color: rgba(0, 119, 181, 0.4); transition: var(--transition);">
-                <div style="font-size: 24px; margin-bottom: 8px;">💼</div>
-                <div style="font-weight: 700; color: #fff; font-size: 16px;">LinkedIn Profile</div>
-                <div style="font-size: 13px; color: var(--text-muted);">Connect professionally and follow updates</div>
-              </a>
+            <p style="margin-top: 0.5rem;">🚀 <strong>To see How it works..</strong></p>
+          </div>
 
-              <a href="https://github.com/ambideXtrous9" target="_blank" class="card" style="margin-bottom: 0; text-decoration: none; border-color: rgba(255, 255, 255, 0.2); transition: var(--transition);">
-                <div style="font-size: 24px; margin-bottom: 8px;">🐙</div>
-                <div style="font-weight: 700; color: #fff; font-size: 16px;">GitHub Repositories</div>
-                <div style="font-size: 13px; color: var(--text-muted);">Explore open source agents and models</div>
-              </a>
+          <!-- File Uploader -->
+          <div class="st-file-uploader" id="classifier-dropzone">
+            <input type="file" id="classifier-file-input" accept="image/jpeg, image/png, image/jpg" style="display: none;" />
+            <div class="st-uploader-icon">📁</div>
+            <div class="st-uploader-text">Upload an Image containing Brand Logo</div>
+            <div class="st-uploader-subtext">Limit 200MB per file • JPG, JPEG, PNG</div>
+          </div>
 
-              <a href="https://www.kaggle.com/sushovansaha9" target="_blank" class="card" style="margin-bottom: 0; text-decoration: none; border-color: rgba(32, 190, 255, 0.4); transition: var(--transition);">
-                <div style="font-size: 24px; margin-bottom: 8px;">🏅</div>
-                <div style="font-weight: 700; color: #fff; font-size: 16px;">Kaggle Notebooks</div>
-                <div style="font-size: 13px; color: var(--text-muted);">Kaggle Notebooks Expert solutions</div>
-              </a>
+          <!-- Preview & 4 Comparison Columns -->
+          <div id="classifier-results-area" style="display: none;">
+            <div class="st-preview-image-box">
+              <img id="classifier-uploaded-img" class="st-uploaded-img" src="" alt="Uploaded Image" />
+              <div class="st-caption">Uploaded Image</div>
+            </div>
 
-              <a href="https://medium.com/@sushovansaha95" target="_blank" class="card" style="margin-bottom: 0; text-decoration: none; border-color: rgba(0, 171, 107, 0.4); transition: var(--transition);">
-                <div style="font-size: 24px; margin-bottom: 8px;">✍️</div>
-                <div style="font-weight: 700; color: #fff; font-size: 16px;">Medium Articles</div>
-                <div style="font-size: 13px; color: var(--text-muted);">Practical deep dives into machine learning</div>
+            <!-- 4 Model Cards Generated Dynamically (Screenshot 5 Match) -->
+            <div class="st-columns-4" id="classifier-cards-grid">
+              <!-- Card 1: Xception -->
+              <div class="st-model-card" id="card-xception">
+                <div class="st-model-card-item">🚀 Model: <strong>Xception</strong></div>
+                <div class="st-model-card-item">📦 Size: <strong id="size-xception">81.64 MB</strong></div>
+                <div class="st-model-card-item">💡 Parameters: <strong id="params-xception">21.34 M</strong></div>
+                <div class="st-model-card-item">🌱 Predicted Class: <strong id="class-xception">Evaluating...</strong></div>
+                <div class="st-model-card-item">🎃 Accuracy: <strong id="acc-xception">--</strong></div>
+                <div class="st-model-card-item">🌟 Inference Time: <strong id="time-xception">--</strong></div>
+              </div>
+
+              <!-- Card 2: InceptionV3 -->
+              <div class="st-model-card" id="card-inception">
+                <div class="st-model-card-item">🚀 Model: <strong>InceptionV3</strong></div>
+                <div class="st-model-card-item">📦 Size: <strong id="size-inception">85.30 MB</strong></div>
+                <div class="st-model-card-item">💡 Parameters: <strong id="params-inception">22.32 M</strong></div>
+                <div class="st-model-card-item">🌱 Predicted Class: <strong id="class-inception">Evaluating...</strong></div>
+                <div class="st-model-card-item">🎃 Accuracy: <strong id="acc-inception">--</strong></div>
+                <div class="st-model-card-item">🌟 Inference Time: <strong id="time-inception">--</strong></div>
+              </div>
+
+              <!-- Card 3: MobileNetV2 -->
+              <div class="st-model-card" id="card-mobilenet">
+                <div class="st-model-card-item">🚀 Model: <strong>MobileNetV2</strong></div>
+                <div class="st-model-card-item">📦 Size: <strong id="size-mobilenet">9.91 MB</strong></div>
+                <div class="st-model-card-item">💡 Parameters: <strong id="params-mobilenet">2.56 M</strong></div>
+                <div class="st-model-card-item">🌱 Predicted Class: <strong id="class-mobilenet">Evaluating...</strong></div>
+                <div class="st-model-card-item">🎃 Accuracy: <strong id="acc-mobilenet">--</strong></div>
+                <div class="st-model-card-item">🌟 Inference Time: <strong id="time-mobilenet">--</strong></div>
+              </div>
+
+              <!-- Card 4: EfficientNet -->
+              <div class="st-model-card" id="card-efficientnet">
+                <div class="st-model-card-item">🚀 Model: <strong>EfficientNet</strong></div>
+                <div class="st-model-card-item">📦 Size: <strong id="size-efficientnet">16.75 MB</strong></div>
+                <div class="st-model-card-item">💡 Parameters: <strong id="params-efficientnet">4.35 M</strong></div>
+                <div class="st-model-card-item">🌱 Predicted Class: <strong id="class-efficientnet">Evaluating...</strong></div>
+                <div class="st-model-card-item">🎃 Accuracy: <strong id="acc-efficientnet">--</strong></div>
+                <div class="st-model-card-item">🌟 Inference Time: <strong id="time-efficientnet">--</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Glowing Footer -->
+          <div class="glowing-footer" style="justify-content: flex-end; margin-top: 3rem;">
+            <div class="inner-container">
+              <a href="https://github.com/ambideXtrous9/Brand-Logo-Classification-using-TransferLearning-Flickr27/tree/main/Final%20Model" target="_blank">
+                <img src="https://mlnotebook.github.io/img/CNN/poolfig.gif" class="glowing-image" alt="CNN Architecture" />
               </a>
             </div>
+          </div>
+        </section>
+
+
+        <!-- ================================================================== -->
+        <!-- 🐙 Tab 7: Play with Cluster                                         -->
+        <!-- ================================================================== -->
+        <section class="st-tab-view" id="tab-cluster">
+          <h1>🐙 <span style="color: #1E88E5;">Play with Clusters</span> 😎</h1>
+
+          <!-- Initial Scatter Plot -->
+          <div id="cluster-raw-plot" style="width: 100%; height: 420px; margin: 1rem 0;"></div>
+
+          <!-- Algorithm Radio Selector -->
+          <div style="margin: 1.5rem 0;">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Choose Clustering Algorithm</label>
+            <div class="st-radio-group">
+              <label class="st-radio-label">
+                <input type="radio" name="cluster-algo" value="K-Means" checked> K-Means
+              </label>
+              <label class="st-radio-label">
+                <input type="radio" name="cluster-algo" value="DBSCAN"> DBSCAN
+              </label>
+            </div>
+          </div>
+
+          <!-- K-Means Slider Control -->
+          <div id="kmeans-controls" class="st-slider-container">
+            <label>
+              <span>Number of clusters</span>
+              <span id="kmeans-val-display" style="color: var(--st-primary); font-weight: 700;">3</span>
+            </label>
+            <input type="range" id="kmeans-slider" class="st-slider" min="1" max="10" value="3" />
+          </div>
+
+          <!-- DBSCAN Slider Control -->
+          <div id="dbscan-controls" class="st-slider-container" style="display: none;">
+            <label>
+              <span>Epsilon (distance threshold)</span>
+              <span id="dbscan-val-display" style="color: var(--st-primary); font-weight: 700;">5</span>
+            </label>
+            <input type="range" id="dbscan-slider" class="st-slider" min="1" max="40" value="5" />
+          </div>
+
+          <!-- Clustered Output Plot -->
+          <div id="cluster-result-plot" style="width: 100%; height: 440px; margin: 1.5rem 0;"></div>
+
+          <!-- Feedback text matching Streamlit app -->
+          <div id="cluster-notes" style="font-size: 1rem; color: var(--st-text-color); margin-top: 1rem;">
+            💡 Why don't you try DBSCAN..!!
+          </div>
+
+          <!-- Glowing Cluster Footer -->
+          <div class="glowing-footer" style="justify-content: flex-end; margin-top: 3rem;">
+            <div class="inner-container">
+              <a href="https://github.com/ambideXtrous9/Learning-Python/blob/main/ML%20and%20NN/Clustering.ipynb" target="_blank">
+                <img src="https://media.licdn.com/dms/image/C4E12AQGopXR2OLgA9Q/article-cover_image-shrink_600_2000/0/1537440291948?e=2147483647&v=beta&t=ciX9-639Lwc27E74CNPBKN2gx9hwRr5-b1b8y2sLNOQ" class="glowing-image" alt="Clustering Article" />
+              </a>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ================================================================== -->
+        <!-- 🌐 Tab 8: Social                                                   -->
+        <!-- ================================================================== -->
+        <section class="st-tab-view" id="tab-social">
+          <h1 class="rainbow-text">Social</h1>
+
+          <div style="font-size: 1.1rem; margin: 2rem 0;">
+            <p>Connect with me across platforms, view my open-source code repositories, or read my technical AI/ML publications:</p>
+          </div>
+
+          <!-- Glowing Social Icons Row -->
+          <div class="glowing-footer" style="margin-top: 2rem;">
+            <div class="inner-container">
+              <a href="https://www.kaggle.com/sushovansaha9" target="_blank">
+                <img src="https://cdn4.iconfinder.com/data/icons/logos-and-brands/512/189_Kaggle_logo_logos-512.png" class="glowing-image" alt="Kaggle" />
+              </a>
+            </div>
+            <div class="inner-container">
+              <a href="https://github.com/ambideXtrous9" target="_blank">
+                <img src="https://qph.cf2.quoracdn.net/main-qimg-729a22aba98d1235fdce4883accaf81e" class="glowing-image" alt="GitHub" />
+              </a>
+            </div>
+            <div class="inner-container">
+              <a href="https://www.linkedin.com/in/sushovan-saha-29a00a113" target="_blank">
+                <img src="https://images.rawpixel.com/image_png_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvdjk4Mi1kMy0xMC5wbmc.png" class="glowing-image" alt="LinkedIn" />
+              </a>
+            </div>
+            <div class="inner-container">
+              <a href="https://leetcode.com/u/ambideXtrous9/" target="_blank">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/8/8e/LeetCode_Logo_1.png" class="glowing-image" alt="LeetCode" />
+              </a>
+            </div>
+            <div class="inner-container">
+              <a href="https://medium.com/@sushovansaha95" target="_blank">
+                <img src="https://cdn4.iconfinder.com/data/icons/social-media-2210/24/Medium-512.png" class="glowing-image" alt="Medium" />
+              </a>
+            </div>
+          </div>
+
+          <hr style="margin: 3rem 0 2rem;" />
+
+          <h2 class="rainbow-text">GitHub Stats</h2>
+          <div id="github-stats-container" style="margin-top: 1rem; font-size: 1.05rem; line-height: 2;">
+            <div><strong>Username:</strong> ambideXtrous9</div>
+            <div><strong>Name:</strong> Sushovan Saha</div>
+            <div id="gh-stats-repos">Loading public repos...</div>
+            <div id="gh-stats-followers">Loading followers...</div>
+            <div><strong>Profile URL:</strong> <a href="https://github.com/ambideXtrous9" target="_blank">https://github.com/ambideXtrous9</a></div>
           </div>
         </section>
 
       </div>
     </main>
+
   </div>
 
-  <!-- Stock Institutional Report Modal -->
-  <div class="modal-overlay" id="stock-modal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3 id="stock-modal-title">Institutional Equity Research</h3>
-        <button class="modal-close" id="stock-modal-close">&times;</button>
-      </div>
-      <div class="modal-body markdown-body" id="stock-modal-content">
-        <!-- Markdown report rendered dynamically -->
-      </div>
+  <!-- Modal for Stock Analyst Report -->
+  <div class="st-modal-overlay" id="stock-modal-overlay">
+    <div class="st-modal-card">
+      <button class="st-modal-close-btn" id="modal-close-btn">&times;</button>
+      <div id="modal-report-content"></div>
     </div>
   </div>
 
-  <!-- Main JavaScript App Entrypoint -->
+  <!-- Client Application Scripts -->
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

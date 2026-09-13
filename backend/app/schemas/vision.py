@@ -17,6 +17,20 @@ class ClassificationResponse(BaseModel):
     predictions: List[PredictionItem]
 
 
+class ModelEvaluationCard(BaseModel):
+    model_name: str
+    size_mb: float
+    parameters_m: float
+    predicted_class: str
+    accuracy: float
+    inference_time_seconds: float
+
+
+class MultiModelComparisonResponse(BaseModel):
+    models: List[ModelEvaluationCard]
+    uploaded_image_base64: Optional[str] = None
+
+
 class BoundingBox(BaseModel):
     label: str
     confidence: float

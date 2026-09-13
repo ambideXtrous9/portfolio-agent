@@ -44,6 +44,12 @@ app.add_middleware(
 # Mount API endpoints
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+# Direct WebSocket route aliases
+from backend.app.api.endpoints.tour import websocket_tour
+from backend.app.api.endpoints.harry import websocket_harry
+app.websocket("/ws/tour")(websocket_tour)
+app.websocket("/ws/harry")(websocket_harry)
+
 # Serve Frontend static assets if available
 if os.path.exists(FRONTEND_DIR):
     # Serve assets directory if present

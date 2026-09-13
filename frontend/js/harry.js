@@ -1,102 +1,136 @@
 /**
- * Harry Potter Lore Scholar & Indian Mythology Tab Controller (Pinecone MCP)
+ * Harry Potter Lore & Mythology Agent Controller using WebSockets
+ * Streams live node steps, Pinecone MCP queries, tool calls, and LLM tokens.
  */
 
-import { streamSSE } from "./api.js";
+import { streamWS } from "./api.js";
 
-export function initHarryAgent() {
+export function initHarryScholar() {
   const chatHistory = document.getElementById("harry-chat-history");
-  const inputEl = document.getElementById("harry-input");
+  const userInput = document.getElementById("harry-user-input");
   const sendBtn = document.getElementById("harry-send-btn");
-  const chipContainer = document.getElementById("harry-chips");
-  const statusBanner = document.getElementById("harry-status-banner");
-  const statusMsg = document.getElementById("harry-status-msg");
+  const chips = document.querySelectorAll("#tab-harry .st-suggestion-chip");
 
-  const suggestions = [
-    { label: "⚡ Elder Wand Origin", query: "Who created the Elder Wand according to the Tale of the Three Brothers?" },
-    { label: "🕉️ Horcruxes vs Brahmashira", query: "Compare Voldemort's Horcruxes with indestructible divine Astras from the Mahabharata" },
-    { label: "📜 Deathly Hallows & Dharma", query: "How does Master of Death reflect the philosophical concept of Moksha and Dharma?" },
-    { label: "🦌 Snape's Patronus & Bhakti", query: "Analyze Severus Snape's silver doe Patronus through the lens of Nishkama Bhakti" }
-  ];
+  if (!chatHistory || !userInput || !sendBtn) return;
 
-  chipContainer.innerHTML = suggestions.map(s => `
-    <button class="chip" data-query="${s.query}">${s.label}</button>
-  `).join("");
-
-  chipContainer.querySelectorAll(".chip").forEach(chip => {
+  // Suggestion chips handler
+  chips.forEach(chip => {
     chip.addEventListener("click", () => {
-      inputEl.value = chip.getAttribute("data-query");
-      handleSend();
+      const q = chip.getAttribute("data-query");
+      if (q) {
+        userInput.value = q;
+        submitHarryQuery();
+      }
     });
   });
 
-  sendBtn.addEventListener("click", handleSend);
-  inputEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") handleSend();
+  // Enter key handler
+  userInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      submitHarryQuery();
+    }
   });
 
-  function appendBubble(role, htmlContent) {
-    const bubble = document.createElement("div");
-    bubble.className = `chat-bubble ${role}`;
-    const avatarIcon = role === "user" ? "👤" : "🪄";
-    bubble.innerHTML = `
-      <div class="chat-avatar">${avatarIcon}</div>
-      <div class="chat-content markdown-body">${htmlContent}</div>
-    `;
-    chatHistory.appendChild(bubble);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
-    return bubble.querySelector(".chat-content");
-  }
+  sendBtn.addEventListener("click", submitHarryQuery);
 
-  function handleSend() {
-    const query = inputEl.value.trim();
+  function submitHarryQuery() {
+    const query = userInput.value.trim();
     if (!query) return;
 
-    inputEl.value = "";
+    userInput.value = "";
     sendBtn.disabled = true;
 
-    appendBubble("user", `<p>${escapeHtml(query)}</p>`);
+    // 1. Append User message bubble
+    const userMsg = document.createElement("div");
+    userMsg.className = "st-chat-message user";
+    userMsg.innerHTML = `
+      <div class="st-chat-avatar">👤</div>
+      <div class="st-chat-content"><strong>You</strong><br>${escapeHtml(query)}</div>
+    `;
+    chatHistory.appendChild(userMsg);
 
-    statusBanner.style.display = "flex";
-    statusMsg.innerText = "🧠 Initializing Lore Scholar & Pinecone Vector Search...";
+    // 2. Append Assistant message bubble with live step container
+    const assistantMsg = document.createElement("div");
+    assistantMsg.className = "st-chat-message assistant";
+    assistantMsg.innerHTML = `
+      <div class="st-chat-avatar">🪄</div>
+      <div class="st-chat-content">
+        <div class="st-agent-status-badge" id="harry-status-badge">
+          <span class="st-spinner"></span>
+          <span class="st-status-label">🚀 Starting Harry & Mythology Multi-Agent Workflow... (0.0s)</span>
+        </div>
+        <div class="st-tools-log" style="margin-bottom: 0.75rem;"></div>
+        <div class="st-markdown-body"></div>
+      </div>
+    `;
+    chatHistory.appendChild(assistantMsg);
+    assistantMsg.scrollIntoView({ behavior: "smooth" });
 
-    const assistantContentEl = appendBubble("assistant", '<span class="loading-cursor">▊</span>');
-    let fullText = "";
+    const statusBadge = assistantMsg.querySelector("#harry-status-badge");
+    const statusLabel = assistantMsg.querySelector(".st-status-label");
+    const toolsLog = assistantMsg.querySelector(".st-tools-log");
+    const markdownBody = assistantMsg.querySelector(".st-markdown-body");
 
-    const encodedQuery = encodeURIComponent(query);
-    streamSSE(`/harry/stream?query=${encodedQuery}`, {
+    let fullMarkdown = "";
+
+    // 3. Connect via WebSocket
+    streamWS("/harry", { prompt: query }, {
       onStatus: (data) => {
-        statusMsg.innerText = data.message || "Synthesizing lore parallels...";
+        statusLabel.textContent = `${data.message} (${data.elapsed || 0}s)`;
+        assistantMsg.scrollIntoView({ behavior: "smooth" });
       },
-      onChunk: (token) => {
-        fullText += token;
-        if (window.marked) {
-          assistantContentEl.innerHTML = window.marked.parse(fullText);
-        } else {
-          assistantContentEl.innerText = fullText;
+      onToolCall: (data) => {
+        const card = document.createElement("div");
+        card.className = "st-tool-call-card";
+        card.id = `tool-${data.tool}`;
+        card.innerHTML = `
+          <div class="st-tool-header">🌲 ${escapeHtml(data.tool)} (${data.elapsed || 0}s)</div>
+          <div style="margin-bottom: 4px;">${escapeHtml(data.message)}</div>
+          ${data.args ? `<div class="st-tool-body">Query: ${escapeHtml(JSON.stringify(data.args, null, 2))}</div>` : ""}
+        `;
+        toolsLog.appendChild(card);
+        assistantMsg.scrollIntoView({ behavior: "smooth" });
+      },
+      onToolResult: (data) => {
+        const card = toolsLog.querySelector(`#tool-${data.tool}`);
+        if (card) {
+          const resEl = document.createElement("div");
+          resEl.style.marginTop = "4px";
+          resEl.style.color = "#00A854";
+          resEl.style.fontSize = "0.85rem";
+          resEl.innerHTML = `<strong>Result:</strong> ${escapeHtml(data.message)}`;
+          card.appendChild(resEl);
         }
-        chatHistory.scrollTop = chatHistory.scrollHeight;
+      },
+      onToken: (token) => {
+        fullMarkdown += token;
+        markdownBody.innerHTML = marked.parse(fullMarkdown);
+        assistantMsg.scrollIntoView({ behavior: "smooth" });
       },
       onDone: (data) => {
-        statusBanner.style.display = "none";
+        statusBadge.style.display = "none";
         sendBtn.disabled = false;
-        if (window.marked) {
-          assistantContentEl.innerHTML = window.marked.parse(data.article || fullText);
+        if (data.full_text) {
+          markdownBody.innerHTML = marked.parse(data.full_text);
         }
+        assistantMsg.scrollIntoView({ behavior: "smooth" });
       },
       onError: (err) => {
-        statusBanner.style.display = "none";
+        statusLabel.textContent = `⚠️ Error: ${err.message}`;
+        statusLabel.style.color = "#D32F2F";
         sendBtn.disabled = false;
-        if (!fullText) {
-          assistantContentEl.innerHTML = `<p class="badge-negative">⚠️ Unable to query Harry Potter Pinecone index. Please check your Pinecone API connection.</p>`;
-        }
       }
     });
   }
 
-  function escapeHtml(text) {
-    return text.replace(/[&<>"']/g, m => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-    }[m]));
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 }

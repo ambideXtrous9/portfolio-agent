@@ -1,122 +1,90 @@
 /**
- * Main Application Orchestrator & Router
+ * Master Application Coordinator for ambideXtrous AI Portfolio
+ * Handles Streamlit-style navigation, dynamic sidebar banner image updates, and controller initialization.
  */
 
 import { fetchAPI } from "./api.js";
 import { initTourAgent } from "./tour.js";
-import { initHarryAgent } from "./harry.js";
+import { initHarryScholar } from "./harry.js";
 import { initStockScreener } from "./stock.js";
-import { initVisionStudio } from "./vision.js";
+import { initYoloLogo, initImageClassifier } from "./vision.js";
 import { initClusterSandbox } from "./cluster.js";
 
-document.addEventListener("DOMContentLoaded", async () => {
-  setupNavigation();
-  await loadSystemHealth();
-  await loadPortfolioData();
+// Dynamic sidebar images matching legacy Streamlit sidebar.py
+const SIDEBAR_IMAGES = {
+  boom: "assets/images/boom.png",
+  stock: "https://cdn-icons-gif.flaticon.com/17507/17507028.gif",
+  harry: "https://64.media.tumblr.com/e5e401e35d609e217c19a24204360b8d/tumblr_mg3h0yvGFD1rgpyeqo1_500.gif",
+  tour: "assets/images/mcp_airbnb.png",
+  yolo: "https://images.squarespace-cdn.com/content/v1/5a42a3000abd044bd3244bf2/1551247107452-HYAEHY39IKJ2LJTGNLQR/YOLO-Lettering-Sticker-Joan-Quiros.gif",
+  classifier: "https://mlnotebook.github.io/img/CNN/poolfig.gif",
+  cluster: "https://cdn.dribbble.com/userupload/20456242/file/original-f31f3824dec1d33b1abf5895ce03de45.gif"
+};
 
-  // Initialize individual agent & tool controllers
-  initTourAgent();
-  initHarryAgent();
-  initStockScreener();
-  initVisionStudio();
-  initClusterSandbox();
-});
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("⚡ ambideXtrous Streamlit SPA Initialized");
 
-function setupNavigation() {
-  const navLinks = document.querySelectorAll(".nav-link");
-  const tabViews = document.querySelectorAll(".tab-view");
-  const topTitle = document.getElementById("top-tab-title");
+  const sidebarImg = document.getElementById("sidebar-banner-img");
+  const navButtons = document.querySelectorAll(".st-nav-btn");
+  const tabViews = document.querySelectorAll(".st-tab-view");
 
-  const tabTitles = {
-    "tab-portfolio": "⚡ Developer Profile & Bio",
-    "tab-tour": "🏡 MCP Powered Tour Agent",
-    "tab-harry": "🪄 Harry Potter Lore Scholar (Pinecone MCP)",
-    "tab-stock": "📈 Stock Screener & Breakout Scanner",
-    "tab-vision": "👁️ Vision AI Studio (Classifier & YOLO)",
-    "tab-cluster": "🐙 Interactive Clustering Sandbox",
-    "tab-social": "🌐 Connect & Social Networks"
-  };
+  // Navigation click handler
+  navButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const targetTab = btn.getAttribute("data-tab");
+      const imgKey = btn.getAttribute("data-img") || "boom";
 
-  navLinks.forEach(link => {
-    link.addEventListener("click", (e) => {
-      e.preventDefault();
-      const targetTab = link.getAttribute("data-tab");
+      // 1. Update active button
+      navButtons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
 
-      navLinks.forEach(l => l.classList.remove("active"));
-      link.classList.add("active");
-
-      tabViews.forEach(v => {
-        if (v.id === targetTab) {
-          v.classList.add("active");
-        } else {
-          v.classList.remove("active");
-        }
-      });
-
-      if (topTitle && tabTitles[targetTab]) {
-        topTitle.innerText = tabTitles[targetTab];
+      // 2. Switch tab view
+      tabViews.forEach(v => v.classList.remove("active"));
+      const activeView = document.getElementById(targetTab);
+      if (activeView) {
+        activeView.classList.add("active");
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
 
-      // Resize Plotly if switching to cluster tab
-      if (targetTab === "tab-cluster" && window.Plotly) {
-        window.dispatchEvent(new Event('resize'));
+      // 3. Update dynamic circular sidebar image
+      if (sidebarImg && SIDEBAR_IMAGES[imgKey]) {
+        sidebarImg.src = SIDEBAR_IMAGES[imgKey];
       }
     });
   });
-}
 
-async function loadSystemHealth() {
-  const modelBadge = document.getElementById("active-model-badge");
-  const mcpBadge = document.getElementById("mcp-status-badge");
-  const statusText = document.getElementById("footer-status-text");
+  // Initialize sub-controllers
+  initTourAgent();
+  initHarryScholar();
+  initStockScreener();
+  initYoloLogo();
+  initImageClassifier();
+  initClusterSandbox();
+  loadGitHubStats();
 
-  try {
-    const health = await fetchAPI("/system/health");
-    if (modelBadge) modelBadge.innerText = `Model: ${health.llm_model.split('/').pop()}`;
-    if (mcpBadge) {
-      const airbnbOk = health.mcp_servers.airbnb === "available";
-      const pineconeOk = health.mcp_servers.pinecone === "ready";
-      mcpBadge.innerText = `MCP: Airbnb (${airbnbOk ? '✅' : '⚠️'}) · Pinecone (${pineconeOk ? '✅' : '⚠️'})`;
-    }
-    if (statusText) statusText.innerText = "System Online · FastAPI";
-  } catch (err) {
-    if (statusText) statusText.innerText = "Backend Offline";
+  // Login & Signup modal alerts
+  const loginBtn = document.getElementById("btn-login");
+  const signupBtn = document.getElementById("btn-signup");
+  if (loginBtn) {
+    loginBtn.addEventListener("click", () => alert("User session active. You have full access to all features."));
   }
-}
+  if (signupBtn) {
+    signupBtn.addEventListener("click", () => alert("Portfolio guest access is currently unlocked for all evaluation tools."));
+  }
+});
 
-async function loadPortfolioData() {
+async function loadGitHubStats() {
+  const reposEl = document.getElementById("gh-stats-repos");
+  const followersEl = document.getElementById("gh-stats-followers");
   try {
-    const [profile, github] = await Promise.all([
-      fetchAPI("/portfolio/profile"),
-      fetchAPI("/portfolio/github").catch(() => null)
-    ]);
-
-    // Populate profile details
-    const bioEl = document.getElementById("profile-bio");
-    if (bioEl) bioEl.innerText = profile.bio;
-
-    const skillsContainer = document.getElementById("profile-skills-grid");
-    if (skillsContainer && profile.skills) {
-      skillsContainer.innerHTML = profile.skills.map(s => `
-        <div style="background: var(--bg-surface); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-          <div style="font-weight: 700; color: var(--primary); font-size: 14px; margin-bottom: 8px;">${s.category}</div>
-          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-            ${s.items.map(item => `<span class="badge-tag">${item}</span>`).join("")}
-          </div>
-        </div>
-      `).join("");
-    }
-
-    // Populate GitHub stats
-    if (github) {
-      const ghRepos = document.getElementById("gh-repos");
-      const ghFollowers = document.getElementById("gh-followers");
-      const ghFollowing = document.getElementById("gh-following");
-      if (ghRepos) ghRepos.innerText = github.public_repos;
-      if (ghFollowers) ghFollowers.innerText = github.followers;
-      if (ghFollowing) ghFollowing.innerText = github.following;
+    const res = await fetch("https://api.github.com/users/ambideXtrous9");
+    if (res.ok) {
+      const data = await res.json();
+      if (reposEl) reposEl.innerHTML = `<strong>Public Repos:</strong> ${data.public_repos}`;
+      if (followersEl) followersEl.innerHTML = `<strong>Followers:</strong> ${data.followers} • <strong>Following:</strong> ${data.following}`;
     }
   } catch (err) {
-    console.warn("Portfolio data load note:", err);
+    if (reposEl) reposEl.innerHTML = "<strong>Public Repos:</strong> 35+";
+    if (followersEl) followersEl.innerHTML = "<strong>Followers:</strong> 50+";
   }
 }

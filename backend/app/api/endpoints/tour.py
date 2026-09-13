@@ -1,4 +1,4 @@
-"""Tour & Airbnb Travel Intelligence API endpoints powered by MCP."""
+"""Tour & Airbnb Travel Intelligence API endpoints with WebSocket & MCP Streaming."""
 
 import asyncio
 import datetime
@@ -6,7 +6,7 @@ import json
 import re
 import time
 from typing import AsyncGenerator
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
 from sse_starlette.sse import EventSourceResponse
 from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.prebuilt import create_react_agent
@@ -193,76 +193,156 @@ async def generate_tour_plan(request: TourPlanRequest):
     )
 
 
+@router.websocket("/ws")
+async def websocket_tour(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time Tour Agent streaming.
+    Pushes live step status, tool calls, MCP queries, and incremental tokens.
+    """
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            query = data.get("query") or data.get("prompt", "")
+            if not query:
+                await websocket.send_json({"type": "error", "message": "Empty query received"})
+                continue
+
+            start_time = time.time()
+            location, checkin, checkout, duration = parse_trip_query(query)
+
+            # 1. Parsing notification
+            await websocket.send_json({
+                "type": "status",
+                "node": "parse",
+                "message": f"🚀 Processing Tour Guide Request for {location} ({duration} days)...",
+                "elapsed": round(time.time() - start_time, 1)
+            })
+
+            # 2. Tool Call: Weather
+            await websocket.send_json({
+                "type": "tool_call",
+                "tool": "open_meteo_weather",
+                "message": f"🌤️ Weather Agent checking forecast for {location} ({duration} days)...",
+                "args": {"location": location, "days": duration},
+                "elapsed": round(time.time() - start_time, 1)
+            })
+
+            weather_info = await fetch_weather_info(location, days=duration)
+
+            await websocket.send_json({
+                "type": "tool_result",
+                "tool": "open_meteo_weather",
+                "message": f"✅ Weather forecast loaded for {location}",
+                "result": weather_info[:300] + "..." if len(weather_info) > 300 else weather_info,
+                "elapsed": round(time.time() - start_time, 1)
+            })
+
+            # 3. Tool Call: Airbnb MCP
+            await websocket.send_json({
+                "type": "tool_call",
+                "tool": "airbnb_mcp_search",
+                "message": f"🏠 Airbnb Agent searching stays via MCP server (@openbnb/mcp-server-airbnb)...",
+                "args": {"location": location, "checkin": checkin, "checkout": checkout, "duration": duration},
+                "elapsed": round(time.time() - start_time, 1)
+            })
+
+            airbnb_info = await run_airbnb_agent(location, checkin, checkout, duration, query)
+
+            await websocket.send_json({
+                "type": "tool_result",
+                "tool": "airbnb_mcp_search",
+                "message": f"✅ Airbnb MCP query complete for {location}",
+                "result": airbnb_info[:300] + "..." if len(airbnb_info) > 300 else airbnb_info,
+                "elapsed": round(time.time() - start_time, 1)
+            })
+
+            # 4. Synthesis: Live token streaming
+            await websocket.send_json({
+                "type": "status",
+                "node": "tourAgent",
+                "message": "🧭 Tour Agent synthesizing comprehensive itinerary...",
+                "elapsed": round(time.time() - start_time, 1)
+            })
+
+            llm = get_llm(temperature=0.3)
+            synth_prompt = TOUR_PROMPT_TEMPLATE.format(
+                location=location,
+                checkin=checkin,
+                checkout=checkout,
+                duration=duration
+            )
+            user_context = (
+                f"Travel Request: {query}\n\n"
+                f"Gathered Weather Data:\n{weather_info}\n\n"
+                f"Gathered Airbnb Stays:\n{airbnb_info}\n\n"
+                f"Synthesize the comprehensive travel and lodging plan now."
+            )
+
+            full_text = ""
+            try:
+                async for chunk in llm.astream([
+                    SystemMessage(content=synth_prompt),
+                    HumanMessage(content=user_context)
+                ]):
+                    tok = chunk.content
+                    if tok:
+                        full_text += tok
+                        await websocket.send_json({
+                            "type": "token",
+                            "token": tok,
+                            "elapsed": round(time.time() - start_time, 1)
+                        })
+                        await asyncio.sleep(0.005)
+            except Exception as e:
+                fallback_chunk = f"\n\n### Stays in {location}\n{airbnb_info}\n\n### Forecast\n{weather_info}"
+                full_text += fallback_chunk
+                await websocket.send_json({"type": "token", "token": fallback_chunk})
+
+            # 5. Complete
+            await websocket.send_json({
+                "type": "done",
+                "full_text": full_text,
+                "metadata": {
+                    "location": location,
+                    "checkin": checkin,
+                    "checkout": checkout,
+                    "duration": duration,
+                    "execution_time_seconds": round(time.time() - start_time, 2)
+                }
+            })
+
+    except WebSocketDisconnect:
+        print("WebSocket client disconnected from /tour/ws")
+    except Exception as exc:
+        print(f"WebSocket error in /tour/ws: {exc}")
+
+
 @router.get("/stream")
 async def stream_tour_plan(query: str = Query(..., description="Travel query")):
-    """Streams live travel planning events and itinerary tokens via Server-Sent Events (SSE)."""
+    """Legacy SSE streaming endpoint."""
     async def event_generator() -> AsyncGenerator[dict, None]:
         location, checkin, checkout, duration = parse_trip_query(query)
-        yield {
-            "event": "status",
-            "data": json.dumps({"status": "parsed", "message": f"Planning trip to {location} ({duration} nights, {checkin} to {checkout})..."})
-        }
-
-        # Progress 1: Weather
-        yield {
-            "event": "status",
-            "data": json.dumps({"status": "weather", "message": f"Checking meteorological forecast for {location}..."})
-        }
+        yield {"event": "status", "data": json.dumps({"status": "parsed", "message": f"Planning trip to {location}..."})}
         weather_info = await fetch_weather_info(location, days=duration)
-
-        # Progress 2: Airbnb MCP
-        yield {
-            "event": "status",
-            "data": json.dumps({"status": "airbnb", "message": f"Querying live accommodations via Airbnb MCP server..."})
-        }
+        yield {"event": "status", "data": json.dumps({"status": "weather", "message": f"Weather retrieved for {location}..."})}
         airbnb_info = await run_airbnb_agent(location, checkin, checkout, duration, query)
-
-        # Progress 3: Synthesis
-        yield {
-            "event": "status",
-            "data": json.dumps({"status": "synthesizing", "message": f"Tour Scholar synthesizing complete adventure guide..."})
-        }
-
+        yield {"event": "status", "data": json.dumps({"status": "airbnb", "message": f"Airbnb MCP search complete..."})}
+        
         llm = get_llm(temperature=0.3)
-        synth_prompt = TOUR_PROMPT_TEMPLATE.format(
-            location=location,
-            checkin=checkin,
-            checkout=checkout,
-            duration=duration
-        )
-        user_context = (
-            f"Travel Request: {query}\n\n"
-            f"Gathered Weather Data:\n{weather_info}\n\n"
-            f"Gathered Airbnb Stays:\n{airbnb_info}\n\n"
-            f"Synthesize the comprehensive travel and lodging plan now."
-        )
-
+        synth_prompt = TOUR_PROMPT_TEMPLATE.format(location=location, checkin=checkin, checkout=checkout, duration=duration)
+        user_context = f"Travel Request: {query}\n\nWeather:\n{weather_info}\n\nStays:\n{airbnb_info}"
+        
         full_content = ""
         try:
-            async for chunk in llm.astream([
-                SystemMessage(content=synth_prompt),
-                HumanMessage(content=user_context)
-            ]):
-                token = chunk.content
-                if token:
-                    full_content += token
-                    yield {
-                        "event": "chunk",
-                        "data": json.dumps({"token": token})
-                    }
-        except Exception as e:
-            fallback = f"\n\n### Stays & Insights\n{airbnb_info}\n\n### Forecast\n{weather_info}"
-            yield {"event": "chunk", "data": json.dumps({"token": fallback})}
+            async for chunk in llm.astream([SystemMessage(content=synth_prompt), HumanMessage(content=user_context)]):
+                tok = chunk.content
+                if tok:
+                    full_content += tok
+                    yield {"event": "chunk", "data": json.dumps({"token": tok})}
+        except Exception:
+            yield {"event": "chunk", "data": json.dumps({"token": airbnb_info})}
 
-        yield {
-            "event": "done",
-            "data": json.dumps({
-                "destination": location,
-                "checkin": checkin,
-                "checkout": checkout,
-                "duration": duration,
-                "full_itinerary": full_content
-            })
-        }
+        yield {"event": "done", "data": json.dumps({"destination": location, "full_itinerary": full_content})}
 
     return EventSourceResponse(event_generator())

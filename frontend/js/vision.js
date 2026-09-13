@@ -1,19 +1,20 @@
 /**
- * Vision AI Studio Tab Controller (Brand Classifier & YOLO Logo Detection)
+ * Vision Modules: 4-Model Image Classifier & YOLO Logo Detection
+ * Matches exact Streamlit functionality and side-by-side comparison UI.
  */
 
 import { API_BASE } from "./api.js";
 
-export function initVisionStudio() {
-  const modeRadios = document.querySelectorAll("input[name='vision-mode']");
-  const dropzone = document.getElementById("vision-dropzone");
-  const fileInput = document.getElementById("vision-file-input");
-  const previewBox = document.getElementById("vision-preview-box");
-  const originalPreview = document.getElementById("vision-original-preview");
-  const resultPanel = document.getElementById("vision-result-panel");
-  const processBtn = document.getElementById("vision-process-btn");
+/**
+ * 4-Model Image Classifier (Screenshot 5 Match)
+ */
+export function initImageClassifier() {
+  const dropzone = document.getElementById("classifier-dropzone");
+  const fileInput = document.getElementById("classifier-file-input");
+  const resultsArea = document.getElementById("classifier-results-area");
+  const uploadedImg = document.getElementById("classifier-uploaded-img");
 
-  let currentFile = null;
+  if (!dropzone || !fileInput) return;
 
   dropzone.addEventListener("click", () => fileInput.click());
 
@@ -26,118 +27,178 @@ export function initVisionStudio() {
     e.preventDefault();
     dropzone.classList.remove("dragover");
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleSelectedFile(e.dataTransfer.files[0]);
+      handleClassifierFile(e.dataTransfer.files[0]);
     }
   });
 
-  fileInput.addEventListener("change", () => {
-    if (fileInput.files && fileInput.files[0]) {
-      handleSelectedFile(fileInput.files[0]);
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleClassifierFile(e.target.files[0]);
     }
   });
 
-  function handleSelectedFile(file) {
+  async function handleClassifierFile(file) {
     if (!file.type.startsWith("image/")) {
-      alert("Please upload a valid image file (JPG, PNG, WebP).");
+      alert("Please upload a valid image file (JPG, PNG).");
       return;
     }
-    currentFile = file;
+
+    // Show image preview immediately
     const reader = new FileReader();
     reader.onload = (e) => {
-      originalPreview.src = e.target.result;
-      previewBox.style.display = "flex";
-      resultPanel.innerHTML = `<p style="color: var(--text-muted);">Click <strong>Run Vision Inference</strong> to analyze.</p>`;
-      processBtn.disabled = false;
+      uploadedImg.src = e.target.result;
+      resultsArea.style.display = "block";
+      resetModelCardsToLoading();
     };
     reader.readAsDataURL(file);
-  }
 
-  processBtn.addEventListener("click", runInference);
-
-  async function runInference() {
-    if (!currentFile) return;
-
-    const selectedMode = document.querySelector("input[name='vision-mode']:checked").value;
-    processBtn.disabled = true;
-    processBtn.innerHTML = `<span class="spinner"></span> Processing Neural Network...`;
-    resultPanel.innerHTML = `<div style="display:flex; align-items:center; gap: 8px;"><span class="spinner"></span> Running inference...</div>`;
-
+    // Call 4-model evaluation API
     const formData = new FormData();
-    formData.append("file", currentFile);
-
-    const endpoint = selectedMode === "yolo" ? "/vision/yolo" : "/vision/classify";
+    formData.append("file", file);
 
     try {
-      const res = await fetch(`${API_BASE}${endpoint}`, {
+      const res = await fetch(`${API_BASE}/vision/classify-all`, {
         method: "POST",
         body: formData
       });
-
-      if (!res.ok) throw new Error(`Inference error: ${res.statusText}`);
+      if (!res.ok) throw new Error(`Evaluation failed: ${res.statusText}`);
       const data = await res.json();
-
-      if (selectedMode === "yolo") {
-        renderYoloResults(data);
-      } else {
-        renderClassifierResults(data);
-      }
+      renderAllModelCards(data.models);
     } catch (err) {
-      resultPanel.innerHTML = `<div class="badge-negative">⚠️ Error: ${err.message}</div>`;
-    } finally {
-      processBtn.disabled = false;
-      processBtn.innerText = "🚀 Run Vision Inference";
+      console.error("4-Model classification error:", err);
+      renderModelCardError(err.message);
     }
   }
 
-  function renderClassifierResults(data) {
-    const preds = data.predictions || [];
-    const html = `
-      <div style="background: var(--bg-surface); padding: 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Top Predicted Class</div>
-        <div style="font-size: 24px; font-weight: 800; color: var(--primary); margin-bottom: 14px;">
-          🏷️ ${data.top_prediction} (${Math.round(data.confidence * 100)}%)
-        </div>
-        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">Classification Confidence Distribution:</div>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          ${preds.map(p => `
-            <div>
-              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 2px;">
-                <span>${p.label}</span>
-                <span style="font-weight: 600;">${p.percentage}</span>
-              </div>
-              <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;">
-                <div style="width: ${Math.round(p.confidence * 100)}%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary));"></div>
-              </div>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    `;
-    resultPanel.innerHTML = html;
+  function resetModelCardsToLoading() {
+    const models = ["xception", "inception", "mobilenet", "efficientnet"];
+    models.forEach(id => {
+      const clsEl = document.getElementById(`class-${id}`);
+      const accEl = document.getElementById(`acc-${id}`);
+      const timeEl = document.getElementById(`time-${id}`);
+      if (clsEl) clsEl.innerHTML = `<span class="st-spinner"></span> Evaluating...`;
+      if (accEl) accEl.textContent = "--";
+      if (timeEl) timeEl.textContent = "--";
+    });
   }
 
-  function renderYoloResults(data) {
-    const dets = data.detections || [];
-    const html = `
-      <div style="background: var(--bg-surface); padding: 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-        <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">
-          🎯 Detected ${data.total_detections} Brand Logo Object(s)
-        </div>
-        ${data.annotated_image_base64 ? `
-          <div style="margin-top: 10px; margin-bottom: 14px;">
-            <img src="${data.annotated_image_base64}" style="max-width: 100%; max-height: 280px; border-radius: var(--radius-md); border: 1px solid var(--border-color);" alt="YOLO Annotated" />
+  function renderAllModelCards(models) {
+    const keyMap = {
+      "Xception": "xception",
+      "InceptionV3": "inception",
+      "MobileNetV2": "mobilenet",
+      "EfficientNet": "efficientnet"
+    };
+
+    models.forEach(m => {
+      const key = keyMap[m.model_name] || m.model_name.toLowerCase();
+      const sizeEl = document.getElementById(`size-${key}`);
+      const paramsEl = document.getElementById(`params-${key}`);
+      const classEl = document.getElementById(`class-${key}`);
+      const accEl = document.getElementById(`acc-${key}`);
+      const timeEl = document.getElementById(`time-${key}`);
+
+      if (sizeEl) sizeEl.textContent = `${m.size_mb.toFixed(2)} MB`;
+      if (paramsEl) paramsEl.textContent = `${m.parameters_m.toFixed(2)} M`;
+      if (classEl) {
+        classEl.textContent = m.predicted_class;
+        classEl.style.color = m.predicted_class !== "None" ? "#00A854" : "var(--st-text-color)";
+      }
+      if (accEl) accEl.textContent = m.accuracy.toFixed(2);
+      if (timeEl) timeEl.textContent = `${m.inference_time_seconds.toFixed(4)} seconds`;
+    });
+  }
+
+  function renderModelCardError(errMsg) {
+    const models = ["xception", "inception", "mobilenet", "efficientnet"];
+    models.forEach(id => {
+      const clsEl = document.getElementById(`class-${id}`);
+      if (clsEl) clsEl.textContent = "Error";
+    });
+  }
+}
+
+/**
+ * YOLOv8.1 Brand Logo Detection
+ */
+export function initYoloLogo() {
+  const dropzone = document.getElementById("yolo-dropzone");
+  const fileInput = document.getElementById("yolo-file-input");
+  const resultsRow = document.getElementById("yolo-results-row");
+  const uploadedPreview = document.getElementById("yolo-uploaded-preview");
+  const predictedPreview = document.getElementById("yolo-predicted-preview");
+  const boxesSummary = document.getElementById("yolo-boxes-summary");
+
+  if (!dropzone || !fileInput) return;
+
+  dropzone.addEventListener("click", () => fileInput.click());
+
+  dropzone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+  });
+  dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+  dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleYoloFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleYoloFile(e.target.files[0]);
+    }
+  });
+
+  async function handleYoloFile(file) {
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload an image file.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      uploadedPreview.src = e.target.result;
+      predictedPreview.src = e.target.result;
+      resultsRow.style.display = "block";
+      boxesSummary.innerHTML = `<div class="st-caption"><span class="st-spinner"></span> Running YOLOv8.1 neural detection...</div>`;
+    };
+    reader.readAsDataURL(file);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch(`${API_BASE}/vision/yolo`, {
+        method: "POST",
+        body: formData
+      });
+      if (!res.ok) throw new Error(`YOLO detection failed: ${res.statusText}`);
+      const data = await res.json();
+
+      if (data.annotated_image_base64) {
+        predictedPreview.src = data.annotated_image_base64;
+      }
+
+      if (data.detections && data.detections.length > 0) {
+        boxesSummary.innerHTML = `
+          <div style="background: #FFFFFF; border: 1px solid var(--st-border-color); border-radius: var(--st-radius); padding: 1rem; margin-top: 1rem;">
+            <strong>🎯 Detected Logos (${data.total_detections}):</strong>
+            <ul style="margin: 0.5rem 0 0 1.25rem;">
+              ${data.detections.map(d => `
+                <li><strong>${d.label}</strong> (Confidence: ${(d.confidence * 100).toFixed(1)}%)</li>
+              `).join("")}
+            </ul>
           </div>
-        ` : ''}
-        <ul style="list-style: none; display: flex; flex-direction: column; gap: 6px;">
-          ${dets.map((d, i) => `
-            <li style="display: flex; justify-content: space-between; font-size: 13px; background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;">
-              <span>Logo #${i+1}: <strong>${d.label}</strong></span>
-              <span class="badge-positive">${Math.round(d.confidence * 100)}% Confidence</span>
-            </li>
-          `).join("")}
-        </ul>
-      </div>
-    `;
-    resultPanel.innerHTML = html;
+        `;
+      } else {
+        boxesSummary.innerHTML = `<div class="st-caption">No brand logos detected above confidence threshold.</div>`;
+      }
+    } catch (err) {
+      console.error("YOLO error:", err);
+      boxesSummary.innerHTML = `<div style="color: #D32F2F; font-size: 0.9rem;">YOLO detection error: ${err.message}</div>`;
+    }
   }
 }

@@ -1,104 +1,136 @@
 /**
- * Tour Agent Tab Controller (Airbnb MCP + Weather Intelligence)
+ * Tour Agent Controller using WebSockets
+ * Streams live agent steps, tool calls, MCP updates, and LLM tokens.
  */
 
-import { streamSSE, fetchAPI } from "./api.js";
+import { streamWS } from "./api.js";
 
 export function initTourAgent() {
   const chatHistory = document.getElementById("tour-chat-history");
-  const inputEl = document.getElementById("tour-input");
+  const userInput = document.getElementById("tour-user-input");
   const sendBtn = document.getElementById("tour-send-btn");
-  const chipContainer = document.getElementById("tour-chips");
-  const statusBanner = document.getElementById("tour-status-banner");
-  const statusMsg = document.getElementById("tour-status-msg");
+  const chips = document.querySelectorAll("#tab-tour .st-suggestion-chip");
 
-  const suggestions = [
-    { label: "🌴 Munnar 3-Day Trip", query: "3 days trip to Munnar from tomorrow" },
-    { label: "⛰️ Manali Weekend Getaway", query: "4 days weekend getaway to Manali for 2 adults" },
-    { label: "🌊 Goa Beach Vacation", query: "3 days relaxing beach vacation in Goa with weather forecast" },
-    { label: "🏰 Jaipur Cultural Tour", query: "5 days heritage and culture tour in Jaipur starting next Monday" },
-  ];
+  if (!chatHistory || !userInput || !sendBtn) return;
 
-  chipContainer.innerHTML = suggestions.map(s => `
-    <button class="chip" data-query="${s.query}">${s.label}</button>
-  `).join("");
-
-  chipContainer.querySelectorAll(".chip").forEach(chip => {
+  // Suggestion chips handler
+  chips.forEach(chip => {
     chip.addEventListener("click", () => {
-      inputEl.value = chip.getAttribute("data-query");
-      handleSend();
+      const q = chip.getAttribute("data-query");
+      if (q) {
+        userInput.value = q;
+        submitTourQuery();
+      }
     });
   });
 
-  sendBtn.addEventListener("click", handleSend);
-  inputEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") handleSend();
+  // Enter key press
+  userInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      submitTourQuery();
+    }
   });
 
-  function appendBubble(role, htmlContent) {
-    const bubble = document.createElement("div");
-    bubble.className = `chat-bubble ${role}`;
-    const avatarIcon = role === "user" ? "👤" : "🏡";
-    bubble.innerHTML = `
-      <div class="chat-avatar">${avatarIcon}</div>
-      <div class="chat-content markdown-body">${htmlContent}</div>
-    `;
-    chatHistory.appendChild(bubble);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
-    return bubble.querySelector(".chat-content");
-  }
+  sendBtn.addEventListener("click", submitTourQuery);
 
-  function handleSend() {
-    const query = inputEl.value.trim();
+  function submitTourQuery() {
+    const query = userInput.value.trim();
     if (!query) return;
 
-    inputEl.value = "";
+    userInput.value = "";
     sendBtn.disabled = true;
 
-    // Append user message
-    appendBubble("user", `<p>${escapeHtml(query)}</p>`);
+    // 1. Append User message bubble
+    const userMsg = document.createElement("div");
+    userMsg.className = "st-chat-message user";
+    userMsg.innerHTML = `
+      <div class="st-chat-avatar">👤</div>
+      <div class="st-chat-content"><strong>You</strong><br>${escapeHtml(query)}</div>
+    `;
+    chatHistory.appendChild(userMsg);
 
-    // Show status stepper
-    statusBanner.style.display = "flex";
-    statusMsg.innerText = "🚀 Processing Travel & Lodging Request...";
+    // 2. Append Assistant message bubble with live step container
+    const assistantMsg = document.createElement("div");
+    assistantMsg.className = "st-chat-message assistant";
+    assistantMsg.innerHTML = `
+      <div class="st-chat-avatar">🏡</div>
+      <div class="st-chat-content">
+        <div class="st-agent-status-badge" id="tour-status-badge">
+          <span class="st-spinner"></span>
+          <span class="st-status-label">🚀 Processing Tour Guide Request... (0.0s)</span>
+        </div>
+        <div class="st-tools-log" style="margin-bottom: 0.75rem;"></div>
+        <div class="st-markdown-body"></div>
+      </div>
+    `;
+    chatHistory.appendChild(assistantMsg);
+    assistantMsg.scrollIntoView({ behavior: "smooth" });
 
-    const assistantContentEl = appendBubble("assistant", '<span class="loading-cursor">▊</span>');
-    let fullText = "";
+    const statusBadge = assistantMsg.querySelector("#tour-status-badge");
+    const statusLabel = assistantMsg.querySelector(".st-status-label");
+    const toolsLog = assistantMsg.querySelector(".st-tools-log");
+    const markdownBody = assistantMsg.querySelector(".st-markdown-body");
 
-    const encodedQuery = encodeURIComponent(query);
-    streamSSE(`/tour/stream?query=${encodedQuery}`, {
+    let fullMarkdown = "";
+
+    // 3. Connect via WebSocket
+    streamWS("/tour", { prompt: query }, {
       onStatus: (data) => {
-        statusMsg.innerText = data.message || "Planning your journey...";
+        statusLabel.textContent = `${data.message} (${data.elapsed || 0}s)`;
+        assistantMsg.scrollIntoView({ behavior: "smooth" });
       },
-      onChunk: (token) => {
-        fullText += token;
-        if (window.marked) {
-          assistantContentEl.innerHTML = window.marked.parse(fullText);
-        } else {
-          assistantContentEl.innerText = fullText;
+      onToolCall: (data) => {
+        const card = document.createElement("div");
+        card.className = "st-tool-call-card";
+        card.id = `tool-${data.tool}`;
+        card.innerHTML = `
+          <div class="st-tool-header">🛠️ ${escapeHtml(data.tool)} (${data.elapsed || 0}s)</div>
+          <div style="margin-bottom: 4px;">${escapeHtml(data.message)}</div>
+          ${data.args ? `<div class="st-tool-body">Input: ${escapeHtml(JSON.stringify(data.args, null, 2))}</div>` : ""}
+        `;
+        toolsLog.appendChild(card);
+        assistantMsg.scrollIntoView({ behavior: "smooth" });
+      },
+      onToolResult: (data) => {
+        const card = toolsLog.querySelector(`#tool-${data.tool}`);
+        if (card) {
+          const resEl = document.createElement("div");
+          resEl.style.marginTop = "4px";
+          resEl.style.color = "#00A854";
+          resEl.style.fontSize = "0.85rem";
+          resEl.innerHTML = `<strong>Result:</strong> ${escapeHtml(data.message)}`;
+          card.appendChild(resEl);
         }
-        chatHistory.scrollTop = chatHistory.scrollHeight;
+      },
+      onToken: (token) => {
+        fullMarkdown += token;
+        markdownBody.innerHTML = marked.parse(fullMarkdown);
+        assistantMsg.scrollIntoView({ behavior: "smooth" });
       },
       onDone: (data) => {
-        statusBanner.style.display = "none";
+        statusBadge.style.display = "none";
         sendBtn.disabled = false;
-        if (window.marked) {
-          assistantContentEl.innerHTML = window.marked.parse(data.full_itinerary || fullText);
+        if (data.full_text) {
+          markdownBody.innerHTML = marked.parse(data.full_text);
         }
+        assistantMsg.scrollIntoView({ behavior: "smooth" });
       },
       onError: (err) => {
-        statusBanner.style.display = "none";
+        statusLabel.textContent = `⚠️ Error: ${err.message}`;
+        statusLabel.style.color = "#D32F2F";
         sendBtn.disabled = false;
-        if (!fullText) {
-          assistantContentEl.innerHTML = `<p class="badge-negative">⚠️ Request error: Unable to retrieve tour itinerary. Please verify your connection.</p>`;
-        }
       }
     });
   }
 
-  function escapeHtml(text) {
-    return text.replace(/[&<>"']/g, m => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-    }[m]));
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 }
