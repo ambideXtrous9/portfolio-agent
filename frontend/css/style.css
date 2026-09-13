@@ -1796,29 +1796,30 @@ canvas#voiceOrbCanvas {
 
 .st-github-stats-card {
   width: 100%;
-  border-radius: 12px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
+  border-radius: 10px;
+  box-shadow: none !important;
   display: block;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.st-github-stats-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.11);
 }
 
 .st-github-contrib-map {
   width: 100%;
-  border-radius: 12px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
+  border-radius: 10px;
+  box-shadow: none !important;
   background: #FFFFFF;
   display: block;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.st-github-contrib-map:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.11);
+/* Homepage images & gifs: completely flat styling with no elevation or drop shadows */
+#tab-home img:not(.glowing-image) {
+  box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+#tab-home a:hover img:not(.glowing-image) {
+  box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
 }
 
 /* Responsive Rules for Table & Mobile Sidebar Drawer */
