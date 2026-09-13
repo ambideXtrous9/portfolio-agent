@@ -14,6 +14,8 @@ Architecture:
   -> User Spoken Audio Output
 """
 
+import asyncio
+import json
 import logging
 import os
 import sys
@@ -26,7 +28,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import find_dotenv, load_dotenv
-from livekit import agents
+from livekit import agents, rtc
 from livekit.agents import (
     Agent,
     AgentServer,
@@ -158,6 +160,76 @@ async def EntryPoint(ctx: JobContext):
         ),
     )
     logger.info("VoiceAgent started successfully in room: %s", ctx.room.name)
+
+    # Handle prompt commands sent from frontend suggestion chips or text input
+    @ctx.room.on("data_received")
+    def _on_data_received(data_packet: rtc.DataPacket):
+        try:
+            raw_text = data_packet.data.decode("utf-8")
+            logger.info("LiveKit data received in room %s: %s", ctx.room.name, raw_text)
+            prompt_text = raw_text
+            try:
+                payload = json.loads(raw_text)
+                if isinstance(payload, dict):
+                    prompt_text = payload.get("prompt") or payload.get("message") or payload.get("text") or raw_text
+            except Exception:
+                pass
+
+            prompt_text = (prompt_text or "").strip()
+            if prompt_text:
+                logger.info("Triggering generate_reply for user prompt: '%s'", prompt_text)
+                asyncio.create_task(
+                    session.generate_reply(
+                        user_input=prompt_text,
+                        instructions=(
+                            f"The user selected or sent this prompt: '{prompt_text}'. "
+                            "Directly answer their query, calling get_weather or get_news if appropriate. "
+                            "Speak your response naturally and concisely in 1-3 sentences without markdown."
+                        ),
+                    )
+                )
+        except Exception as e:
+            logger.warning("Error processing received data packet: %s", e)
+
+    # Broadcast conversation transcript back to frontend UI
+    @session.on("conversation_item_added")
+    def _on_conversation_item_added(ev):
+        try:
+            item = getattr(ev, "item", None)
+            if item and ctx.room.local_participant:
+                role = getattr(item, "role", "assistant")
+                content = getattr(item, "content", "")
+                if isinstance(content, list):
+                    content = " ".join(str(c) for c in content if c)
+                content = (content or "").strip()
+                if content:
+                    sender = "Agent" if role == "assistant" else "You"
+                    payload = json.dumps({"type": "transcript", "sender": sender, "text": content}).encode("utf-8")
+                    asyncio.create_task(
+                        ctx.room.local_participant.publish_data(payload, reliable=True, topic="transcript")
+                    )
+        except Exception as e:
+            logger.debug("Failed to broadcast conversation transcript: %s", e)
+
+    # Broadcast tool execution status to frontend visual indicator
+    @session.on("tool_execution_updated")
+    def _on_tool_execution_updated(ev):
+        try:
+            update = getattr(ev, "update", None)
+            if update and ctx.room.local_participant:
+                tool_name = (
+                    getattr(update, "name", None)
+                    or getattr(getattr(update, "tool", None), "name", None)
+                )
+                if not tool_name and hasattr(update, "tool_call"):
+                    tool_name = getattr(update.tool_call, "name", None)
+                if tool_name:
+                    payload = json.dumps({"type": "tool_call", "name": tool_name}).encode("utf-8")
+                    asyncio.create_task(
+                        ctx.room.local_participant.publish_data(payload, reliable=True, topic="tool_activity")
+                    )
+        except Exception as e:
+            logger.debug("Failed to broadcast tool activity: %s", e)
 
     # Greet the user when they join the session
     await session.generate_reply(

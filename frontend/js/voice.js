@@ -32,6 +32,7 @@ export function initVoiceAgent() {
   let agentAnalyser = null;
   let micStream = null;
   let currentAgentState = 'idle'; // 'idle', 'connecting', 'listening', 'thinking', 'speaking'
+  let pendingPrompt = null;
   let phase = 0;
 
   // 60fps Organic Harmonic Aura Visualizer
@@ -247,6 +248,15 @@ export function initVoiceAgent() {
         isConnected = true;
         updateUIState('connected');
         addTranscript('System', `Connected to room "${roomName}". Listening for your speech...`);
+
+        // If user clicked a suggestion chip before connecting, send it now
+        if (pendingPrompt) {
+          const promptToSend = pendingPrompt;
+          pendingPrompt = null;
+          setTimeout(() => {
+            dispatchUserPrompt(promptToSend);
+          }, 1500);
+        }
       });
 
       room.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
@@ -389,14 +399,52 @@ export function initVoiceAgent() {
     btnTranscript.addEventListener('click', toggleTranscript);
   }
 
+  async function dispatchUserPrompt(promptText) {
+    if (!promptText) return;
+
+    // Ensure live transcript drawer is open and visible
+    if (transcriptDrawer && (transcriptDrawer.style.display === 'none' || !transcriptDrawer.style.display)) {
+      toggleTranscript();
+    }
+
+    addTranscript('You', promptText);
+    updateUIState('thinking');
+    if (orbStatus) orbStatus.textContent = 'Thinking...';
+    if (orbSub) orbSub.textContent = `Query: "${promptText.substring(0, 32)}..."`;
+
+    if (!isConnected || !room || !room.localParticipant) {
+      pendingPrompt = promptText;
+      console.log('Voice session not connected yet. Saved pending prompt and connecting...', promptText);
+      await connectCall();
+      return;
+    }
+
+    try {
+      const encoder = new TextEncoder();
+      const payload = JSON.stringify({
+        type: 'user_prompt',
+        prompt: promptText,
+        message: promptText,
+      });
+      const data = encoder.encode(payload);
+      await room.localParticipant.publishData(data, { reliable: true, topic: 'user_prompt' });
+      console.log('Successfully published prompt data to LiveKit room:', promptText);
+    } catch (err) {
+      console.error('Failed to publish data to LiveKit room:', err);
+      addTranscript('System', `Could not send prompt to agent: ${err.message}`);
+    }
+  }
+
   // Suggestion chips
   document.querySelectorAll('.st-voice-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
+    chip.addEventListener('click', async () => {
       const prompt = chip.getAttribute('data-prompt');
-      addTranscript('You', prompt);
-      if (!isConnected) {
-        connectCall();
-      }
+      if (!prompt) return;
+
+      chip.classList.add('chip-active');
+      setTimeout(() => chip.classList.remove('chip-active'), 500);
+
+      await dispatchUserPrompt(prompt);
     });
   });
 
