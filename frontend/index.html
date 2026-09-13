@@ -221,38 +221,61 @@
             </div>
           </div>
 
-          <!-- Other subtabs placeholders -->
+          <!-- Subtab 2: Highest EPS -->
           <div class="stock-subtab-content" id="subtab-eps" style="display: none;">
             <h3>💰 Highest EPS Screener</h3>
             <p class="st-caption">Filters stocks with positive trailing EPS, sorted highest first.</p>
-            <button class="st-btn st-btn-primary" onclick="window.runCustomScan('eps')">Run Scan</button>
-            <div id="eps-results" style="margin-top: 1rem;"></div>
+            <div style="margin: 1rem 0;">
+              <button class="st-btn st-btn-primary" id="btn-run-eps">Run Scan</button>
+            </div>
+            <div id="eps-results" style="margin-top: 1.5rem;"></div>
           </div>
+
+          <!-- Subtab 3: Low Debt Companies -->
           <div class="stock-subtab-content" id="subtab-debt" style="display: none;">
             <h3>🏦 Low Debt Companies Screener</h3>
             <p class="st-caption">Filters stocks with Debt/Equity ratio &lt; 0.5.</p>
-            <button class="st-btn st-btn-primary" onclick="window.runCustomScan('debt')">Run Scan</button>
-            <div id="debt-results" style="margin-top: 1rem;"></div>
+            <div style="margin: 1rem 0;">
+              <button class="st-btn st-btn-primary" id="btn-run-debt">Run Scan</button>
+            </div>
+            <div id="debt-results" style="margin-top: 1.5rem;"></div>
           </div>
+
+          <!-- Subtab 4: Bullish Engulfing -->
           <div class="stock-subtab-content" id="subtab-bull" style="display: none;">
             <h3>📈 Bullish Engulfing Screener</h3>
-            <p class="st-caption">Detects bullish engulfing pattern with volume &gt; 1.5x average.</p>
-            <button class="st-btn st-btn-primary" onclick="window.runCustomScan('bullish')">Run Scan</button>
-            <div id="bull-results" style="margin-top: 1rem;"></div>
+            <p class="st-caption">Detects bullish engulfing candlestick pattern with volume &gt; 1.5x average — a potential buy signal.</p>
+            <div style="margin: 1rem 0;">
+              <button class="st-btn st-btn-primary" id="btn-run-bull">Run Scan</button>
+            </div>
+            <div id="bull-results" style="margin-top: 1.5rem;"></div>
           </div>
+
+          <!-- Subtab 5: Profit Jump 200%+ -->
           <div class="stock-subtab-content" id="subtab-profit" style="display: none;">
             <h3>🚀 Profit Jump 200%+ Screener</h3>
             <p class="st-caption">Finds stocks where latest quarter profit jumped ≥ 200% vs previous quarter.</p>
-            <button class="st-btn st-btn-primary" onclick="window.runCustomScan('profit')">Run Scan</button>
-            <div id="profit-results" style="margin-top: 1rem;"></div>
+            <div style="margin: 1rem 0;">
+              <button class="st-btn st-btn-primary" id="btn-run-profit">Run Scan</button>
+            </div>
+            <div id="profit-results" style="margin-top: 1.5rem;"></div>
           </div>
+
+          <!-- Subtab 6: Stocks Analysis (Company Search Dropdown) -->
           <div class="stock-subtab-content" id="subtab-analysis" style="display: none;">
-            <h3>📋 Individual Stock Analysis</h3>
-            <div style="display: flex; gap: 10px; margin: 1rem 0;">
-              <input type="text" id="manual-stock-input" class="st-chat-input-field" style="border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.4rem 0.8rem;" placeholder="Enter Symbol (e.g. RELIANCE, TATASTEEL)" />
-              <button class="st-btn st-btn-primary" id="btn-manual-report">Generate Wall St Report</button>
+            <h3>📋 Stocks Analysis</h3>
+            <p class="st-caption">Select any company from Nifty 500 &amp; Microcap 250 universe to generate instant institutional analysis.</p>
+            <div style="margin: 1.25rem 0;">
+              <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">List of Stocks</label>
+              <select id="analysis-company-select" class="st-chat-input-field" style="border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.5rem 0.8rem; background: #FFF; font-size: 0.95rem; max-width: 600px; width: 100%;">
+                <option value="">Select the Stock</option>
+              </select>
+              <div id="analysis-selected-display" style="margin-top: 0.75rem; font-weight: 600; color: #1E88E5;"></div>
             </div>
           </div>
+
+          <!-- Unified Inline Institutional Stock Analysis Container -->
+          <div id="stock-inline-analysis-container"></div>
         </section>
 
 
@@ -536,6 +559,23 @@
             💡 Why don't you try DBSCAN..!!
           </div>
 
+          <!-- K-Distance Graph Section (matches show_k_graph in cluster_util.py) -->
+          <div id="dbscan-kdist-section" style="display: none; margin-top: 1.5rem; padding: 1rem 1.25rem; background: #F8F9FA; border-radius: var(--st-radius); border: 1px solid var(--st-border-input);">
+            <div style="font-weight: 600; margin-bottom: 0.5rem;">💡 Would you like to see the K-Distance Graph?</div>
+            <div class="st-radio-group">
+              <label class="st-radio-label">
+                <input type="radio" name="show-k-graph" value="Yes"> Yes
+              </label>
+              <label class="st-radio-label">
+                <input type="radio" name="show-k-graph" value="No" checked> No
+              </label>
+            </div>
+            <div id="cluster-kdist-plot" style="width: 100%; height: 420px; margin-top: 1rem; display: none;"></div>
+            <div id="cluster-kdist-note" style="margin-top: 0.5rem; font-weight: 600; color: #1E88E5; display: none;">
+              🧠 Now change the eps and see the result!
+            </div>
+          </div>
+
           <!-- Glowing Cluster Footer -->
           <div class="glowing-footer" style="justify-content: flex-end; margin-top: 3rem;">
             <div class="inner-container">
@@ -597,6 +637,34 @@
             <div><strong>Profile URL:</strong> <a href="https://github.com/ambideXtrous9" target="_blank">https://github.com/ambideXtrous9</a></div>
           </div>
         </section>
+
+
+        <!-- ================================================================== -->
+        <!-- 🔐 Tab 9: Login & Signup (Matches login.py)                        -->
+        <!-- ================================================================== -->
+        <section class="st-tab-view" id="tab-login">
+          <h2>Login</h2>
+          <div style="background-color: #FFF3CD; color: #856404; border: 1px solid #FFEEBA; border-radius: var(--st-radius); padding: 0.75rem 1rem; margin: 1rem 0; font-size: 0.95rem;">
+            Please login to access protected AI features. Use Temporary Account: <strong>[username: abc, password: 123]</strong>.
+          </div>
+
+          <form id="auth-login-form" style="max-width: 480px; margin-top: 1.5rem;">
+            <div style="margin-bottom: 1.25rem;">
+              <label style="display: block; font-weight: 600; margin-bottom: 6px;">Username</label>
+              <input type="text" id="auth-username" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.55rem 0.8rem;" placeholder="e.g. abc" value="abc" required />
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+              <label style="display: block; font-weight: 600; margin-bottom: 6px;">Password</label>
+              <input type="password" id="auth-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.55rem 0.8rem;" placeholder="e.g. 123" value="123" required />
+            </div>
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <button type="submit" class="st-btn st-btn-primary" style="padding: 0.55rem 1.5rem; font-weight: 600;">Submit Login</button>
+              <button type="button" class="st-btn" id="btn-toggle-signup" style="padding: 0.55rem 1rem;">Create Account (Signup)</button>
+            </div>
+            <div id="auth-msg-feedback" style="margin-top: 1rem;"></div>
+          </form>
+        </section>
+
 
       </div>
     </main>

@@ -1,13 +1,14 @@
 """Stock Screener Pydantic Schemas."""
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel, Field
 
 
 class StockScanRequest(BaseModel):
     universe: str = Field(default="nifty500", description="'nifty500' or 'microcap250'")
+    mode: str = Field(default="volume_breakout", description="Scan mode: 'volume_breakout', 'highest_eps', 'low_debt', 'bullish_engulfing', 'profit_jump'")
     min_volume_ratio: float = Field(default=1.5, description="Volume relative to 20-day average")
-    limit: int = Field(default=20, description="Max results to return")
+    limit: int = Field(default=30, description="Max results to return")
 
 
 class StockItem(BaseModel):
@@ -24,9 +25,74 @@ class StockItem(BaseModel):
 
 class StockScanResponse(BaseModel):
     universe: str
+    mode: str
     total_scanned: int
-    breakouts_found: int
-    stocks: List[StockItem]
+    matches_found: int
+    columns: List[str]
+    stocks: List[Dict[str, Any]]
+
+
+class StockCompanyItem(BaseModel):
+    symbol: str
+    company_name: str
+    industry: Optional[str] = None
+
+
+class CandlestickData(BaseModel):
+    dates: List[str]
+    open: List[float]
+    high: List[float]
+    low: List[float]
+    close: List[float]
+    volume: List[int]
+
+
+class StatusBadge(BaseModel):
+    label: str
+    badge: str
+    status_type: str  # positive, negative, loss, neutral, warning
+
+
+class FinancialStatus(BaseModel):
+    quarterly_profit: StatusBadge
+    yearly_profit: StatusBadge
+    fii_holding: StatusBadge
+    dii_holding: StatusBadge
+    promoter_holding: StatusBadge
+    public_holding: StatusBadge
+
+
+class StockNewsItem(BaseModel):
+    title: str
+    url: str
+    publisher: Optional[str] = None
+    published_date: Optional[str] = None
+
+
+class StockAnalysisResponse(BaseModel):
+    symbol: str
+    company_name: str
+    current_price: str
+    market_cap: str
+    pe_ratio: str
+    roe: str
+    roce: str
+    sector: str
+    industry: str
+    about: str
+    day_range: str
+    fifty_two_week_range: str
+    volume: str
+    avg_volume: str
+    valuation: Dict[str, Any]
+    financials: Dict[str, Any]
+    growth: Dict[str, Any]
+    multibagger: Dict[str, Any]
+    technical_indicators: Dict[str, Any]
+    candlestick: CandlestickData
+    shareholding_series: Dict[str, List[float]]
+    financial_status: FinancialStatus
+    news: List[StockNewsItem]
 
 
 class StockReportRequest(BaseModel):
@@ -36,6 +102,7 @@ class StockReportRequest(BaseModel):
 class StockReportResponse(BaseModel):
     symbol: str
     company_name: Optional[str] = None
+    thinking_part: Optional[str] = None
     report_markdown: str
     technicals: Dict[str, Any]
     fundamentals: Dict[str, Any]

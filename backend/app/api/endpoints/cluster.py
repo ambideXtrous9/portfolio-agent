@@ -92,3 +92,23 @@ async def run_clustering(request: ClusterRequest):
         points=points_result,
         silhouette_score=sil_score
     )
+
+
+@router.get("/kdist")
+async def get_kdist_graph():
+    """Computes sorted 2nd nearest neighbor distances for DBSCAN epsilon tuning."""
+    from sklearn.neighbors import NearestNeighbors
+
+    X = _cached_df[["x", "y"]].values
+    neigh = NearestNeighbors(n_neighbors=5)
+    nbrs = neigh.fit(X)
+    distances, _ = nbrs.kneighbors(X)
+
+    distances = np.sort(distances, axis=0)
+    distances = distances[:, 1]  # 2nd nearest neighbor distance
+
+    return {
+        "x": list(range(len(distances))),
+        "y": [round(float(d), 2) for d in distances]
+    }
+
