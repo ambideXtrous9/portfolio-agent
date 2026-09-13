@@ -15,9 +15,26 @@
 <body>
   <div class="st-app">
     
+    <!-- ── Floating Button to Expand Sidebar when Collapsed ──────────────── -->
+    <button id="sidebar-expand-btn" class="st-sidebar-expand-btn" title="Expand Menu" aria-label="Expand Menu">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+      <span>Menu</span>
+    </button>
+
     <!-- ── Left Sidebar Navigation ────────────────────────────────────────── -->
     <aside class="st-sidebar">
       
+      <!-- Top Bar with Sidebar Collapse Toggle -->
+      <div class="st-sidebar-top-bar">
+        <button id="sidebar-collapse-btn" class="st-sidebar-toggle-btn" title="Collapse Menu" aria-label="Collapse Menu">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+      </div>
+
       <!-- Dynamic Top Circular Avatar / Banner -->
       <div class="st-sidebar-image-container">
         <img id="sidebar-banner-img" class="st-sidebar-image" src="assets/images/boom.png" alt="Sidebar Banner" />
@@ -85,6 +102,7 @@
       </div>
 
     </aside>
+    <div id="sidebar-overlay" class="st-sidebar-overlay"></div>
 
     <!-- ── Main Workspace Content ────────────────────────────────────────── -->
     <main class="st-main">
@@ -220,11 +238,30 @@
 
           <hr style="margin: 1.75rem 0;" />
 
-          <!-- GitHub Activity & Stats Card (Centered) -->
-          <div style="text-align: center; margin: 2rem 0 2.5rem;">
-            <a href="https://github.com/ambideXtrous9" target="_blank" style="display: inline-block;">
-              <img src="https://awesome-github-stats.azurewebsites.net/user-stats/ambidextrous9?cardType=octocat&theme=vue&fontFamily=Exo%202&preferLogin=false" alt="Sushovan's GitHub stats" style="max-width: 100%; border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);" />
-            </a>
+          <!-- 📊 GitHub Activity & Stats -->
+          <div style="text-align: center; margin: 2rem 0 2rem;">
+            <h3 style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1.35rem; margin-bottom: 0.35rem;">
+              <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Bar%20Chart.png" alt="Bar Chart" width="28" height="28" style="vertical-align: middle;" />
+              GitHub Activity &amp; Stats
+            </h3>
+            <p style="color: var(--st-text-muted); font-style: italic; margin-bottom: 1.5rem; font-size: 0.95rem;">
+              Thank you for visiting my GitHub profile!
+            </p>
+
+            <table class="st-github-table" border="0" width="100%">
+              <tr>
+                <td class="st-github-td-60" width="60%" align="center" valign="middle">
+                  <a href="https://github.com/ambideXtrous9" target="_blank" title="View Sushovan's GitHub Stats">
+                    <img src="https://awesome-github-stats.azurewebsites.net/user-stats/ambidextrous9?cardType=octocat&theme=vue&fontFamily=Exo%202&preferLogin=false" onerror="this.onerror=null; this.src='assets/images/octocat-stats.svg';" alt="Sushovan's GitHub stats" width="100%" class="st-github-stats-card" />
+                  </a>
+                </td>
+                <td class="st-github-td-40" width="40%" align="center" valign="middle">
+                  <a href="https://github.com/ambideXtrous9" target="_blank" title="View 3D Animated Contribution Map">
+                    <img alt="GitHub contribution Map" src="assets/images/profile-season-animate.svg" width="100%" class="st-github-contrib-map" />
+                  </a>
+                </td>
+              </tr>
+            </table>
           </div>
 
           <hr style="margin: 2rem 0 1.5rem;" />

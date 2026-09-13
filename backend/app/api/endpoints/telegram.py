@@ -71,6 +71,7 @@ async def trigger_github_redeploy(chat_id: str | int, user_name: str):
     payload = {
         "ref": "main",
         "inputs": {
+            "environment": "production",
             "chat_id": str(chat_id),
             "trigger_source": f"Telegram (@{user_name})",
         },

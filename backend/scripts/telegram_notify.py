@@ -56,6 +56,8 @@ def build_message(event: str, extra_url: str = "") -> str:
     short_sha = sha[:7] if sha != "unknown" else "unknown"
     actor = os.environ.get("ACTOR") or os.environ.get("GITHUB_ACTOR", "ambideXtrous9")
     event_name = os.environ.get("EVENT_NAME") or os.environ.get("GITHUB_EVENT_NAME", "push")
+    pr_number = os.environ.get("PR_NUMBER", "").strip()
+    pr_merged = os.environ.get("PR_MERGED", "").strip()
     commit_msg = os.environ.get("COMMIT_MSG", "").strip() or "Deployment update"
     first_line_msg = commit_msg.splitlines()[0][:100] if commit_msg else "Manual trigger"
     
@@ -63,12 +65,21 @@ def build_message(event: str, extra_url: str = "") -> str:
     run_id = os.environ.get("GITHUB_RUN_ID", "")
     run_url = os.environ.get("RUN_URL") or (f"{server_url}/{repo}/actions/runs/{run_id}" if run_id else f"{server_url}/{repo}/actions")
 
+    if event_name == "pull_request" and pr_merged.lower() == "true":
+        trigger_detail = f"{actor} (Merged PR #{pr_number} into <code>{branch}</code>)"
+    elif event_name == "pull_request":
+        trigger_detail = f"{actor} (Pull Request #{pr_number})"
+    elif event_name == "push":
+        trigger_detail = f"{actor} (Push to <code>{branch}</code>)"
+    else:
+        trigger_detail = f"{actor} (<code>{event_name}</code>)"
+
     if event == "pipeline_start":
         return (
             f"🚀 <b>CI/CD Pipeline Started</b>\n\n"
             f"📦 <b>Repository:</b> <code>{repo}</code>\n"
             f"🌿 <b>Branch:</b> <code>{branch}</code>\n"
-            f"👤 <b>Triggered By:</b> {actor} (<code>{event_name}</code>)\n"
+            f"👤 <b>Triggered By:</b> {trigger_detail}\n"
             f"📝 <b>Commit:</b> <code>{short_sha}</code> — <i>{first_line_msg}</i>\n\n"
             f"🔗 <a href=\"{run_url}\">View Live Pipeline on GitHub</a>\n"
             f"⏳ <i>Running lint checks, backend syntax validation, and frontend asset verification...</i>"

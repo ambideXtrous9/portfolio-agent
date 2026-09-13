@@ -5,6 +5,7 @@ on:
     branches:
       - main
   pull_request:
+    types: [opened, synchronize, reopened, closed]
     branches:
       - main
   workflow_dispatch:
@@ -46,6 +47,7 @@ jobs:
   validate:
     name: Lint & Code Integrity Check
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -60,11 +62,14 @@ jobs:
         run: python3 backend/scripts/telegram_notify.py --event pipeline_start
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          COMMIT_MSG: ${{ github.event.head_commit.message || github.event.pull_request.title }}
           ACTOR: ${{ github.actor }}
           EVENT_NAME: ${{ github.event_name }}
           BRANCH: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_ACTION: ${{ github.event.action }}
 
       - name: Validate JSON Configuration Files
         run: |
@@ -100,7 +105,7 @@ jobs:
   deploy-preview:
     name: Deploy to Vercel Preview
     needs: validate
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'preview')
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || (github.event_name == 'workflow_dispatch' && inputs.environment == 'preview')
     runs-on: ubuntu-latest
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -137,12 +142,12 @@ jobs:
           echo "Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
-  # 3. CD Production: Deploy to Vercel Production on Push to Main
+  # 3. CD Production: Deploy to Vercel Production on Push or Merge PR to Main
   # ============================================================================
   deploy-production:
     name: Deploy to Vercel Production
     needs: validate
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true) || (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
     runs-on: ubuntu-latest
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -160,6 +165,16 @@ jobs:
       - name: Telegram Notification (Deployment Started)
         if: always()
         run: python3 backend/scripts/telegram_notify.py --event deploy_start
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_MSG: ${{ github.event.head_commit.message || github.event.pull_request.title }}
+          ACTOR: ${{ github.actor }}
+          EVENT_NAME: ${{ github.event_name }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_ACTION: ${{ github.event.action }}
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
@@ -192,7 +207,27 @@ jobs:
       - name: Telegram Notification (Deployment Succeeded)
         if: success()
         run: python3 backend/scripts/telegram_notify.py --event deploy_success --url "${{ steps.deploy.outputs.url }}"
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_MSG: ${{ github.event.head_commit.message || github.event.pull_request.title }}
+          ACTOR: ${{ github.actor }}
+          EVENT_NAME: ${{ github.event_name }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_ACTION: ${{ github.event.action }}
 
       - name: Telegram Notification (Deployment Failed)
         if: failure()
         run: python3 backend/scripts/telegram_notify.py --event deploy_fail
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_MSG: ${{ github.event.head_commit.message || github.event.pull_request.title }}
+          ACTOR: ${{ github.actor }}
+          EVENT_NAME: ${{ github.event_name }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_ACTION: ${{ github.event.action }}

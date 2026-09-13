@@ -201,8 +201,82 @@ document.addEventListener("DOMContentLoaded", () => {
   initClusterSandbox();
   initArchModal();
   initBackendManager();
+  initSidebarCollapse();
   loadGitHubStats();
 });
+
+function initSidebarCollapse() {
+  const sidebar = document.querySelector(".st-sidebar");
+  const main = document.querySelector(".st-main");
+  const collapseBtn = document.getElementById("sidebar-collapse-btn");
+  const expandBtn = document.getElementById("sidebar-expand-btn");
+  const overlay = document.getElementById("sidebar-overlay");
+
+  if (!sidebar) return;
+
+  function setSidebarState(collapsed) {
+    if (collapsed) {
+      sidebar.classList.add("collapsed");
+      if (main) main.classList.add("sidebar-collapsed");
+      if (expandBtn) expandBtn.classList.add("visible");
+      localStorage.setItem("st_sidebar_collapsed", "true");
+    } else {
+      sidebar.classList.remove("collapsed");
+      if (main) main.classList.remove("sidebar-collapsed");
+      if (expandBtn) expandBtn.classList.remove("visible");
+      localStorage.setItem("st_sidebar_collapsed", "false");
+    }
+  }
+
+  // Restore saved state from localStorage (or auto-collapse on narrow mobile screens)
+  const savedState = localStorage.getItem("st_sidebar_collapsed");
+  if (savedState === "true") {
+    setSidebarState(true);
+  } else if (savedState === null && window.innerWidth < 768) {
+    setSidebarState(true);
+  } else {
+    setSidebarState(false);
+  }
+
+  if (collapseBtn) {
+    collapseBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setSidebarState(true);
+    });
+  }
+
+  if (expandBtn) {
+    expandBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setSidebarState(false);
+    });
+  }
+
+  if (overlay) {
+    overlay.addEventListener("click", () => {
+      setSidebarState(true);
+    });
+  }
+
+  // On mobile screens, auto-close the drawer when navigating
+  const navButtons = document.querySelectorAll(".st-nav-btn");
+  navButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (window.innerWidth < 768) {
+        setSidebarState(true);
+      }
+    });
+  });
+
+  // Support hotkey: Ctrl + B or Cmd + B to toggle sidebar
+  document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+      e.preventDefault();
+      const isCollapsed = sidebar.classList.contains("collapsed");
+      setSidebarState(!isCollapsed);
+    }
+  });
+}
 
 function initBackendManager() {
   const dot = document.getElementById("backend-status-dot");

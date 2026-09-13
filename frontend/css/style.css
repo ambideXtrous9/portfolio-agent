@@ -58,7 +58,7 @@ body {
   min-width: 290px;
   background-color: var(--st-bg-sidebar);
   border-right: 1px solid var(--st-border-color);
-  padding: 1.5rem 1.25rem 2rem;
+  padding: 0.85rem 1.25rem 2rem;
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -66,6 +66,84 @@ body {
   height: 100vh;
   overflow-y: auto;
   z-index: 100;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: margin-left, transform;
+}
+
+.st-sidebar.collapsed {
+  margin-left: -290px;
+  pointer-events: none;
+}
+
+/* Sidebar Top Bar (with Collapse Toggle) */
+.st-sidebar-top-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.st-sidebar-toggle-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--st-text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.st-sidebar-toggle-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--st-text-color);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Floating Expand Button when Sidebar is Collapsed */
+.st-sidebar-expand-btn {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 999;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: #FFFFFF;
+  color: #1E293B;
+  border: 1px solid #CBD5E1;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border-radius: 20px;
+  padding: 6px 14px 6px 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.st-sidebar-expand-btn:hover {
+  background: #F8FAFC;
+  color: var(--st-primary);
+  border-color: var(--st-primary);
+  transform: translateX(3px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.st-sidebar-expand-btn.visible {
+  display: inline-flex;
+  animation: stSlideIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes stSlideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.st-sidebar-overlay {
+  display: none;
 }
 
 .st-sidebar::-webkit-scrollbar {
@@ -1694,6 +1772,101 @@ canvas#voiceOrbCanvas {
   font-size: 0.84rem;
   color: #64748B;
   line-height: 1.45;
+}
+
+/* ── GitHub Activity & Stats Table ─────────────────────────────────────── */
+.st-github-table {
+  border-collapse: separate;
+  border-spacing: 16px 0;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.st-github-td-60 {
+  width: 60%;
+  padding: 6px;
+  vertical-align: middle;
+}
+
+.st-github-td-40 {
+  width: 40%;
+  padding: 6px;
+  vertical-align: middle;
+}
+
+.st-github-stats-card {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
+  display: block;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.st-github-stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.11);
+}
+
+.st-github-contrib-map {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
+  background: #FFFFFF;
+  display: block;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.st-github-contrib-map:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.11);
+}
+
+/* Responsive Rules for Table & Mobile Sidebar Drawer */
+@media (max-width: 768px) {
+  .st-github-table,
+  .st-github-table tbody,
+  .st-github-table tr {
+    display: block;
+    width: 100% !important;
+  }
+  
+  .st-github-td-60,
+  .st-github-td-40 {
+    display: block;
+    width: 100% !important;
+    box-sizing: border-box;
+    padding: 8px 0;
+  }
+
+  .st-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    z-index: 1001;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+  }
+
+  .st-sidebar.collapsed {
+    margin-left: -320px;
+  }
+
+  .st-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+    z-index: 1000;
+    display: block;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .st-sidebar:not(.collapsed) ~ .st-sidebar-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 
