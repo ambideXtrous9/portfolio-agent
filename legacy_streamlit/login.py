@@ -11,7 +11,6 @@ def login_page():
 
     if st.session_state['show_login']:
         st.subheader("Login")
-        st.write("Please login to access this feature. Use Temporary Account: [username: abc, password: 123].")
         username = st.text_input("Username", key="login_username")
         password = st.text_input("Password", type="password", key="login_password")
 

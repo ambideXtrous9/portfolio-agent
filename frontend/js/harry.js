@@ -1,17 +1,111 @@
 /**
- * Harry Potter Lore & Mythology Agent Controller using WebSockets
- * Streams live node steps, Pinecone MCP queries, tool calls, and LLM tokens.
+ * Harry Potter Lore & Mythology Agent Controller
+ * Supports LangGraph Checkpointing & PostgreSQL Chat History
  */
 
-import { streamAgent } from "./api.js";
+import { streamAgent, apiGetChatHistory, apiClearChatHistory, getAuthToken } from "./api.js";
 
 export function initHarryScholar() {
   const chatHistory = document.getElementById("harry-chat-history");
   const userInput = document.getElementById("harry-user-input");
   const sendBtn = document.getElementById("harry-send-btn");
   const chips = document.querySelectorAll("#tab-harry .st-suggestion-chip");
+  const threadDisplay = document.getElementById("harry-thread-id-display");
+  const btnNewChat = document.getElementById("harry-btn-new-chat");
+  const btnReloadHistory = document.getElementById("harry-btn-reload-history");
+  const btnClearHistory = document.getElementById("harry-btn-clear-history");
 
   if (!chatHistory || !userInput || !sendBtn) return;
+
+  // Stable or stored Thread/Session ID
+  let currentThreadId = localStorage.getItem("portfolio_hp_thread_id");
+  if (!currentThreadId) {
+    currentThreadId = "hp-" + Math.random().toString(36).substring(2, 9);
+    localStorage.setItem("portfolio_hp_thread_id", currentThreadId);
+  }
+
+  const updateThreadUI = () => {
+    if (threadDisplay) {
+      threadDisplay.textContent = `#${currentThreadId}`;
+    }
+  };
+  updateThreadUI();
+
+  const welcomeHTML = `
+    <div class="st-chat-message assistant">
+      <div class="st-chat-avatar">🪄</div>
+      <div class="st-chat-content">
+        <strong>Welcome to the Harry Potter & Indian Mythology Lore Scholar!</strong><br>
+        I utilize Pinecone vector retrieval (<code>hpvdb-openai</code>) via MCP to cross-examine characters, Astras, Dharma, and wizarding lore with Indian ancient epics.
+      </div>
+    </div>
+  `;
+
+  // Restore history from PostgreSQL
+  async function loadThreadHistory() {
+    if (!getAuthToken()) return;
+    try {
+      const res = await apiGetChatHistory(currentThreadId);
+      if (res && res.messages && res.messages.length > 0) {
+        chatHistory.innerHTML = welcomeHTML;
+        res.messages.forEach((msg) => {
+          const isUser = msg.type === "human" || msg.type === "user";
+          const msgDiv = document.createElement("div");
+          msgDiv.className = `st-chat-message ${isUser ? "user" : "assistant"}`;
+          msgDiv.innerHTML = `
+            <div class="st-chat-avatar">${isUser ? "👤" : "🪄"}</div>
+            <div class="st-chat-content">
+              <strong>${isUser ? "You" : "Lore Scholar"}</strong><br>
+              ${isUser ? escapeHtml(msg.content) : (window.marked ? marked.parse(msg.content) : escapeHtml(msg.content))}
+            </div>
+          `;
+          chatHistory.appendChild(msgDiv);
+        });
+        chatHistory.lastElementChild?.scrollIntoView({ behavior: "smooth" });
+      }
+    } catch (e) {
+      console.warn("Could not load Harry chat history:", e);
+    }
+  }
+
+  // Load history on initialization
+  loadThreadHistory();
+
+  // New Thread Handler
+  if (btnNewChat) {
+    btnNewChat.addEventListener("click", () => {
+      currentThreadId = "hp-" + Math.random().toString(36).substring(2, 9);
+      localStorage.setItem("portfolio_hp_thread_id", currentThreadId);
+      updateThreadUI();
+      chatHistory.innerHTML = welcomeHTML;
+      const note = document.createElement("div");
+      note.style.cssText = "text-align: center; font-size: 0.78rem; color: var(--st-text-muted); margin: 0.5rem 0;";
+      note.textContent = `⚡ Started fresh thread #${currentThreadId} with empty checkpointer state.`;
+      chatHistory.appendChild(note);
+    });
+  }
+
+  // Reload / Restore History Handler
+  if (btnReloadHistory) {
+    btnReloadHistory.addEventListener("click", async () => {
+      btnReloadHistory.textContent = "⏳ Restoring...";
+      await loadThreadHistory();
+      btnReloadHistory.textContent = "📜 Restore History";
+    });
+  }
+
+  // Clear History Handler
+  if (btnClearHistory) {
+    btnClearHistory.addEventListener("click", async () => {
+      if (!confirm("Are you sure you want to clear chat history for this thread in PostgreSQL?")) return;
+      try {
+        await apiClearChatHistory(currentThreadId);
+        chatHistory.innerHTML = welcomeHTML;
+      } catch (err) {
+        alert("Failed to clear history: " + err.message);
+      }
+    });
+  }
 
   // Suggestion chips handler
   chips.forEach(chip => {
@@ -72,8 +166,9 @@ export function initHarryScholar() {
     const toolsLog = assistantMsg.querySelector(".st-tools-log");
     const markdownBody = assistantMsg.querySelector(".st-markdown-body");
 
-    // 3. Connect via streamAgent (SSE with automatic REST fallback)
+    // 3. Connect via streamAgent with current thread session_id
     streamAgent("harry", query, {
+      sessionId: currentThreadId,
       onStatus: (data) => {
         if (statusLabel) {
           const msg = data.message || "Processing...";
@@ -108,14 +203,14 @@ export function initHarryScholar() {
         card.appendChild(resEl);
       },
       onToken: () => {
-        // Suppress intermediate token drafting so output only appears after critic node is complete
+        // Suppress intermediate drafting so verified final synthesis is presented
       },
       onDone: (data) => {
         if (statusBadge) statusBadge.style.display = "none";
         sendBtn.disabled = false;
         const text = data.content || data.full_text || "";
         if (text) {
-          markdownBody.innerHTML = marked.parse(text);
+          markdownBody.innerHTML = window.marked ? marked.parse(text) : escapeHtml(text);
         }
       },
       onError: (err) => {

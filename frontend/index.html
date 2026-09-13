@@ -107,6 +107,20 @@
     <!-- ── Main Workspace Content ────────────────────────────────────────── -->
     <main class="st-main">
       <div class="st-block-container">
+        <!-- Top Global Status & Auth Header -->
+        <header class="st-top-header" id="global-top-header">
+          <div class="st-top-header-left">
+            <span id="top-db-status" class="st-status-pill st-status-pill-db" title="LangGraph PostgreSQL Checkpointer State">
+              <span>💾</span> <span id="top-db-text">Postgres Checkpointer: Ready</span>
+            </span>
+            <span id="top-auth-status" class="st-status-pill st-status-pill-auth" title="JWT Bearer Authentication">
+              <span>🛡️</span> <span id="top-auth-text">JWT Auth Guard: Enforced</span>
+            </span>
+          </div>
+          <div class="st-top-header-right" id="top-user-area">
+            <!-- Dynamically populated by app.js -->
+          </div>
+        </header>
 
         <!-- ================================================================== -->
         <!-- 🎃 Tab 1: Home Page                                               -->
@@ -397,6 +411,19 @@
             </button>
           </div>
 
+          <!-- Session & Checkpoint Control Toolbar -->
+          <div class="st-session-toolbar" id="harry-session-bar">
+            <div class="st-session-info">
+              <span class="st-session-badge">Thread: <strong id="harry-thread-id-display">#hp-session</strong></span>
+              <span class="st-session-status">🟢 Postgres Checkpointed</span>
+            </div>
+            <div class="st-session-actions">
+              <button type="button" class="st-session-btn" id="harry-btn-new-chat" title="Start a fresh thread with clean checkpointer state">➕ New Thread</button>
+              <button type="button" class="st-session-btn" id="harry-btn-reload-history" title="Fetch past conversation from PostgreSQL chat history">📜 Restore History</button>
+              <button type="button" class="st-session-btn st-session-btn-danger" id="harry-btn-clear-history" title="Permanently delete thread history in PostgreSQL">🗑️ Clear Thread</button>
+            </div>
+          </div>
+
           <!-- Chat messages area -->
           <div class="st-chat-container" id="harry-chat-history">
             <!-- Initial Welcome Message -->
@@ -444,6 +471,19 @@
               </svg>
               <span>Architecture</span>
             </button>
+          </div>
+
+          <!-- Session & Checkpoint Control Toolbar -->
+          <div class="st-session-toolbar" id="tour-session-bar">
+            <div class="st-session-info">
+              <span class="st-session-badge">Thread: <strong id="tour-thread-id-display">#tour-session</strong></span>
+              <span class="st-session-status">🟢 Postgres Checkpointed</span>
+            </div>
+            <div class="st-session-actions">
+              <button type="button" class="st-session-btn" id="tour-btn-new-chat" title="Start a fresh thread with clean checkpointer state">➕ New Thread</button>
+              <button type="button" class="st-session-btn" id="tour-btn-reload-history" title="Fetch past conversation from PostgreSQL chat history">📜 Restore History</button>
+              <button type="button" class="st-session-btn st-session-btn-danger" id="tour-btn-clear-history" title="Permanently delete thread history in PostgreSQL">🗑️ Clear Thread</button>
+            </div>
           </div>
 
           <!-- Chat messages area -->
@@ -864,26 +904,95 @@
         <!-- 🔐 Tab 9: Login & Signup (Matches login.py)                        -->
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-login">
-          <h2>Login</h2>
-          <div style="background-color: #FFF3CD; color: #856404; border: 1px solid #FFEEBA; border-radius: var(--st-radius); padding: 0.75rem 1rem; margin: 1rem 0; font-size: 0.95rem;">
-            Please login to access protected AI features. Use Temporary Account: <strong>[username: abc, password: 123]</strong>.
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--st-border-card); padding-bottom: 0.8rem; margin-bottom: 1.5rem;">
+            <div>
+              <h2 style="margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">🔐 User Authentication & Access Control</h2>
+              <div style="font-size: 0.88rem; color: var(--st-text-muted);">PostgreSQL JWT Bearer Authentication & Role-Based Access Control (RBAC)</div>
+            </div>
+            <div style="display: flex; gap: 8px; background: rgba(0,0,0,0.06); padding: 4px; border-radius: var(--st-radius);">
+              <button type="button" id="tab-btn-show-login" class="st-btn st-btn-primary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Sign In</button>
+              <button type="button" id="tab-btn-show-signup" class="st-btn" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Register (Sign Up)</button>
+            </div>
           </div>
 
-          <form id="auth-login-form" style="max-width: 480px; margin-top: 1.5rem;">
-            <div style="margin-bottom: 1.25rem;">
-              <label style="display: block; font-weight: 600; margin-bottom: 6px;">Username</label>
-              <input type="text" id="auth-username" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.55rem 0.8rem;" placeholder="e.g. abc" value="abc" required />
+          <div class="st-card" style="margin-bottom: 1.5rem; padding: 0.9rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-left: 4px solid var(--st-primary-color);">
+            <div>
+              <div style="font-weight: 600; font-size: 0.95rem; color: var(--st-text-color);">🛡️ PostgreSQL & JWT Identity System</div>
+              <div style="font-size: 0.84rem; color: var(--st-text-muted); margin-top: 2px;">Role-Based Access Control and PostgreSQL session checkpointing. Visitors have instant guest access enabled.</div>
             </div>
-            <div style="margin-bottom: 1.5rem;">
-              <label style="display: block; font-weight: 600; margin-bottom: 6px;">Password</label>
-              <input type="password" id="auth-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.55rem 0.8rem;" placeholder="e.g. 123" value="123" required />
+            <div style="font-size: 0.8rem; background: rgba(38, 39, 48, 0.06); padding: 4px 10px; border-radius: 6px; white-space: nowrap; font-family: monospace;">
+              RBAC Enforced
             </div>
-            <div style="display: flex; gap: 12px; align-items: center;">
-              <button type="submit" class="st-btn st-btn-primary" style="padding: 0.55rem 1.5rem; font-weight: 600;">Submit Login</button>
-              <button type="button" class="st-btn" id="btn-toggle-signup" style="padding: 0.55rem 1rem;">Create Account (Signup)</button>
+          </div>
+
+          <!-- 1-Click Demo Login Banner -->
+          <div class="st-demo-login-banner" id="auth-demo-banner" style="display: none;">
+            <div>
+              <div style="font-weight: 700; font-size: 1.05rem; color: var(--st-text-color); margin-bottom: 2px;">⚡ Try the Live Portfolio in 1 Click</div>
+              <div style="font-size: 0.85rem; color: var(--st-text-muted);">Instant access with pre-seeded demo credentials [<code>abc</code> / <code>123</code>]</div>
             </div>
-            <div id="auth-msg-feedback" style="margin-top: 1rem;"></div>
-          </form>
+            <button type="button" class="st-demo-login-btn" id="btn-quick-demo-login">⚡ Sign In as Demo User</button>
+          </div>
+
+          <!-- Logged-in User Profile Container (Shown when authenticated) -->
+          <div id="auth-logged-in-container" style="max-width: 520px; display: none; background: var(--st-bg-secondary); border: 1px solid var(--st-border-color); border-radius: var(--st-radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 1rem;">
+              <div class="st-user-avatar" id="logged-in-avatar" style="width: 48px; height: 48px; font-size: 1.2rem;">DE</div>
+              <div>
+                <div style="font-size: 1.15rem; font-weight: 700;" id="logged-in-name">Demo Explorer</div>
+                <div style="font-size: 0.85rem; color: var(--st-text-muted);" id="logged-in-email">abc@example.com</div>
+              </div>
+              <span class="st-role-badge st-role-admin" id="logged-in-role" style="margin-left: auto;">Admin</span>
+            </div>
+            <div style="border-top: 1px solid var(--st-border-color); padding-top: 1rem; margin-top: 1rem; display: flex; gap: 10px;">
+              <button type="button" class="st-btn st-btn-primary" id="btn-go-agents" style="flex: 1;">Explore AI Agents 🚀</button>
+              <button type="button" class="st-btn" id="btn-profile-logout" style="color: #D32F2F; border-color: #FFCDD2;">Log Out</button>
+            </div>
+          </div>
+
+          <!-- Login Form Container -->
+          <div id="auth-login-container" style="max-width: 480px;">
+            <h3 style="margin-top: 0; font-size: 1.2rem; margin-bottom: 1rem;">Sign In to your Account</h3>
+            <form id="auth-login-form">
+              <div style="margin-bottom: 1.25rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px;">Email or Username</label>
+                <input type="text" id="auth-username" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="e.g. user@example.com" required />
+              </div>
+              <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px;">Password</label>
+                <input type="password" id="auth-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="Enter your password" required />
+              </div>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <button type="submit" id="auth-login-submit-btn" class="st-btn st-btn-primary" style="padding: 0.6rem 1.8rem; font-weight: 600;">Sign In</button>
+                <button type="button" class="st-btn" id="btn-switch-to-signup" style="padding: 0.6rem 1rem;">Create Account</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Signup Form Container -->
+          <div id="auth-signup-container" style="max-width: 480px; display: none;">
+            <h3 style="margin-top: 0; font-size: 1.2rem; margin-bottom: 1rem;">Create a New Account</h3>
+            <form id="auth-signup-form">
+              <div style="margin-bottom: 1.25rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px;">Full Name</label>
+                <input type="text" id="signup-fullname" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="e.g. Harry Potter" required />
+              </div>
+              <div style="margin-bottom: 1.25rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px;">Email Address</label>
+                <input type="email" id="signup-email" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="e.g. scholar@hogwarts.edu" required />
+              </div>
+              <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px;">Password</label>
+                <input type="password" id="signup-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="At least 6 characters" required />
+              </div>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <button type="submit" id="auth-signup-submit-btn" class="st-btn st-btn-primary" style="padding: 0.6rem 1.8rem; font-weight: 600;">Register Account</button>
+                <button type="button" class="st-btn" id="btn-switch-to-login" style="padding: 0.6rem 1rem;">Already have an account? Sign In</button>
+              </div>
+            </form>
+          </div>
+
+          <div id="auth-msg-feedback" style="margin-top: 1.25rem; max-width: 480px;"></div>
         </section>
 
 

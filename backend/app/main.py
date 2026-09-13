@@ -2,13 +2,15 @@
 
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from backend.app.config import settings
 from backend.app.api.router import api_router
+from backend.app.core.database import db_manager
+from backend.app.core.auth_database import auth_db_manager
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
@@ -20,7 +22,22 @@ async def lifespan(app: FastAPI):
     print(f"🔧 Model: {settings.DEFAULT_MODEL}")
     print(f"🌲 Pinecone Index: {settings.PINECONE_INDEX_NAME}")
 
-    # Preload models & services before server starts accepting traffic
+    # 1. Initialize PostgreSQL Connection Pool, Chat History & LangGraph Checkpointer
+    try:
+        await db_manager.initialize()
+        app.state.db_pool = db_manager.pool
+        app.state.checkpointer = db_manager.checkpointer
+    except Exception as e:
+        print(f"⚠️ Database initialization note: {e}")
+
+    # 2. Initialize PostgreSQL Authentication Database & Tables
+    try:
+        await auth_db_manager.initialize()
+        app.state.auth_db_pool = auth_db_manager.pool
+    except Exception as e:
+        print(f"⚠️ Auth database initialization note: {e}")
+
+    # 3. Preload models & services before server starts accepting traffic
     try:
         from backend.app.api.endpoints.vision import preload_vision_models
         preload_vision_models()
@@ -34,9 +51,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️ MCP client pre-initialization note: {e}")
 
-    print("✨ All models and background services preloaded. Backend is ready!")
+    print("✨ All databases, models, and background services initialized. Backend is ready!")
     yield
     print("🛑 ambideXtrous AI Portfolio FastAPI backend shutting down...")
+    try:
+        await auth_db_manager.close()
+        await db_manager.close()
+    except Exception as e:
+        print(f"⚠️ Shutdown resource cleanup note: {e}")
 
 
 app = FastAPI(
@@ -56,6 +78,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def ensure_db_initialized(request: Request, call_next):
+    """Ensures database connection and demo accounts are initialized on serverless cold starts."""
+    if not auth_db_manager._initialized:
+        try:
+            await auth_db_manager.initialize()
+        except Exception as err:
+            pass
+    if not db_manager._initialized:
+        try:
+            await db_manager.initialize()
+        except Exception as err:
+            pass
+    return await call_next(request)
+
 
 # Mount API endpoints (both with and without /api prefix for seamless Vercel Serverless routing)
 app.include_router(api_router, prefix=settings.API_V1_STR)

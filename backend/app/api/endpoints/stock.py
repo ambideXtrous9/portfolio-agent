@@ -11,10 +11,12 @@ import numpy as np
 from bs4 import BeautifulSoup
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from backend.app.core.llm import get_llm
+from backend.app.api.deps import get_current_active_user
+from backend.app.schemas.auth import UserResponse
 from backend.app.schemas.stock import (
     StockScanRequest,
     StockScanResponse,
@@ -64,7 +66,10 @@ def load_all_companies_df() -> pd.DataFrame:
 
 
 @router.get("/universe")
-async def get_universe_list(universe: str = Query("nifty500", description="'nifty500' or 'microcap250'")):
+async def get_universe_list(
+    universe: str = Query("nifty500", description="'nifty500' or 'microcap250'"),
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """Returns universe details and first 50 sample stocks."""
     df = load_universe_df(universe)
     sample = df[["Company Name", "Industry", "Symbol", "YFSYMBOL"]].head(50).to_dict(orient="records")
@@ -76,7 +81,9 @@ async def get_universe_list(universe: str = Query("nifty500", description="'nift
 
 
 @router.get("/companies", response_model=List[StockCompanyItem])
-async def get_all_companies():
+async def get_all_companies(
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """Returns the full searchable list of companies (~750) across Nifty500 & Microcap250."""
     df = load_all_companies_df()
     results = []
@@ -94,7 +101,10 @@ async def get_all_companies():
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.post("/scan", response_model=StockScanResponse)
-async def scan_stocks(request: StockScanRequest):
+async def scan_stocks(
+    request: StockScanRequest,
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """Executes multi-mode screeners matching Streamlit screener tabs."""
     import yfinance as yf
 
@@ -526,7 +536,10 @@ def compute_financial_status(values: List[float], is_public: bool = False) -> St
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/analysis/{symbol}", response_model=StockAnalysisResponse)
-async def get_stock_analysis(symbol: str):
+async def get_stock_analysis(
+    symbol: str,
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """Provides full company overview, candlestick data, shareholding, news, and metrics."""
     import yfinance as yf
 
@@ -956,9 +969,12 @@ Provide rigorous analysis on whether this equity demonstrates multibagger charac
 
 
 @router.post("/report", response_model=StockReportResponse)
-async def generate_stock_report(request: StockReportRequest):
+async def generate_stock_report(
+    request: StockReportRequest,
+    current_user: UserResponse = Depends(get_current_active_user),
+):
     """Generates an institutional AI stock research report with reasoning and markdown."""
-    analysis = await get_stock_analysis(request.symbol)
+    analysis = await get_stock_analysis(request.symbol, current_user=current_user)
 
     llm = get_llm(temperature=0.2)
     user_content = f"""

@@ -11,10 +11,14 @@ from backend.app.api.endpoints import (
     health,
     voice,
     telegram,
+    auth,
+    chat,
 )
 
 api_router = APIRouter()
 
+api_router.include_router(auth.router)
+api_router.include_router(chat.router)
 api_router.include_router(portfolio.router)
 api_router.include_router(tour.router)
 api_router.include_router(voice.router)
