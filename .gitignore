@@ -59,3 +59,4 @@ TXT.txt
 .rp360
 .vercel
 .env*
+_uv/

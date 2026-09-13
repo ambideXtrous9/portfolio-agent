@@ -1,6 +1,4 @@
 .git
-.github
-.env*
 .venv
 __pycache__
 *.pyc
@@ -11,5 +9,6 @@ __pycache__
 *.log
 backend/models/
 legacy_streamlit/
-docker-compose*.yml
-Dockerfile
+.env
+.env.local
+.env.*.local
