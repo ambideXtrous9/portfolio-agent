@@ -118,6 +118,7 @@ async def researcher_node(state: AgentState) -> AgentState:
                 f"Index Name: '{index_name}'.\n"
                 f"Use the Pinecone MCP tools (e.g. describe-index-stats, search-docs, search-records, rerank-documents) "
                 f"to research canonical facts for the query: '{query}'.\n"
+                f"Note: If calling search-records, pass query parameter as {{'inputs': {{'text': '{query}'}}}}.\n"
                 f"Provide a clear, detailed summary of the findings."
             )
             agent = create_react_agent(llm, tools, prompt=prompt)
@@ -433,59 +434,66 @@ async def stream_harry_sse(query: str):
         generic_reply = ""
         is_generic = False
 
-        async for event in hp_agent_graph.astream_events(
-            input={"topic": query, "review": "Write an awesome article on the topic."},
-            config=config,
-            version="v2"
-        ):
-            event_type = event.get("event")
-            metadata = event.get("metadata", {})
-            node = metadata.get("langgraph_node")
+        try:
+            async for event in hp_agent_graph.astream_events(
+                input={"topic": query, "review": "Write an awesome article on the topic."},
+                config=config,
+                version="v2"
+            ):
+                event_type = event.get("event")
+                metadata = event.get("metadata", {})
+                node = metadata.get("langgraph_node")
 
-            if event_type == "on_chain_start" and node:
-                label = f"Processing node: {node}"
-                if node == "classify":
-                    label = "🔍 Router Agent: Analyzing & classifying query..."
-                elif node == "researcher":
-                    label = "📚 Researcher Agent: Searching Pinecone vector database via MCP..."
-                elif node == "mythologist":
-                    label = "🕉️ Mythology Agent: Analyzing Indian Mythology & HP parallels..."
-                elif node == "writer":
-                    label = "✍️ Writer Agent: Authoring comprehensive article draft..."
-                elif node == "critic":
-                    label = "🧑‍⚖️ Critic Agent: Reviewing accuracy & critique feedback..."
+                if event_type == "on_chain_start" and node:
+                    label = f"Processing node: {node}"
+                    if node == "classify":
+                        label = "🔍 Router Agent: Analyzing & classifying query..."
+                    elif node == "researcher":
+                        label = "📚 Researcher Agent: Searching Pinecone vector database via MCP..."
+                    elif node == "mythologist":
+                        label = "🕉️ Mythology Agent: Analyzing Indian Mythology & HP parallels..."
+                    elif node == "writer":
+                        label = "✍️ Writer Agent: Authoring comprehensive article draft..."
+                    elif node == "critic":
+                        label = "🧑‍⚖️ Critic Agent: Reviewing accuracy & critique feedback..."
 
-                yield {
-                    "event": "status",
-                    "data": json.dumps({"node": node, "message": label, "elapsed": round(time.time() - start_time, 1)})
-                }
+                    yield {
+                        "event": "status",
+                        "data": json.dumps({"node": node, "message": label, "elapsed": round(time.time() - start_time, 1)})
+                    }
 
-            if event_type == "on_chain_end" and node:
-                output_data = event.get("data", {}).get("output", {})
-                if isinstance(output_data, dict):
-                    if "classification" in output_data:
-                        cls_info = output_data["classification"]
-                        if isinstance(cls_info, dict) and cls_info.get("classification") == "generic":
-                            is_generic = True
-                            generic_reply = cls_info.get("reply", "")
-                    if "draft" in output_data and output_data["draft"]:
-                        final_draft = output_data["draft"]
-                    if "critique" in output_data and output_data["critique"]:
-                        final_critique = output_data["critique"]
+                if event_type == "on_chain_end" and node:
+                    output_data = event.get("data", {}).get("output", {})
+                    if isinstance(output_data, dict):
+                        if "classification" in output_data:
+                            cls_info = output_data["classification"]
+                            if isinstance(cls_info, dict) and cls_info.get("classification") == "generic":
+                                is_generic = True
+                                generic_reply = cls_info.get("reply", "")
+                        if "draft" in output_data and output_data["draft"]:
+                            final_draft = output_data["draft"]
+                        if "critique" in output_data and output_data["critique"]:
+                            final_critique = output_data["critique"]
 
-        if is_generic and generic_reply:
-            res = generic_reply
-        elif final_draft:
-            if final_critique and final_critique != "Article reviewed.":
-                res = f"{final_draft}\n\n---\n### 🧑‍⚖️ Critic Review\n{final_critique}"
+            if is_generic and generic_reply:
+                res = generic_reply
+            elif final_draft:
+                if final_critique and final_critique != "Article reviewed.":
+                    res = f"{final_draft}\n\n---\n### 🧑‍⚖️ Critic Review\n{final_critique}"
+                else:
+                    res = final_draft
             else:
-                res = final_draft
-        else:
-            res = "Analysis complete."
+                res = "Analysis complete."
 
-        yield {
-            "event": "done",
-            "data": json.dumps({"content": res, "full_text": res, "elapsed": round(time.time() - start_time, 2)})
-        }
+            yield {
+                "event": "done",
+                "data": json.dumps({"content": res, "full_text": res, "elapsed": round(time.time() - start_time, 2)})
+            }
+        except Exception as e:
+            print(f"Harry SSE stream exception: {e}")
+            yield {
+                "event": "error",
+                "data": json.dumps({"message": str(e), "node": "error"})
+            }
 
     return EventSourceResponse(event_generator())

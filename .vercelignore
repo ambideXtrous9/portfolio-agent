@@ -1,0 +1,13 @@
+.git
+.env*
+.venv
+__pycache__
+*.pyc
+*.pt
+*.pth
+*.onnx
+*.log
+backend/models/
+backend/data/
+docker-compose*.yml
+Dockerfile

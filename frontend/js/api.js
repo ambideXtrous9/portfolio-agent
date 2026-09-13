@@ -114,6 +114,171 @@ export async function fetchAPI(endpoint, options = {}) {
 }
 
 /**
+ * Unified resilient Agent streaming client supporting SSE with automatic REST fallback.
+ * Works seamlessly on Vercel edge proxies, Cloudflare tunnels, and local dev environments.
+ *
+ * @param {'tour' | 'harry'} agentType
+ * @param {string} query
+ * @param {object} callbacks - { onStatus, onToolCall, onToolResult, onToken, onDone, onError }
+ */
+export function streamAgent(agentType, query, { onStatus, onToolCall, onToolResult, onToken, onDone, onError }) {
+  const base = getAPIBase();
+  const sseEndpoint = agentType === "tour" 
+    ? `${base}/tour/stream?query=${encodeURIComponent(query)}`
+    : `${base}/harry/ask/stream?query=${encodeURIComponent(query)}`;
+
+  console.log(`📡 [streamAgent] Starting SSE stream for ${agentType}: ${sseEndpoint}`);
+
+  let es = null;
+  let receivedDone = false;
+  let aborted = false;
+  let hasFallbackRun = false;
+
+  const cleanup = () => {
+    if (es) {
+      try { es.close(); } catch (_) {}
+      es = null;
+    }
+  };
+
+  const runRestFallback = async (reason) => {
+    if (receivedDone || aborted || hasFallbackRun) return;
+    hasFallbackRun = true;
+    cleanup();
+    console.warn(`⚠️ [streamAgent] SSE ${reason} for ${agentType}. Switching to REST fallback...`);
+
+    if (onStatus) {
+      onStatus({
+        node: "synthesizing",
+        message: "⚡ Generating complete agent analysis...",
+        elapsed: 0
+      });
+    }
+
+    try {
+      const endpoint = agentType === "tour" ? "/tour/plan" : "/harry/ask";
+      const res = await fetchAPI(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: query })
+      });
+
+      let content = "";
+      if (agentType === "tour") {
+        content = res.itinerary_markdown || "";
+      } else {
+        content = res.article || "";
+      }
+
+      receivedDone = true;
+      if (onDone) {
+        onDone({
+          content: content,
+          full_text: content,
+          elapsed: res.execution_time_seconds || 0,
+          raw: res
+        });
+      }
+    } catch (restErr) {
+      console.error(`❌ [streamAgent] REST fallback failed:`, restErr);
+      if (onError) {
+        const msg = restErr?.message || (typeof restErr === "string" ? restErr : JSON.stringify(restErr)) || "Request failed";
+        onError(msg);
+      }
+    }
+  };
+
+  try {
+    es = new EventSource(sseEndpoint);
+  } catch (err) {
+    console.warn(`[streamAgent] EventSource constructor failed:`, err);
+    runRestFallback("init_failed");
+    return { abort: () => { aborted = true; cleanup(); } };
+  }
+
+  // Fallback timer: if no event arrives within 25 seconds, switch to REST
+  let initialEventTimer = setTimeout(() => {
+    if (!receivedDone && !aborted && !hasFallbackRun) {
+      console.warn(`[streamAgent] First event timeout for ${agentType}. Switching to REST...`);
+      runRestFallback("first_event_timeout");
+    }
+  }, 25000);
+
+  const clearTimer = () => {
+    if (initialEventTimer) {
+      clearTimeout(initialEventTimer);
+      initialEventTimer = null;
+    }
+  };
+
+  es.addEventListener("status", (event) => {
+    clearTimer();
+    try {
+      const data = JSON.parse(event.data);
+      if (onStatus) onStatus(data);
+    } catch (_) {}
+  });
+
+  es.addEventListener("tool_call", (event) => {
+    clearTimer();
+    try {
+      const data = JSON.parse(event.data);
+      if (onToolCall) onToolCall(data.tool, data.input || data.args);
+    } catch (_) {}
+  });
+
+  es.addEventListener("tool_result", (event) => {
+    clearTimer();
+    try {
+      const data = JSON.parse(event.data);
+      if (onToolResult) onToolResult(data.tool, data.output || data.message);
+    } catch (_) {}
+  });
+
+  es.addEventListener("token", (event) => {
+    clearTimer();
+    try {
+      const data = JSON.parse(event.data);
+      if (onToken) onToken(data.token || data.content || "");
+    } catch (_) {
+      if (onToken) onToken(event.data);
+    }
+  });
+
+  es.addEventListener("done", (event) => {
+    clearTimer();
+    receivedDone = true;
+    cleanup();
+    try {
+      const data = JSON.parse(event.data);
+      if (onDone) onDone(data);
+    } catch (_) {
+      if (onDone) onDone({ content: event.data, full_text: event.data });
+    }
+  });
+
+  es.addEventListener("error", (event) => {
+    clearTimer();
+    if (receivedDone || aborted) return;
+    runRestFallback("connection_error");
+  });
+
+  es.onerror = () => {
+    clearTimer();
+    if (receivedDone || aborted) return;
+    runRestFallback("transport_error");
+  };
+
+  return {
+    abort: () => {
+      aborted = true;
+      clearTimer();
+      cleanup();
+    }
+  };
+}
+
+/**
  * WebSocket Streaming Client with structured agent event handling
  */
 export function streamWS(endpoint, payload, { onStatus, onToolCall, onToolResult, onToken, onDone, onError }) {
@@ -138,23 +303,23 @@ export function streamWS(endpoint, payload, { onStatus, onToolCall, onToolResult
       const data = JSON.parse(event.data);
       switch (data.type) {
         case 'status':
-          if (onStatus) onStatus(data.content);
+          if (onStatus) onStatus(data.content || data);
           break;
         case 'tool_call':
-          if (onToolCall) onToolCall(data.tool, data.input);
+          if (onToolCall) onToolCall(data.tool, data.input || data.args);
           break;
         case 'tool_result':
-          if (onToolResult) onToolResult(data.tool, data.output);
+          if (onToolResult) onToolResult(data.tool, data.output || data.message);
           break;
         case 'token':
-          if (onToken) onToken(data.content);
+          if (onToken) onToken(data.content || data.token || "");
           break;
         case 'done':
-          if (onDone) onDone(data.content);
+          if (onDone) onDone(data.content || data);
           socket.close();
           break;
         case 'error':
-          if (onError) onError(data.content);
+          if (onError) onError(data.content || data.message || "WebSocket error");
           socket.close();
           break;
         default:
@@ -177,3 +342,4 @@ export function streamWS(endpoint, payload, { onStatus, onToolCall, onToolResult
 
   return socket;
 }
+

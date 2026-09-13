@@ -3,7 +3,7 @@
  * Streams live node steps, Pinecone MCP queries, tool calls, and LLM tokens.
  */
 
-import { streamWS } from "./api.js";
+import { streamAgent } from "./api.js";
 
 export function initHarryScholar() {
   const chatHistory = document.getElementById("harry-chat-history");
@@ -72,40 +72,46 @@ export function initHarryScholar() {
     const toolsLog = assistantMsg.querySelector(".st-tools-log");
     const markdownBody = assistantMsg.querySelector(".st-markdown-body");
 
-    let fullMarkdown = "";
-
-    // 3. Connect via WebSocket
-    streamWS("/harry", { prompt: query }, {
+    // 3. Connect via streamAgent (SSE with automatic REST fallback)
+    streamAgent("harry", query, {
       onStatus: (data) => {
-        statusLabel.textContent = `${data.message} (${data.elapsed || 0}s)`;
+        if (statusLabel) {
+          const msg = data.message || "Processing...";
+          const elapsed = data.elapsed != null ? ` (${data.elapsed}s)` : "";
+          statusLabel.textContent = `${msg}${elapsed}`;
+        }
       },
-      onToolCall: (data) => {
+      onToolCall: (toolName, args) => {
         const card = document.createElement("div");
         card.className = "st-tool-call-card";
-        card.id = `tool-${data.tool}`;
+        card.id = `tool-${toolName}`;
         card.innerHTML = `
-          <div class="st-tool-header">🌲 ${escapeHtml(data.tool)} (${data.elapsed || 0}s)</div>
-          <div style="margin-bottom: 4px;">${escapeHtml(data.message)}</div>
-          ${data.args ? `<div class="st-tool-body">Query: ${escapeHtml(JSON.stringify(data.args, null, 2))}</div>` : ""}
+          <div class="st-tool-header">🌲 ${escapeHtml(toolName)}</div>
+          ${args ? `<div class="st-tool-body">Query: ${escapeHtml(typeof args === 'string' ? args : JSON.stringify(args, null, 2))}</div>` : ""}
         `;
         toolsLog.appendChild(card);
       },
-      onToolResult: (data) => {
-        const card = toolsLog.querySelector(`#tool-${data.tool}`);
-        if (card) {
-          const resEl = document.createElement("div");
-          resEl.style.marginTop = "4px";
-          resEl.style.color = "#00A854";
-          resEl.style.fontSize = "0.85rem";
-          resEl.innerHTML = `<strong>Result:</strong> ${escapeHtml(data.message)}`;
-          card.appendChild(resEl);
+      onToolResult: (toolName, result) => {
+        let card = toolsLog.querySelector(`#tool-${toolName}`);
+        if (!card) {
+          card = document.createElement("div");
+          card.className = "st-tool-call-card";
+          card.id = `tool-${toolName}`;
+          card.innerHTML = `<div class="st-tool-header">🌲 ${escapeHtml(toolName)}</div>`;
+          toolsLog.appendChild(card);
         }
+        const resEl = document.createElement("div");
+        resEl.style.marginTop = "4px";
+        resEl.style.color = "#00A854";
+        resEl.style.fontSize = "0.85rem";
+        resEl.innerHTML = `<strong>Result:</strong> ${escapeHtml(typeof result === 'string' ? result : JSON.stringify(result))}`;
+        card.appendChild(resEl);
       },
       onToken: () => {
         // Suppress intermediate token drafting so output only appears after critic node is complete
       },
       onDone: (data) => {
-        statusBadge.style.display = "none";
+        if (statusBadge) statusBadge.style.display = "none";
         sendBtn.disabled = false;
         const text = data.content || data.full_text || "";
         if (text) {
@@ -113,8 +119,9 @@ export function initHarryScholar() {
         }
       },
       onError: (err) => {
-        statusBadge.style.display = "none";
-        markdownBody.innerHTML = `<div style="color: #D32F2F; padding: 0.5rem; background: #FDE8E8; border-radius: 4px;">⚠️ Error: ${escapeHtml(err.message)}</div>`;
+        if (statusBadge) statusBadge.style.display = "none";
+        const errMsg = err?.message || (typeof err === "string" ? err : JSON.stringify(err)) || "An unexpected error occurred.";
+        markdownBody.innerHTML = `<div style="color: #D32F2F; padding: 0.5rem; background: #FDE8E8; border-radius: 4px;">⚠️ Error: ${escapeHtml(errMsg)}</div>`;
         sendBtn.disabled = false;
       }
     });

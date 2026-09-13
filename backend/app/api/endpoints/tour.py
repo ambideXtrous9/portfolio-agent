@@ -506,47 +506,54 @@ async def stream_tour_sse(query: str):
 
         full_text = ""
 
-        async for event in tour_agent_graph.astream_events(
-            input={"topic": query},
-            config=config,
-            version="v2"
-        ):
-            event_type = event.get("event")
-            metadata = event.get("metadata", {})
-            node = metadata.get("langgraph_node")
+        try:
+            async for event in tour_agent_graph.astream_events(
+                input={"topic": query},
+                config=config,
+                version="v2"
+            ):
+                event_type = event.get("event")
+                metadata = event.get("metadata", {})
+                node = metadata.get("langgraph_node")
 
-            if event_type == "on_chain_start" and node:
-                label = f"Node: {node}"
-                if node == "weatherAgent":
-                    label = "🌤️ Weather Agent checking forecast..."
-                elif node == "airbnbAgent":
-                    label = "🏠 Airbnb Agent searching stays via MCP..."
-                elif node == "tourAgent":
-                    label = "🧭 Tour Agent synthesizing final itinerary..."
+                if event_type == "on_chain_start" and node:
+                    label = f"Node: {node}"
+                    if node == "weatherAgent":
+                        label = "🌤️ Weather Agent checking forecast..."
+                    elif node == "airbnbAgent":
+                        label = "🏠 Airbnb Agent searching stays via MCP..."
+                    elif node == "tourAgent":
+                        label = "🧭 Tour Agent synthesizing final itinerary..."
 
-                yield {
-                    "event": "status",
-                    "data": json.dumps({"node": node, "message": label, "elapsed": round(time.time() - start_time, 1)})
-                }
-
-            if event_type == "on_chat_model_stream" and node == "tourAgent":
-                chunk = event.get("data", {}).get("chunk")
-                content = getattr(chunk, "content", "") if chunk else ""
-                if content:
-                    full_text += content
                     yield {
-                        "event": "token",
-                        "data": json.dumps({"token": content, "node": "tourAgent"})
+                        "event": "status",
+                        "data": json.dumps({"node": node, "message": label, "elapsed": round(time.time() - start_time, 1)})
                     }
 
-            if event_type == "on_chain_end" and node == "tourAgent":
-                output_data = event.get("data", {}).get("output", {})
-                if isinstance(output_data, dict) and "summary" in output_data:
-                    full_text = output_data["summary"]
+                if event_type == "on_chat_model_stream" and node == "tourAgent":
+                    chunk = event.get("data", {}).get("chunk")
+                    content = getattr(chunk, "content", "") if chunk else ""
+                    if content:
+                        full_text += content
+                        yield {
+                            "event": "token",
+                            "data": json.dumps({"token": content, "node": "tourAgent"})
+                        }
 
-        yield {
-            "event": "done",
-            "data": json.dumps({"content": full_text or "Trip plan generated.", "full_text": full_text or "Trip plan generated.", "elapsed": round(time.time() - start_time, 2)})
-        }
+                if event_type == "on_chain_end" and node == "tourAgent":
+                    output_data = event.get("data", {}).get("output", {})
+                    if isinstance(output_data, dict) and "summary" in output_data:
+                        full_text = output_data["summary"]
+
+            yield {
+                "event": "done",
+                "data": json.dumps({"content": full_text or "Trip plan generated.", "full_text": full_text or "Trip plan generated.", "elapsed": round(time.time() - start_time, 2)})
+            }
+        except Exception as e:
+            print(f"Tour SSE stream exception: {e}")
+            yield {
+                "event": "error",
+                "data": json.dumps({"message": str(e), "node": "error"})
+            }
 
     return EventSourceResponse(event_generator())

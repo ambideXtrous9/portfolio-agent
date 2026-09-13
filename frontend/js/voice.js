@@ -4,6 +4,8 @@
  * Web Audio reactive waveform analysis, and 60fps organic visualizer canvas.
  */
 
+import { fetchAPI } from "./api.js";
+
 export function initVoiceAgent() {
   const canvas = document.getElementById('voiceOrbCanvas');
   if (!canvas) return;
@@ -219,11 +221,7 @@ export function initVoiceAgent() {
       addTranscript('System', 'Connecting to LiveKit WebRTC Voice Room...');
 
       // 1. Fetch token from backend
-      const resp = await fetch('/api/voice/token');
-      if (!resp.ok) {
-        throw new Error(`Token generation failed (HTTP ${resp.status})`);
-      }
-      const data = await resp.json();
+      const data = await fetchAPI('/voice/token');
       const { token, url, room: roomName } = data;
 
       if (roomNameBadge) {
