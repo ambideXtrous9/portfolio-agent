@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 LiveKit Voice Agent with LangGraph Tool-Calling Agent Node.
+Integrated in ambideXtrous AI Portfolio.
 
 Architecture:
   User Voice -> LiveKit Room (WebRTC)
     -> LiveKit Agent (STT: AssemblyAI / Deepgram fallback)
-      -> LangGraph Tool-Calling Agent Node (Groq: openai/gpt-oss-20b)
+      -> LangGraph Tool-Calling Agent Node (Groq)
         ├── Tool Call: get_weather (OpenWeather 2.5 API)
         └── Tool Call: get_news (DuckDuckGoSearchRun)
       -> Spoken Response Chunks
@@ -20,7 +21,7 @@ import time
 from pathlib import Path
 
 # Ensure project root is in sys.path
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -42,8 +43,8 @@ from livekit.agents import (
 from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.langchain import LLMAdapter
 
-from src.graph import VoiceGraphWrapper, build_langgraph_workflow
-from src.telemetry import flush_langfuse, setup_langfuse
+from backend.app.voice_agent.graph import VoiceGraphWrapper, build_langgraph_workflow
+from backend.app.voice_agent.telemetry import flush_langfuse, setup_langfuse
 
 load_dotenv(find_dotenv())
 

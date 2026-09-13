@@ -1,4 +1,4 @@
-"""Agent Tools (@tool definitions) for Weather and News querying."""
+"""Agent Tools (@tool definitions) for Weather and News querying in LiveKit Voice Agent."""
 
 import logging
 import os
@@ -13,7 +13,12 @@ load_dotenv(find_dotenv())
 
 logger = logging.getLogger("livekit.agent_tools")
 
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+# Retrieve weather API key from settings or environment
+try:
+    from backend.app.config import settings
+    OPENWEATHER_API_KEY = getattr(settings, "WEATHER_API_KEY", None) or os.getenv("OPENWEATHER_API_KEY") or os.getenv("WEATHER_API_KEY")
+except Exception:
+    OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY") or os.getenv("WEATHER_API_KEY")
 
 ddg_news_tool = DuckDuckGoSearchRun(api_wrapper=DuckDuckGoSearchAPIWrapper(max_results=3, source="news"))
 ddg_text_tool = DuckDuckGoSearchRun(api_wrapper=DuckDuckGoSearchAPIWrapper(max_results=3, source="text"))

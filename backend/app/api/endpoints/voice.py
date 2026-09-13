@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.app.config import settings
+from backend.app.voice_agent.telemetry import is_langfuse_configured
+from backend.app.voice_agent.tools import agent_tools
 
 logger = logging.getLogger("voice_endpoint")
 router = APIRouter(prefix="/voice", tags=["LiveKit Voice Agent"])
@@ -131,6 +133,7 @@ async def get_voice_status():
             "groq_tool_calling": True,
             "stt_fallback": ["AssemblyAI", "Deepgram"],
             "tts_fallback": ["Cartesia Sonic-3", "Inworld"],
-            "tools": ["get_weather", "get_news"],
+            "tools": [t.name for t in agent_tools],
+            "langfuse_observability": is_langfuse_configured(),
         },
     }

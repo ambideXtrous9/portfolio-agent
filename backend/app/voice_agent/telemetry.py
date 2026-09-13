@@ -11,6 +11,13 @@ def is_langfuse_configured() -> bool:
     """Check if required Langfuse environment variables are present."""
     pk = os.getenv("LANGFUSE_PUBLIC_KEY")
     sk = os.getenv("LANGFUSE_SECRET_KEY")
+    if not pk or not sk:
+        try:
+            from backend.app.config import settings
+            pk = pk or getattr(settings, "LANGFUSE_PUBLIC_KEY", None)
+            sk = sk or getattr(settings, "LANGFUSE_SECRET_KEY", None)
+        except Exception:
+            pass
     return bool(pk and sk)
 
 
@@ -21,7 +28,16 @@ def setup_langfuse(metadata: Optional[dict] = None):
     """
     pk = os.getenv("LANGFUSE_PUBLIC_KEY")
     sk = os.getenv("LANGFUSE_SECRET_KEY")
-    base_url = os.getenv("LANGFUSE_BASE_URL", "https://us.cloud.langfuse.com")
+    base_url = os.getenv("LANGFUSE_BASE_URL") or os.getenv("LANGFUSE_HOST", "https://us.cloud.langfuse.com")
+
+    if not pk or not sk:
+        try:
+            from backend.app.config import settings
+            pk = pk or getattr(settings, "LANGFUSE_PUBLIC_KEY", None)
+            sk = sk or getattr(settings, "LANGFUSE_SECRET_KEY", None)
+            base_url = base_url or getattr(settings, "LANGFUSE_HOST", "https://us.cloud.langfuse.com")
+        except Exception:
+            pass
 
     if not pk or not sk:
         logger.warning(

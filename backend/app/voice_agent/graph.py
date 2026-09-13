@@ -1,4 +1,4 @@
-"""LangGraph ReAct agent state machine and VoiceGraphWrapper streaming bridge."""
+"""LangGraph ReAct agent state machine and VoiceGraphWrapper streaming bridge for LiveKit Voice Agent."""
 
 import logging
 import os
@@ -12,14 +12,19 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 from langfuse import observe
 
-from src.tools import agent_tools
+from backend.app.voice_agent.tools import agent_tools
 
 load_dotenv(find_dotenv())
 
 logger = logging.getLogger("livekit.agent_graph")
 
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+try:
+    from backend.app.config import settings
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY") or getattr(settings, "GROQ_API_KEY", "")
+    GROQ_MODEL = os.getenv("GROQ_MODEL") or getattr(settings, "DEFAULT_MODEL", "openai/gpt-oss-20b")
+except Exception:
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+    GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
 
 class AgentState(TypedDict):
@@ -67,7 +72,11 @@ async def agent_node(state: AgentState) -> dict:
     response = await llm_with_tools.ainvoke(eval_messages)
 
     if hasattr(response, "tool_calls") and response.tool_calls:
-        logger.info("Agent decided to call %d tool(s): %s", len(response.tool_calls), [tc["name"] for tc in response.tool_calls])
+        logger.info(
+            "Agent decided to call %d tool(s): %s",
+            len(response.tool_calls),
+            [tc["name"] for tc in response.tool_calls],
+        )
     else:
         logger.info("Agent generating direct spoken reply")
 
