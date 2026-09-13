@@ -1,0 +1,143 @@
+name: CI/CD Pipeline & Vercel Deployment
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment Environment (production or preview)'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - preview
+
+permissions:
+  contents: read
+  pull-requests: write
+  deployments: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # 1. CI Validation: Python Syntax, JSON Schemas & Frontend Integrity
+  # ============================================================================
+  validate:
+    name: Lint & Code Integrity Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate JSON Configuration Files
+        run: |
+          echo "🔍 Validating vercel.json..."
+          python -m json.tool vercel.json > /dev/null
+          echo "✅ vercel.json syntax is valid"
+
+      - name: Validate Python Backend Code Syntax
+        run: |
+          echo "🔍 Compiling Python backend modules..."
+          python -m compileall -q backend/app/
+          echo "✅ All backend Python modules compiled cleanly"
+
+      - name: Verify Frontend Web Assets
+        run: |
+          echo "🔍 Verifying frontend static distribution..."
+          test -f frontend/index.html || { echo "❌ frontend/index.html missing"; exit 1; }
+          test -f frontend/css/style.css || { echo "❌ frontend/css/style.css missing"; exit 1; }
+          test -f frontend/js/app.js || { echo "❌ frontend/js/app.js missing"; exit 1; }
+          echo "✅ Frontend static directory structure verified"
+
+  # ============================================================================
+  # 2. CD Preview: Deploy Preview on Pull Requests
+  # ============================================================================
+  deploy-preview:
+    name: Deploy to Vercel Preview
+    needs: validate
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'preview')
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN || secrets.VERCEL_KEY }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information (Preview)
+        run: vercel pull --yes --environment=preview --token=$VERCEL_TOKEN
+
+      - name: Build Project Artifacts (Preview)
+        run: vercel build --token=$VERCEL_TOKEN
+
+      - name: Deploy to Vercel (Preview)
+        id: deploy
+        run: |
+          DEPLOYMENT_URL=$(vercel deploy --prebuilt --token=$VERCEL_TOKEN)
+          echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          echo "### 🚀 Vercel Preview Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "Preview URL: $DEPLOYMENT_URL" >> $GITHUB_STEP_SUMMARY
+          echo "Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # 3. CD Production: Deploy to Vercel Production on Push to Main
+  # ============================================================================
+  deploy-production:
+    name: Deploy to Vercel Production
+    needs: validate
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN || secrets.VERCEL_KEY }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information (Production)
+        run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+
+      - name: Build Project Artifacts (Production)
+        run: vercel build --prod --yes --token=$VERCEL_TOKEN
+
+      - name: Deploy to Vercel (Production)
+        id: deploy
+        run: |
+          DEPLOYMENT_URL=$(vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN)
+          echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          echo "### 🎉 Vercel Production Deployment Succeeded!" >> $GITHUB_STEP_SUMMARY
+          echo "**Production URL:** [https://streamlit-ai-portfolio.vercel.app](https://streamlit-ai-portfolio.vercel.app)" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment Alias:** $DEPLOYMENT_URL" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit SHA:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY

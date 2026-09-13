@@ -57,3 +57,5 @@ TXT.txt
 .port
 .qwen
 .rp360
+.vercel
+.env*
