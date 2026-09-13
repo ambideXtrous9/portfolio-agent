@@ -140,17 +140,55 @@ export async function checkBackendHealth() {
 export async function fetchAPI(endpoint, options = {}) {
   const base = getAPIBase();
   const url = `${base}${endpoint}`;
-  const token = getAuthToken();
+  let token = getAuthToken();
+
+  // If unauthenticated and calling a protected endpoint, silently obtain demo session first
+  if (!token && !endpoint.includes("/system/health") && !endpoint.includes("/auth/login") && !endpoint.includes("/auth/signup")) {
+    try {
+      const loginRes = await fetch(`${base}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "abc", password: "123" })
+      });
+      if (loginRes.ok) {
+        const loginData = await loginRes.json();
+        token = loginData.access_token;
+        setAuthToken(token);
+        if (loginData.user) setAuthUser(loginData.user);
+      }
+    } catch (_) {}
+  }
+
   const headers = {
     'Accept': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(options.headers || {})
   };
   try {
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       ...options,
       headers
     });
+
+    // If 401, attempt transparent one-time re-authentication with demo user
+    if (response.status === 401 && !endpoint.includes("/auth/login")) {
+      try {
+        const retryLoginRes = await fetch(`${base}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: "abc", password: "123" })
+        });
+        if (retryLoginRes.ok) {
+          const retryData = await retryLoginRes.json();
+          token = retryData.access_token;
+          setAuthToken(token);
+          if (retryData.user) setAuthUser(retryData.user);
+          headers['Authorization'] = `Bearer ${token}`;
+          response = await fetch(url, { ...options, headers });
+        }
+      } catch (_) {}
+    }
+
     if (!response.ok) {
       let errDetail = response.statusText;
       try {
@@ -158,7 +196,7 @@ export async function fetchAPI(endpoint, options = {}) {
         errDetail = errJson.detail || errJson.message || JSON.stringify(errJson);
       } catch (_) {}
 
-      // If unauthorized, broadcast auth required event
+      // If still unauthorized, broadcast auth required event
       if (response.status === 401) {
         window.dispatchEvent(new CustomEvent("portfolio:unauthorized", { detail: { endpoint } }));
       }

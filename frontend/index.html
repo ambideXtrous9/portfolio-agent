@@ -915,13 +915,18 @@
             </div>
           </div>
 
-          <div style="background-color: #FFF3CD; color: #856404; border: 1px solid #FFEEBA; border-radius: var(--st-radius); padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.92rem; line-height: 1.5;">
-            🛡️ <strong>Auth-Guarded Architecture:</strong> All AI agents (Harry Potter Lore Scholar, Tour Guide Agent, Stock Screener, Vision AI Studio, Cluster Sandbox, Voice Agent) require a valid JWT Bearer token.<br />
-            ⚡ <strong>Instant Demo Access:</strong> Use pre-seeded account: <strong>[Username: <code>abc</code> or <code>abc@example.com</code>, Password: <code>123</code>]</strong> or create your own account below.
+          <div class="st-card" style="margin-bottom: 1.5rem; padding: 0.9rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-left: 4px solid var(--st-primary-color);">
+            <div>
+              <div style="font-weight: 600; font-size: 0.95rem; color: var(--st-text-color);">🛡️ PostgreSQL & JWT Identity System</div>
+              <div style="font-size: 0.84rem; color: var(--st-text-muted); margin-top: 2px;">Role-Based Access Control and PostgreSQL session checkpointing. Visitors have instant guest access enabled.</div>
+            </div>
+            <div style="font-size: 0.8rem; background: rgba(38, 39, 48, 0.06); padding: 4px 10px; border-radius: 6px; white-space: nowrap; font-family: monospace;">
+              RBAC Enforced
+            </div>
           </div>
 
           <!-- 1-Click Demo Login Banner -->
-          <div class="st-demo-login-banner" id="auth-demo-banner">
+          <div class="st-demo-login-banner" id="auth-demo-banner" style="display: none;">
             <div>
               <div style="font-weight: 700; font-size: 1.05rem; color: var(--st-text-color); margin-bottom: 2px;">⚡ Try the Live Portfolio in 1 Click</div>
               <div style="font-size: 0.85rem; color: var(--st-text-muted);">Instant access with pre-seeded demo credentials [<code>abc</code> / <code>123</code>]</div>
@@ -951,11 +956,11 @@
             <form id="auth-login-form">
               <div style="margin-bottom: 1.25rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 6px;">Email or Username</label>
-                <input type="text" id="auth-username" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="e.g. abc or user@example.com" value="abc" required />
+                <input type="text" id="auth-username" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="e.g. user@example.com" required />
               </div>
               <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 6px;">Password</label>
-                <input type="password" id="auth-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="e.g. 123" value="123" required />
+                <input type="password" id="auth-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="Enter your password" required />
               </div>
               <div style="display: flex; gap: 12px; align-items: center;">
                 <button type="submit" id="auth-login-submit-btn" class="st-btn st-btn-primary" style="padding: 0.6rem 1.8rem; font-weight: 600;">Sign In</button>

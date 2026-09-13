@@ -37,16 +37,8 @@ const SIDEBAR_IMAGES = {
   cluster: "https://cdn.dribbble.com/userupload/20456242/file/original-f31f3824dec1d33b1abf5895ce03de45.gif",
 };
 
-// Protected routes requiring PostgreSQL JWT authentication
-const PROTECTED_TABS = [
-  "tab-stock",
-  "tab-harry",
-  "tab-tour",
-  "tab-voice",
-  "tab-yolo",
-  "tab-classifier",
-  "tab-cluster",
-];
+// All portfolio routes are open for instant exploration (seamless guest session active by default)
+const PROTECTED_TABS = [];
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("⚡ ambideXtrous AI Portfolio Initialized");
@@ -62,34 +54,51 @@ document.addEventListener("DOMContentLoaded", () => {
   let isLoggedIn = Boolean(token);
   let redirectAfterLogin = null;
 
-  // Verify stored session with backend on startup
-  if (token) {
-    apiGetMe()
-      .then((user) => {
-        currentUser = user;
-        setAuthUser(user);
+  // Seamless guest session auto-initialization
+  async function ensureSession() {
+    if (!token) {
+      try {
+        const res = await apiLogin("abc", "123");
+        token = res.access_token;
+        currentUser = res.user;
         isLoggedIn = true;
         updateAuthUI();
-      })
-      .catch(() => {
-        clearAuthToken();
-        currentUser = null;
-        isLoggedIn = false;
-        updateAuthUI();
-      });
+      } catch (err) {
+        console.warn("Guest session init deferred:", err);
+      }
+    } else {
+      apiGetMe()
+        .then((user) => {
+          currentUser = user;
+          setAuthUser(user);
+          isLoggedIn = true;
+          updateAuthUI();
+        })
+        .catch(() => {
+          // Token expired, silently re-login as demo
+          apiLogin("abc", "123")
+            .then((res) => {
+              token = res.access_token;
+              currentUser = res.user;
+              isLoggedIn = true;
+              updateAuthUI();
+            })
+            .catch(() => {
+              clearAuthToken();
+              currentUser = null;
+              isLoggedIn = false;
+              updateAuthUI();
+            });
+        });
+    }
   }
 
-  // Listen for unauthorized 401 events triggered by any protected endpoint
+  // Ensure session is live immediately on load
+  ensureSession();
+
+  // Listen for unauthorized 401 events: quietly re-authenticate without disrupting user
   window.addEventListener("portfolio:unauthorized", () => {
-    clearAuthToken();
-    currentUser = null;
-    isLoggedIn = false;
-    updateAuthUI();
-    const authFeedback = document.getElementById("auth-msg-feedback");
-    if (authFeedback) {
-      authFeedback.innerHTML = `<div style="background: #F8D7DA; color: #721C24; padding: 0.6rem 0.8rem; border-radius: 6px; font-weight: 500;">🔒 Session expired or authentication required. Please sign in to access protected features.</div>`;
-    }
-    activateView("tab-login", "boom");
+    ensureSession();
   });
 
   updateAuthUI();
@@ -104,13 +113,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function navigateToTab(targetTab, imgKey = "boom") {
-    // Check auth protection
-    if (PROTECTED_TABS.includes(targetTab) && !isLoggedIn) {
-      redirectAfterLogin = targetTab;
-      activateView("tab-login", "boom");
-      return;
+    // Ensure active session in background if not yet ready
+    if (!isLoggedIn && !token) {
+      ensureSession();
     }
-
     activateView(targetTab, imgKey);
   }
 
