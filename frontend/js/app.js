@@ -10,6 +10,7 @@ import { initHarryScholar } from "./harry.js";
 import { initStockScreener } from "./stock.js";
 import { initYoloLogo, initImageClassifier } from "./vision.js";
 import { initClusterSandbox } from "./cluster.js";
+import { initVoiceAgent } from "./voice.js";
 
 // Dynamic sidebar images matching legacy Streamlit sidebar.py
 const SIDEBAR_IMAGES = {
@@ -17,6 +18,7 @@ const SIDEBAR_IMAGES = {
   stock: "https://cdn-icons-gif.flaticon.com/17507/17507028.gif",
   harry: "https://64.media.tumblr.com/e5e401e35d609e217c19a24204360b8d/tumblr_mg3h0yvGFD1rgpyeqo1_500.gif",
   tour: "assets/images/mcp_airbnb.png",
+  voice: "assets/images/mcp_airbnb.png",
   yolo: "https://images.squarespace-cdn.com/content/v1/5a42a3000abd044bd3244bf2/1551247107452-HYAEHY39IKJ2LJTGNLQR/YOLO-Lettering-Sticker-Joan-Quiros.gif",
   classifier: "https://mlnotebook.github.io/img/CNN/poolfig.gif",
   cluster: "https://cdn.dribbble.com/userupload/20456242/file/original-f31f3824dec1d33b1abf5895ce03de45.gif",
@@ -162,6 +164,8 @@ document.addEventListener("DOMContentLoaded", () => {
       harry: { id: "tab-harry", img: "harry" },
       tourAgent: { id: "tab-tour", img: "tour" },
       tour: { id: "tab-tour", img: "tour" },
+      voiceAgent: { id: "tab-voice", img: "voice" },
+      voice: { id: "tab-voice", img: "voice" },
       yolologo: { id: "tab-yolo", img: "yolo" },
       yolo: { id: "tab-yolo", img: "yolo" },
       image_classifer: { id: "tab-classifier", img: "classifier" },
@@ -179,6 +183,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize sub-controllers
   initTourAgent();
+  initVoiceAgent();
   initHarryScholar();
   initStockScreener();
   initYoloLogo();

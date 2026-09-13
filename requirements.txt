@@ -4,6 +4,7 @@ uvicorn[standard]>=0.32.0
 websockets>=12.0
 python-multipart>=0.0.18
 sse-starlette>=2.2.0
+livekit-api>=1.2.0
 
 # ── Data Science ─────────────────────────────────────────────────────
 pandas==3.0.5

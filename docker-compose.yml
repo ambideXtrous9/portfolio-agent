@@ -25,6 +25,9 @@ services:
       - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
       - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
       - LANGFUSE_HOST=${LANGFUSE_HOST:-https://us.cloud.langfuse.com}
+      - LIVEKIT_URL=${LIVEKIT_URL:-}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/system/health"]
       interval: 30s
@@ -57,6 +60,34 @@ services:
     networks:
       - app_network
 
+  # ----------------------------------------------------------------------------
+  # LiveKit Voice Agent Worker (LangGraph + WebRTC Audio AI)
+  # ----------------------------------------------------------------------------
+  voice-agent:
+    build:
+      context: ./voice_agent
+      dockerfile: Dockerfile
+    image: streamlit-ai-portfolio-voice-agent:latest
+    container_name: ai-portfolio-voice-agent
+    restart: unless-stopped
+    command: ["python", "src/agent.py", "dev"]
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LIVEKIT_URL=${LIVEKIT_URL:-wss://my-voice-agent-6wug4ta7.livekit.cloud}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-APIZ2es8haN8ejZ}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-1ayQSHKXDlcknAfWZCnkqOQUXajHTSL53IYr0Vj2Ce9}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OPENWEATHER_API_KEY=${WEATHER_API_KEY:-}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+      - LANGFUSE_BASE_URL=${LANGFUSE_HOST:-https://us.cloud.langfuse.com}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app_network
 
 networks:
   app_network:

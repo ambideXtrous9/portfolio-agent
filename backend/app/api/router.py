@@ -9,12 +9,14 @@ from backend.app.api.endpoints import (
     vision,
     cluster,
     health,
+    voice,
 )
 
 api_router = APIRouter()
 
 api_router.include_router(portfolio.router)
 api_router.include_router(tour.router)
+api_router.include_router(voice.router)
 api_router.include_router(harry.router)
 api_router.include_router(stock.router)
 api_router.include_router(vision.router)
