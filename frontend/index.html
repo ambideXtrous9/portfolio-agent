@@ -15,7 +15,7 @@
 <body>
   <div class="st-app">
     
-    <!-- ── Streamlit Left Sidebar ────────────────────────────────────────── -->
+    <!-- ── Left Sidebar Navigation ────────────────────────────────────────── -->
     <aside class="st-sidebar">
       
       <!-- Dynamic Top Circular Avatar / Banner -->
@@ -38,7 +38,7 @@
 
       <h3 class="st-sidebar-heading">Menu</h3>
 
-      <!-- Streamlit Button Navigation -->
+      <!-- App Navigation -->
       <nav class="st-sidebar-nav">
         <button class="st-nav-btn active" data-tab="tab-home" data-img="boom">
           <span class="st-nav-btn-icon">🎃</span> Home
@@ -53,7 +53,7 @@
           <span class="st-nav-btn-icon">🏡</span> Tour Agent
         </button>
         <button class="st-nav-btn" data-tab="tab-voice" data-img="voice">
-          <span class="st-nav-btn-icon">🎙️</span> LiveKit Voice Agent
+          <span class="st-nav-btn-icon">🎙️</span> Voice Agent
         </button>
         <button class="st-nav-btn" data-tab="tab-yolo" data-img="yolo">
           <span class="st-nav-btn-icon">🚀</span> Yolo for Logo
@@ -91,80 +91,180 @@
       <div class="st-block-container">
 
         <!-- ================================================================== -->
-        <!-- 🎃 Tab 1: Home Page (Exact match to HomePage() in util.py)         -->
+        <!-- 🎃 Tab 1: Home Page                                               -->
         <!-- ================================================================== -->
         <section class="st-tab-view active" id="tab-home">
-          <!-- Centered Thor Animation -->
+          <!-- Centered Hero & Animated Badges -->
           <div style="text-align: center; margin-bottom: 2rem;">
-            <a href="https://in.linkedin.com/in/sushovan-saha-29a00a113" target="_blank">
-              <img src="assets/images/thor.gif" width="380" height="380" style="object-fit: contain; max-width: 100%; border-radius: 8px;" alt="Thor Animation" />
-            </a>
+            <h1 style="font-size: 2.2rem; font-weight: 800; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 10px;">
+              Hi, I am Sushovan <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/People/Man%20Technologist.png" alt="Man Technologist" width="40" height="40" style="vertical-align: middle;" />!
+            </h1>
+
+            <div style="margin: 1.25rem 0;">
+              <a href="https://in.linkedin.com/in/sushovan-saha-29a00a113" target="_blank">
+                <img src="assets/images/icons/ironman.gif" width="220" alt="Iron Man" style="border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
+              </a>
+            </div>
+
+            <!-- Profile Badges -->
+            <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 1rem;">
+              <a href="https://in.linkedin.com/in/sushovan-saha-29a00a113" target="_blank">
+                <img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=LinkedIn&logoColor=white" alt="LinkedIn" />
+              </a>
+              <a href="https://www.kaggle.com/sushovansaha9" target="_blank">
+                <img src="https://img.shields.io/badge/Kaggle-20BEFF?style=for-the-badge&logo=Kaggle&logoColor=white" alt="Kaggle" />
+              </a>
+              <a href="https://medium.com/@sushovansaha95" target="_blank">
+                <img src="https://img.shields.io/badge/Medium-12100E?style=for-the-badge&logo=Medium&logoColor=white" alt="Medium" />
+              </a>
+              <a href="https://leetcode.com/ambideXtrous9/" target="_blank">
+                <img src="https://img.shields.io/badge/LeetCode-FFA116?style=for-the-badge&logo=LeetCode&logoColor=white" alt="LeetCode" />
+              </a>
+            </div>
           </div>
 
-          <h1 style="display: flex; align-items: center; gap: 10px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/People/Man%20Technologist.png" alt="Man Technologist" width="40" height="40" />
+          <hr style="margin: 1.5rem 0;" />
+
+          <!-- About Me Section -->
+          <h2 style="display: flex; align-items: center; gap: 10px;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/People/Man%20Technologist.png" alt="Man Technologist" width="36" height="36" />
             About Me
-          </h1>
-
-          <p style="font-size: 1.05rem;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Hand%20gestures/Waving%20Hand%20Medium-Light%20Skin%20Tone.png" alt="Waving Hand" width="26" height="26" style="vertical-align: middle; margin-right: 4px;" />
-            Hi there! I'm <strong>Sushovan Saha</strong> — a passionate <strong>Machine Learning (ML)</strong> practitioner with deep interests in <strong>Machine Learning (ML)</strong>, <strong>Deep Learning</strong>, <strong>Natural Language Processing (NLP)</strong>, <strong>Computer Vision (CV)</strong>, and the transformative capabilities of <strong>Large Language Models (LLMs)</strong> and <strong>Gen AI</strong>.
-            Currently working as a founding <strong>AI Engineer</strong> at a Stealth Startup.
-          </p>
-
-          <p style="font-size: 1.05rem; margin-top: 0.75rem;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Graduation%20Cap.webp" alt="Graduation Cap" width="26" height="26" style="vertical-align: middle; margin-right: 4px;" />
-            I hold an <strong>M.Tech in Data Science from IIT Guwahati</strong> and I’m currently a <strong>Kaggle Notebook Expert</strong> with a strong inclination toward solving real-world challenges using intelligent systems.
-          </p>
-
-          <h2 style="display: flex; align-items: center; gap: 8px; margin-top: 1.75rem;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Rocket.png" alt="Rocket" width="30" height="30" />
-            My Skills:
           </h2>
 
-          <ul style="font-size: 1.02rem; line-height: 1.8;">
-            <li><strong>LLMs & Generative AI:</strong> Proficient in <strong>RAG, Agentic RAG, LangChain, LangGraph, Crew AI</strong>, and building <strong>Agentic Workflows</strong></li>
-            <li><strong>Applied ML & Deep Learning:</strong> End-to-end project experience across NLP and CV domains</li>
-            <li><strong>Model Fine-Tuning:</strong> Experience in fine-tuning models on custom datasets in <strong>HuggingFace, Unsloth, PyTorch and PyTorch Lightning</strong></li>
-            <li><strong>MLOps & Scalable ML Systems:</strong> Focus on production-grade pipelines, model deployment, and monitoring with <strong>MLflow</strong></li>
-            <li><strong>API & Deployment:</strong> Experience in deploying models as APIs using <strong>FastAPI</strong> and deploying on cloud platforms like <strong>AWS and GCP</strong></li>
-            <li><strong>CI/CD:</strong> Experience in setting up CI/CD pipelines using <strong>GitHub Actions</strong></li>
-            <li><strong>Data Science:</strong> Experience in data analysis, statistical analysis, data visualization, and data preprocessing using <strong>Pandas, NumPy, Matplotlib, Seaborn, and Scikit-learn</strong></li>
+          <p style="font-size: 1.05rem; line-height: 1.7; margin-top: 0.75rem;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Hand%20gestures/Waving%20Hand%20Medium-Light%20Skin%20Tone.png" alt="Waving Hand" width="24" height="24" style="vertical-align: middle; margin-right: 4px;" />
+            Hi there! I'm <strong>Sushovan Saha</strong> — currently working as a <strong>Founding AI / ML Engineer</strong> at a <strong>Stealth Startup</strong>, building production-grade intelligent systems with deep focus on <strong>Large Language Models (LLMs)</strong>, <strong>Generative AI</strong>, <strong>Voice Agents</strong>, <strong>Deep Learning</strong>, <strong>NLP</strong>, and <strong>Computer Vision (CV)</strong>.
+          </p>
+
+          <p style="font-size: 1.05rem; line-height: 1.7; margin-top: 0.75rem;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Graduation%20Cap.webp" alt="Graduation Cap" width="24" height="24" style="vertical-align: middle; margin-right: 4px;" />
+            I hold an <strong>M.Tech in Data Science</strong> from <strong>IIT Guwahati</strong>, and I'm a <a href="https://www.kaggle.com/sushovansaha9" target="_blank" style="color: #1E88E5; font-weight: 600;">Kaggle Notebook Expert</a> with a strong inclination toward solving real-world challenges using intelligent systems.
+          </p>
+
+          <hr style="margin: 1.75rem 0;" />
+
+          <!-- Skills Section -->
+          <h2 style="display: flex; align-items: center; gap: 8px;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Rocket.png" alt="Rocket" width="32" height="32" />
+            My Skills
+          </h2>
+
+          <ul style="font-size: 1.02rem; line-height: 1.85; margin-top: 0.75rem;">
+            <li>🧠 <strong>LLMs & Generative AI:</strong> Proficient in <strong>RAG, GraphRAG, Agentic RAG, MCP, LangChain, LangGraph, Google ADK</strong>, and architecting <strong>Complex Agentic Workflows</strong></li>
+            <li>🎙️ <strong>Voice Agents & Real-Time AI:</strong> Building end-to-end real-time <strong>Voice Agents</strong> using <strong>LiveKit</strong>, WebRTC, low-latency audio pipelines, and tool-augmented conversational agents</li>
+            <li>🎯 <strong>Fine-Tuning & Post-Training (Reasoning & RL):</strong> Hands-on experience with <strong>SFT</strong> (Supervised Fine-Tuning) and <strong>GRPO</strong> (Group Relative Policy Optimization) on <strong>Qwen3.5 4B</strong>, leveraging <strong>HuggingFace, Unsloth, PyTorch, and PyTorch Lightning</strong></li>
+            <li>🔬 <strong>Applied ML & Deep Learning:</strong> End-to-end project experience across NLP, Computer Vision (CV), and Time Series domains</li>
+            <li>📈 <strong>Time Series & Forecasting:</strong> Statistical and deep learning models for trend analysis, predictive modeling, and demand <strong>Forecasting</strong></li>
+            <li>⚙️ <strong>MLOps & Scalable ML Systems:</strong> Focus on production-grade pipelines, model deployment, and monitoring with <strong>MLflow</strong></li>
+            <li>🚀 <strong>API & Deployment:</strong> Experience in deploying models as APIs using <strong>FastAPI</strong> and deploying on cloud platforms like <strong>AWS and GCP</strong></li>
+            <li>🔄 <strong>CI/CD:</strong> Experience in setting up CI/CD pipelines using <strong>GitHub Actions</strong></li>
+            <li>📊 <strong>Data Science:</strong> Experience in data analysis, statistical analysis, data visualization, and data preprocessing using <strong>Pandas, NumPy, Matplotlib, Seaborn, and Scikit-learn</strong></li>
           </ul>
 
-          <hr />
+          <h3 style="margin-top: 1.75rem; font-size: 1.15rem; color: var(--st-text-color);">🛠️ Frameworks & Ecosystem</h3>
 
-          <div style="margin: 1.5rem 0;">
+          <!-- Tile Icons -->
+          <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 1rem 0;">
+            <a href="https://livekit.io/" target="_blank" title="LiveKit"><img src="assets/images/icons/tile_livekit.svg" width="48" height="48" alt="LiveKit" /></a>
+            <a href="https://langchain.com/" target="_blank" title="LangChain"><img src="assets/images/icons/tile_langchain.svg" width="48" height="48" alt="LangChain" /></a>
+            <a href="https://langchain-ai.github.io/langgraph/" target="_blank" title="LangGraph"><img src="assets/images/icons/tile_langgraph.svg" width="48" height="48" alt="LangGraph" /></a>
+            <a href="https://crewai.com/" target="_blank" title="CrewAI"><img src="assets/images/icons/tile_crewai.svg" width="48" height="48" alt="CrewAI" /></a>
+            <a href="https://huggingface.co/" target="_blank" title="Hugging Face"><img src="assets/images/icons/tile_huggingface.svg" width="48" height="48" alt="Hugging Face" /></a>
+            <a href="https://lightning.ai/" target="_blank" title="PyTorch Lightning"><img src="assets/images/icons/tile_lightning.svg" width="48" height="48" alt="PyTorch Lightning" /></a>
+            <a href="https://keras.io/" target="_blank" title="Keras"><img src="assets/images/icons/tile_keras.svg" width="48" height="48" alt="Keras" /></a>
+            <a href="https://www.kaggle.com/sushovansaha9" target="_blank" title="Kaggle"><img src="assets/images/icons/tile_kaggle.svg" width="48" height="48" alt="Kaggle" /></a>
+            <a href="https://colab.research.google.com/" target="_blank" title="Google Colab"><img src="assets/images/icons/tile_colab.svg" width="48" height="48" alt="Google Colab" /></a>
+            <a href="https://unsloth.ai/" target="_blank" title="Unsloth"><img src="assets/images/icons/tile_unsloth.svg" width="48" height="48" alt="Unsloth" /></a>
+          </div>
+
+          <!-- SkillIcons Badge Row -->
+          <div style="margin: 1.25rem 0;">
             <a href="https://skillicons.dev" target="_blank">
-              <img src="https://skillicons.dev/icons?i=cpp,python,pytorch,vscode,git,github,docker,gcp,aws,githubactions&perline=10" alt="Tech Stack Icons" style="max-width: 100%;" />
+              <img src="https://skillicons.dev/icons?i=cpp,python,pytorch,fastapi,linux,docker,aws,gcp,git,githubactions&perline=10" alt="Core Technologies" style="max-width: 100%; border-radius: 8px;" />
             </a>
           </div>
 
-          <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 1.25rem 0 2rem;">
-            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/anaconda/anaconda-original.svg" width="45" height="45" alt="Anaconda" />
-            <img src="https://colab.research.google.com/img/colab_favicon_256px.png" width="45" height="45" alt="Google Colab" />
-            <img src="https://cdn3.iconfinder.com/data/icons/logos-and-brands-adobe/512/189_Kaggle-512.png" width="45" height="45" alt="Kaggle" />
-            <img src="https://cdn-avatars.huggingface.co/v1/production/uploads/62ecdc18b72a69615d6bd857/E4lkPz1TZNLzIFr_dR273.png" width="45" height="45" alt="Hugging Face" />
-            <img src="assets/images/keras.svg" onerror="this.src='https://cdn.jsdelivr.net/gh/devicons/devicon/icons/keras/keras-original.svg'" width="45" height="45" alt="Keras" />
-            <img src="https://newrelic.com/sites/default/files/styles/medium/public/quickstarts/images/icons/langchain--logo.png" width="45" height="45" alt="LangChain" />
-            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" width="45" height="45" alt="Linux" />
-          </div>
+          <hr style="margin: 1.75rem 0;" />
 
-          <hr />
+          <!-- Featured App Section -->
+          <h2 style="display: flex; align-items: center; gap: 8px;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Comet.png" alt="Comet" width="30" height="30" />
+            Featured App
+          </h2>
+          <p style="font-size: 1.05rem; margin-top: 0.5rem;">
+            Explore my latest project powered by Gen AI agents and real-time research:<br>
+            👉 <a href="https://github.com/ambideXtrous9/portfolio-agent" target="_blank" style="color: #1E88E5; font-weight: 700; font-size: 1.1rem;">AI Research Agent &amp; Portfolio</a> &nbsp;
+            <a href="https://github.com/ambideXtrous9/portfolio-agent" target="_blank">
+              <span class="st-badge" style="background: rgba(30, 136, 229, 0.12); color: #1E88E5; border: 1px solid rgba(30, 136, 229, 0.25); font-weight: 600; padding: 4px 10px; border-radius: 6px; vertical-align: middle;">★ GitHub Repo</span>
+            </a>
+          </p>
 
-          <ul style="font-size: 1.02rem; line-height: 1.8;">
-            <li>Contributing to the ML community on <a href="https://www.kaggle.com/sushovansaha9" target="_blank">Kaggle</a></li>
-            <li>Writing practical ML blogs on <a href="https://medium.com/@sushovansaha95" target="_blank">Medium</a></li>
+          <hr style="margin: 1.75rem 0;" />
+
+          <!-- Free Time Section -->
+          <h2 style="display: flex; align-items: center; gap: 8px;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Books.webp" alt="Books" width="28" height="28" />
+            In my free time, you’ll find me:
+          </h2>
+          <ul style="font-size: 1.02rem; line-height: 1.8; margin-top: 0.5rem;">
+            <li>Contributing to the ML community on <a href="https://www.kaggle.com/sushovansaha9" target="_blank" style="color: #1E88E5;">Kaggle</a></li>
+            <li>Writing practical ML blogs on <a href="https://medium.com/@sushovansaha95" target="_blank" style="color: #1E88E5;">Medium</a></li>
             <li>Exploring new AI tools, frameworks, and academic papers to stay at the cutting edge</li>
           </ul>
 
-          <p style="font-size: 1.05rem; margin-top: 1rem;">
-            ⚡ I'm always eager to collaborate on innovative projects, exchange ideas, and learn from the community. Let’s build something amazing with AI! 🤝
-          </p>
+          <blockquote style="margin: 1.5rem 0; padding: 1rem 1.25rem; border-left: 4px solid #1E88E5; background: rgba(30, 136, 229, 0.05); border-radius: 0 8px 8px 0; font-size: 1.05rem;">
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/High%20Voltage.png" alt="High Voltage" width="22" height="22" style="vertical-align: middle;" />
+            <strong>I'm always eager to collaborate on innovative projects, exchange ideas, and learn from the community. Let’s build something amazing with AI!</strong>
+            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Handshake.webp" alt="Handshake" width="24" height="24" style="vertical-align: middle;" />
+          </blockquote>
 
-          <hr />
+          <hr style="margin: 1.75rem 0;" />
 
-          <!-- Glowing Social Footer (From icons.py) -->
+          <!-- GitHub Activity & Stats Section -->
+          <div style="text-align: center; margin: 2rem 0;">
+            <h2 style="font-size: 1.4rem; margin-bottom: 0.5rem;">📊 GitHub Activity & Stats</h2>
+            <p style="color: var(--st-text-muted); font-size: 0.92rem; margin-bottom: 1.25rem;"><em>Thank you for visiting my profile!</em></p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; align-items: center; margin-bottom: 1.5rem;">
+              <div>
+                <a href="https://git.io/awesome-stats-card" target="_blank">
+                  <img src="https://awesome-github-stats.azurewebsites.net/user-stats/ambidextrous9?cardType=octocat&theme=vue&fontFamily=Exo%202&preferLogin=false" alt="Sushovan's GitHub stats" style="max-width: 100%; border-radius: 10px;" />
+                </a>
+              </div>
+              <div>
+                <img src="https://raw.githubusercontent.com/ambideXtrous9/ambideXtrous9/main/profile-3d-contrib/profile-night-rainbow.svg" alt="GitHub contribution Map" style="max-width: 100%; border-radius: 10px;" />
+              </div>
+            </div>
+
+            <div style="margin: 1.5rem 0;">
+              <img src="https://raw.githubusercontent.com/ambideXtrous9/ambideXtrous9/main/snake/github-snake-dark.svg" alt="GitHub contribution snake" style="max-width: 100%;" />
+            </div>
+          </div>
+
+          <hr style="margin: 1.75rem 0;" />
+
+          <!-- Medium Blogs & Profile Views -->
+          <div>
+            <h2 style="font-size: 1.4rem; margin-bottom: 1rem;">✍️ My Medium Blogs</h2>
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 1.5rem;">
+              <a target="_blank" href="https://medium.com/@sushovansaha95">
+                <img src="https://github-readme-medium-recent-article.vercel.app/medium/@sushovansaha95/0" alt="Recent Article 0" style="max-width: 100%; border-radius: 8px;" />
+              </a>
+              <a target="_blank" href="https://medium.com/@sushovansaha95">
+                <img src="https://github-readme-medium-recent-article.vercel.app/medium/@sushovansaha95/1" alt="Recent Article 1" style="max-width: 100%; border-radius: 8px;" />
+              </a>
+            </div>
+
+            <div style="margin-top: 1rem;">
+              <a href="https://komarev.com/ghpvc/?username=ambideXtrous9">
+                <img src="https://komarev.com/ghpvc/?username=ambideXtrous9&label=Profile%20Views&color=20BEFF&style=flat-square" alt="Profile Views" />
+              </a>
+            </div>
+          </div>
+
+          <hr style="margin: 2rem 0 1.5rem;" />
+
+          <!-- Glowing Social Footer -->
           <div class="glowing-footer">
             <div class="inner-container">
               <a href="https://www.kaggle.com/sushovansaha9" target="_blank">
@@ -203,7 +303,7 @@
           <p style="color: var(--st-text-muted);">This is a Stock Screener that can help you find stocks that are breaking out with volume.</p>
           <h2 style="margin-top: 1rem;">Range Breakout with Volume</h2>
 
-          <!-- Streamlit Screener Sub-Tabs -->
+          <!-- Screener Sub-Tabs -->
           <div class="st-tabs-nav" id="stock-subtabs">
             <button class="st-tab-trigger active" data-subtab="subtab-vol">📈 Volume Breakout</button>
             <button class="st-tab-trigger" data-subtab="subtab-eps">💰 Highest EPS</button>
@@ -293,11 +393,26 @@
 
 
         <!-- ================================================================== -->
+        <!-- ================================================================== -->
         <!-- 🪄 Tab 3: Harry Potter X Mythology (WebSocket Streaming)           -->
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-harry">
-          <h1>🪄 <span style="color: #1E88E5;">Harry Potter X Mythology</span></h1>
-          <p style="color: var(--st-text-muted);">Ask anything about Harry Potter and Indian Mythology</p>
+          <div class="st-tab-header-row">
+            <div class="st-tab-header-title">
+              <h1>🪄 <span style="color: #1E88E5;">Harry Potter X Mythology</span></h1>
+              <p style="color: var(--st-text-muted);">Ask anything about Harry Potter and Indian Mythology</p>
+            </div>
+            <button type="button" class="st-arch-trigger-btn" data-arch="harry" title="View Agentic Architecture">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="6" height="6" rx="1"></rect>
+                <rect x="16" y="3" width="6" height="6" rx="1"></rect>
+                <rect x="9" y="15" width="6" height="6" rx="1"></rect>
+                <path d="M5 9v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"></path>
+                <path d="M12 14v1"></path>
+              </svg>
+              <span>Architecture</span>
+            </button>
+          </div>
 
           <!-- Chat messages area -->
           <div class="st-chat-container" id="harry-chat-history">
@@ -331,8 +446,22 @@
         <!-- 🏡 Tab 4: Tour Agent (WebSocket Streaming)                         -->
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-tour">
-          <h1>🏡 <span style="color: #1E88E5;">MCP Powered Tour Agent</span></h1>
-          <p style="color: var(--st-text-muted);">This is a Weather and MCP powered Airbnb tour agent that can help you plan your next vacation.</p>
+          <div class="st-tab-header-row">
+            <div class="st-tab-header-title">
+              <h1>🏡 <span style="color: #1E88E5;">MCP Powered Tour Agent</span></h1>
+              <p style="color: var(--st-text-muted);">This is a Weather and MCP powered Airbnb tour agent that can help you plan your next vacation.</p>
+            </div>
+            <button type="button" class="st-arch-trigger-btn" data-arch="tour" title="View Agentic Architecture">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="6" height="6" rx="1"></rect>
+                <rect x="16" y="3" width="6" height="6" rx="1"></rect>
+                <rect x="9" y="15" width="6" height="6" rx="1"></rect>
+                <path d="M5 9v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"></path>
+                <path d="M12 14v1"></path>
+              </svg>
+              <span>Architecture</span>
+            </button>
+          </div>
 
           <!-- Chat messages area -->
           <div class="st-chat-container" id="tour-chat-history">
@@ -363,11 +492,25 @@
 
 
         <!-- ================================================================== -->
-        <!-- 🎙️ Tab 4B: LiveKit Voice Agent (Real-Time WebRTC Audio AI)          -->
+        <!-- 🎙️ Tab 4B: Voice Agent (Real-Time WebRTC Audio AI)                 -->
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-voice">
-          <h1>🎙️ <span style="color: #1E88E5;">LiveKit Voice AI Agent</span></h1>
-          <p style="color: var(--st-text-muted);">Real-time, ultra-low-latency voice assistant powered by LiveKit WebRTC, Groq LLM, Silero VAD, and LangGraph tool calling.</p>
+          <div class="st-tab-header-row">
+            <div class="st-tab-header-title">
+              <h1>🎙️ <span style="color: #1E88E5;">Voice AI Agent</span></h1>
+              <p style="color: var(--st-text-muted);">Real-time, ultra-low-latency voice assistant powered by LiveKit WebRTC, Groq LLM, Silero VAD, and LangGraph tool calling.</p>
+            </div>
+            <button type="button" class="st-arch-trigger-btn" data-arch="voice" title="View Agentic Architecture">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="6" height="6" rx="1"></rect>
+                <rect x="16" y="3" width="6" height="6" rx="1"></rect>
+                <rect x="9" y="15" width="6" height="6" rx="1"></rect>
+                <path d="M5 9v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"></path>
+                <path d="M12 14v1"></path>
+              </svg>
+              <span>Architecture</span>
+            </button>
+          </div>
 
           <div class="st-voice-container">
             <!-- Status Header Bar -->
@@ -649,7 +792,7 @@
           <!-- Clustered Output Plot -->
           <div id="cluster-result-plot" style="width: 100%; min-height: 520px; margin: 1.5rem 0;"></div>
 
-          <!-- Feedback text matching Streamlit app -->
+          <!-- Feedback note -->
           <div id="cluster-notes" style="font-size: 1rem; color: var(--st-text-color); margin-top: 1rem;">
             💡 Why don't you try DBSCAN..!!
           </div>
@@ -796,7 +939,21 @@
     </div>
   </div>
 
+  <!-- Modal for Agentic Architecture Visualizer Pop-up -->
+  <div class="st-arch-modal" id="archModal" aria-hidden="true">
+    <div class="st-arch-modal-dialog">
+      <div class="st-arch-modal-header">
+        <div class="st-arch-modal-header-left">
+          <h3 id="archModalTitle">Agent Architecture</h3>
+          <span class="st-arch-badge" id="archModalBadge">LangGraph</span>
+        </div>
+        <button class="st-arch-close-btn" id="archModalClose" title="Close modal">&times;</button>
+      </div>
+      <div class="st-arch-modal-body" id="archModalBody"></div>
+    </div>
+  </div>
+
   <!-- Client Application Scripts -->
-  <script type="module" src="js/app.js?v=2.7"></script>
+  <script type="module" src="js/app.js?v=2.8"></script>
 </body>
 </html>

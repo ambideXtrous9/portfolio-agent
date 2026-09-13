@@ -144,6 +144,7 @@ jobs:
           DEPLOYMENT_URL=$(vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN)
           echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
           echo "### 🎉 Vercel Production Deployment Succeeded!" >> $GITHUB_STEP_SUMMARY
-          echo "**Production URL:** [https://streamlit-ai-portfolio.vercel.app](https://streamlit-ai-portfolio.vercel.app)" >> $GITHUB_STEP_SUMMARY
+          echo "**Production URL:** [https://sushovan-ai-portfolio.vercel.app](https://sushovan-ai-portfolio.vercel.app)" >> $GITHUB_STEP_SUMMARY
+          echo "**Alias URL:** [https://ambidextrous-portfolio.vercel.app](https://ambidextrous-portfolio.vercel.app)" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment Alias:** $DEPLOYMENT_URL" >> $GITHUB_STEP_SUMMARY
           echo "**Commit SHA:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY

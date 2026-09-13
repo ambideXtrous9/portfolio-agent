@@ -12,13 +12,13 @@ async def get_profile():
     """Returns developer profile, biography, and technology skills."""
     return ProfileResponse(
         name="Sushovan Saha",
-        role="Founding AI Engineer",
-        tagline="Building Intelligent Agentic Systems, Scalable ML Pipelines & Production GenAI",
-        education="M.Tech in Data Science, IIT Guwahati",
+        role="Founding AI/ML Engineer",
+        tagline="Founding AI/ML Engineer at stealth startup | Ex-Founding Engineer @ DSW | M.Tech Data Science @ IIT Guwahati",
+        education="M.Tech in Data Science, IIT Guwahati (2022 – 2024)",
         bio=(
-            "Passionate Machine Learning practitioner with deep interests in Applied ML, "
-            "Deep Learning, Computer Vision, Natural Language Processing, and Agentic Workflows. "
-            "Kaggle Notebooks Expert with extensive experience deploying scalable models into production."
+            "Founding AI/ML Engineer with hands-on expertise building production agentic AI systems, "
+            "voice AI assistants, and enterprise ML pipelines. Kaggle Notebooks Expert with 4x Silver medals. "
+            "Specialized in LLM orchestration, Model Context Protocol (MCP), and real-time inference."
         ),
         skills=[
             SkillCategory(
@@ -26,16 +26,36 @@ async def get_profile():
                 items=["Agentic Workflows", "LangChain & LangGraph", "Multi-Server MCP", "RAG & Vector Retrieval", "Prompt Engineering"]
             ),
             SkillCategory(
+                category="Voice Agents & Audio AI",
+                items=["LiveKit WebRTC", "Silero VAD", "Deepgram STT", "Cartesia Sonic TTS", "Turn Detection"]
+            ),
+            SkillCategory(
+                category="Fine-Tuning & Alignment",
+                items=["Unsloth", "LoRA & QLoRA", "SFT & GRPO", "Qwen2.5 / Qwen3.5 4B", "HuggingFace PEFT"]
+            ),
+            SkillCategory(
                 category="Applied ML & Deep Learning",
                 items=["PyTorch", "PyTorch Lightning", "Vision Transformers (ViT)", "YOLO Object Detection", "Scikit-Learn"]
             ),
             SkillCategory(
-                category="Backend & MLOps",
-                items=["FastAPI", "Uvicorn", "Docker", "MLFlow", "Pinecone Vector DB", "CI/CD & GitHub Actions"]
+                category="Time Series & Forecasting",
+                items=["ARIMA / SARIMA", "Prophet", "LSTM & GRU", "Chronos", "PatchTST"]
             ),
             SkillCategory(
-                category="Data Engineering & Tools",
-                items=["Pandas", "NumPy", "Plotly", "Linux", "Git", "Kaggle"]
+                category="MLOps & Model Deployment",
+                items=["MLFlow", "Pinecone Vector DB", "Docker", "Model Monitoring", "Vercel Serverless"]
+            ),
+            SkillCategory(
+                category="Backend & APIs",
+                items=["FastAPI", "Uvicorn", "REST & SSE", "WebSockets", "Pydantic v2"]
+            ),
+            SkillCategory(
+                category="CI/CD & Cloud",
+                items=["GitHub Actions", "Docker Hub", "AWS S3 / EC2", "GCP", "Vercel"]
+            ),
+            SkillCategory(
+                category="Data Science & Analytics",
+                items=["Pandas", "NumPy", "Plotly", "EDA", "Statistical Modeling"]
             )
         ],
         social_links={
@@ -45,8 +65,8 @@ async def get_profile():
             "kaggle": "https://www.kaggle.com/sushovansaha9"
         },
         technologies=[
-            "Python", "PyTorch", "FastAPI", "LangChain", "LangGraph", "Pinecone",
-            "Docker", "Linux", "Git", "HuggingFace", "YOLO", "Plotly"
+            "Python", "PyTorch", "FastAPI", "LangChain", "LangGraph", "LiveKit",
+            "Pinecone", "Unsloth", "Docker", "Linux", "Git", "HuggingFace", "YOLO", "Plotly"
         ]
     )
 

@@ -1,12 +1,12 @@
 /* ==============================================================================
- * Streamlit Authentic Light Theme & Component Styling
- * Matches exact Streamlit aesthetic, layout, fonts, and component structures.
+ * Modern AI Agent Portfolio Light Theme & Component Styling
+ * Clean, high-contrast typography, interactive modals, and agentic UI structures.
  * ============================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Source+Code+Pro:wght@400;600&display=swap');
 
 :root {
-  /* Streamlit core theme colors */
+  /* Core theme colors */
   --st-primary: #FF4B4B;
   --st-primary-hover: #FF3333;
   --st-primary-light: #FFEBEB;
@@ -1494,5 +1494,207 @@ canvas#voiceOrbCanvas {
   padding: 0.85rem 1.25rem;
   margin-bottom: 1.25rem;
 }
+
+/* ── Tab Header Row with Architecture Trigger ────────────────────────────── */
+.st-tab-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.st-tab-header-title {
+  flex: 1;
+  min-width: 260px;
+}
+
+.st-tab-header-title h1 {
+  margin: 0 0 0.35rem 0;
+}
+
+.st-tab-header-title p {
+  margin: 0;
+}
+
+.st-arch-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(30, 136, 229, 0.12), rgba(139, 92, 246, 0.12));
+  color: #1E88E5;
+  border: 1px solid rgba(30, 136, 229, 0.35);
+  border-radius: 20px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(30, 136, 229, 0.12);
+  white-space: nowrap;
+}
+
+.st-arch-trigger-btn:hover {
+  background: linear-gradient(135deg, rgba(30, 136, 229, 0.22), rgba(139, 92, 246, 0.22));
+  border-color: #1E88E5;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(30, 136, 229, 0.25);
+  color: #0D47A1;
+}
+
+.st-arch-trigger-btn svg {
+  stroke: currentColor;
+  transition: transform 0.2s ease;
+}
+
+.st-arch-trigger-btn:hover svg {
+  transform: scale(1.1);
+}
+
+/* ── Architecture Modal Pop-up ───────────────────────────────────────────── */
+.st-arch-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(10, 15, 30, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 99999;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+.st-arch-modal.active {
+  display: flex;
+  animation: modalFadeIn 0.25s ease-out forwards;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.st-arch-modal-dialog {
+  background: #ffffff;
+  border: 1px solid rgba(30, 136, 229, 0.25);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 920px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(30, 136, 229, 0.1);
+  overflow: hidden;
+}
+
+.st-arch-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.15rem 1.5rem;
+  border-bottom: 1px solid #E2E8F0;
+  background: #F8FAFC;
+}
+
+.st-arch-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.st-arch-modal-header-left h3 {
+  margin: 0;
+  font-size: 1.18rem;
+  color: #0F172A;
+  font-weight: 700;
+}
+
+.st-arch-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: rgba(30, 136, 229, 0.12);
+  color: #1E88E5;
+  border: 1px solid rgba(30, 136, 229, 0.2);
+}
+
+.st-arch-close-btn {
+  background: transparent;
+  border: none;
+  color: #64748B;
+  font-size: 1.5rem;
+  line-height: 1;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.st-arch-close-btn:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+.st-arch-modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  color: #334155;
+}
+
+/* Diagram Flow Nodes & Cards */
+.st-arch-flow-wrapper {
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+
+.st-arch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.st-arch-step-card {
+  background: #ffffff;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+}
+
+.st-arch-step-card h4 {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.95rem;
+  color: #0F172A;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.st-arch-step-card p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #64748B;
+  line-height: 1.45;
+}
+
 
 

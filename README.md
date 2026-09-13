@@ -15,7 +15,7 @@ A decoupled, production-grade **FastAPI Backend** and high-performance **Modern 
 The repository provides full separation of concerns between backend services and the frontend client:
 
 ```
-Streamlit-AI-Portfolio/
+portfolio-agent/
 ├── backend/
 │   └── app/
 │       ├── main.py                  # FastAPI entry point, CORS, static mounting
@@ -87,8 +87,8 @@ Streamlit-AI-Portfolio/
 
 ### 1. Clone & Configure Environment
 ```bash
-git clone https://github.com/ambideXtrous9/Streamlit-AI-Portfolio.git
-cd Streamlit-AI-Portfolio
+git clone https://github.com/ambideXtrous9/portfolio-agent.git
+cd portfolio-agent
 
 # Copy environment template
 cp .env.example .env
