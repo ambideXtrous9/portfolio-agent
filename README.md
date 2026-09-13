@@ -28,11 +28,11 @@
 
 | Resource | Link / Access Key | Status |
 | :--- | :--- | :--- |
-| **Live Production Web App** | [`portfolio-agent.vercel.app`](https://portfolio-agent-51p64zjl3-sushovansaha95-4250s-projects.vercel.app) | 🟢 `Online` |
-| **Interactive OpenAPI Docs (Swagger)** | [`/docs`](https://portfolio-agent-51p64zjl3-sushovansaha95-4250s-projects.vercel.app/docs) | 🟢 `Public` |
-| **Alternative API Specs (ReDoc)** | [`/redoc`](https://portfolio-agent-51p64zjl3-sushovansaha95-4250s-projects.vercel.app/redoc) | 🟢 `Public` |
+| **Live Production Web App** | [`portfolio-agent-ai.vercel.app`](https://portfolio-agent-ai.vercel.app) | 🟢 `Online` |
+| **Interactive OpenAPI Docs (Swagger)** | [`/docs`](https://portfolio-agent-ai.vercel.app/docs) | 🟢 `Public` |
+| **Alternative API Specs (ReDoc)** | [`/redoc`](https://portfolio-agent-ai.vercel.app/redoc) | 🟢 `Public` |
 | **⚡ 1-Click Instant Demo Login** | Click **"⚡ 1-Click Demo"** or use `abc` / `123` | 🔑 `Pre-Seeded` |
-| **Active Feature Pull Request** | [PR #1: feat/postgres-auth-checkpoints](https://github.com/ambideXtrous9/portfolio-agent/pull/1) | 🚀 `All Checks Passing` |
+| **Active Feature Pull Request** | [PR #2: feat/postgres-auth-checkpoints](https://github.com/ambideXtrous9/portfolio-agent/pull/2) | 🚀 `All Checks Passing` |
 
 </div>
 
@@ -337,7 +337,7 @@ All feature endpoints are guarded by the `get_current_active_user` FastAPI depen
 ## 📂 Repository Blueprint
 
 ```
-Streamlit-AI-Portfolio/
+portfolio-agent/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                     # FastAPI entry point, ASGI lifespan, CORS & mounts

@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: streamlit-ai-portfolio-backend:latest
+    image: portfolio-agent-backend:latest
     container_name: ai-portfolio-backend
     restart: unless-stopped
     ports:
@@ -67,7 +67,7 @@ services:
   # LiveKit Voice Agent Worker (LangGraph + WebRTC Audio AI)
   # ----------------------------------------------------------------------------
   voice-agent:
-    image: streamlit-ai-portfolio-backend:latest
+    image: portfolio-agent-backend:latest
     container_name: ai-portfolio-voice-agent
     restart: unless-stopped
     command: ["python", "-m", "backend.app.voice_agent.agent", "dev"]
