@@ -504,5 +504,10 @@ class AuthDatabaseManager:
                 )
                 return str(row["user_id"])
 
+    @property
+    def is_in_memory(self) -> bool:
+        """Returns True if running in in-memory fallback mode."""
+        return self._is_in_memory
+
 
 auth_db_manager = AuthDatabaseManager()

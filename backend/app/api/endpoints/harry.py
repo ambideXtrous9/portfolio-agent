@@ -470,11 +470,12 @@ async def websocket_harry(websocket: WebSocket):
 @router.get("/ask/stream")
 async def stream_harry_sse(
     query: str,
+    session_id: Optional[str] = None,
     current_user: UserResponse = Depends(get_current_active_user),
 ):
     """Server-Sent Events streaming endpoint backed by PostgreSQL checkpointer and auth guard."""
     async def event_generator() -> AsyncGenerator[Dict[str, Any], None]:
-        thread_id = str(uuid.uuid4())
+        thread_id = session_id or str(uuid.uuid4())
         config = {
             "configurable": {"thread_id": thread_id},
             "metadata": {"user_id": current_user.id, "email": current_user.email},

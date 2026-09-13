@@ -1,17 +1,111 @@
 /**
- * Tour Agent Controller using WebSockets
- * Streams live agent steps, tool calls, MCP updates, and LLM tokens.
+ * Tour Agent Controller
+ * Supports LangGraph Checkpointing & PostgreSQL Chat History
  */
 
-import { streamAgent } from "./api.js";
+import { streamAgent, apiGetChatHistory, apiClearChatHistory, getAuthToken } from "./api.js";
 
 export function initTourAgent() {
   const chatHistory = document.getElementById("tour-chat-history");
   const userInput = document.getElementById("tour-user-input");
   const sendBtn = document.getElementById("tour-send-btn");
   const chips = document.querySelectorAll("#tab-tour .st-suggestion-chip");
+  const threadDisplay = document.getElementById("tour-thread-id-display");
+  const btnNewChat = document.getElementById("tour-btn-new-chat");
+  const btnReloadHistory = document.getElementById("tour-btn-reload-history");
+  const btnClearHistory = document.getElementById("tour-btn-clear-history");
 
   if (!chatHistory || !userInput || !sendBtn) return;
+
+  // Stable or stored Thread/Session ID
+  let currentThreadId = localStorage.getItem("portfolio_tour_thread_id");
+  if (!currentThreadId) {
+    currentThreadId = "tour-" + Math.random().toString(36).substring(2, 9);
+    localStorage.setItem("portfolio_tour_thread_id", currentThreadId);
+  }
+
+  const updateThreadUI = () => {
+    if (threadDisplay) {
+      threadDisplay.textContent = `#${currentThreadId}`;
+    }
+  };
+  updateThreadUI();
+
+  const welcomeHTML = `
+    <div class="st-chat-message assistant">
+      <div class="st-chat-avatar">🏡</div>
+      <div class="st-chat-content">
+        <strong>Welcome to the MCP-Powered Travel Agent!</strong><br>
+        I query live accommodations via the <strong>Airbnb MCP Server</strong> (<code>@openbnb/mcp-server-airbnb</code>) and real-time meteorology APIs to synthesize comprehensive, verified itineraries with live stay rates and weather forecasts.
+      </div>
+    </div>
+  `;
+
+  // Restore history from PostgreSQL
+  async function loadThreadHistory() {
+    if (!getAuthToken()) return;
+    try {
+      const res = await apiGetChatHistory(currentThreadId);
+      if (res && res.messages && res.messages.length > 0) {
+        chatHistory.innerHTML = welcomeHTML;
+        res.messages.forEach((msg) => {
+          const isUser = msg.type === "human" || msg.type === "user";
+          const msgDiv = document.createElement("div");
+          msgDiv.className = `st-chat-message ${isUser ? "user" : "assistant"}`;
+          msgDiv.innerHTML = `
+            <div class="st-chat-avatar">${isUser ? "👤" : "🏡"}</div>
+            <div class="st-chat-content">
+              <strong>${isUser ? "You" : "Travel Agent"}</strong><br>
+              ${isUser ? escapeHtml(msg.content) : (window.marked ? marked.parse(msg.content) : escapeHtml(msg.content))}
+            </div>
+          `;
+          chatHistory.appendChild(msgDiv);
+        });
+        chatHistory.lastElementChild?.scrollIntoView({ behavior: "smooth" });
+      }
+    } catch (e) {
+      console.warn("Could not load Tour chat history:", e);
+    }
+  }
+
+  // Load history on initialization
+  loadThreadHistory();
+
+  // New Thread Handler
+  if (btnNewChat) {
+    btnNewChat.addEventListener("click", () => {
+      currentThreadId = "tour-" + Math.random().toString(36).substring(2, 9);
+      localStorage.setItem("portfolio_tour_thread_id", currentThreadId);
+      updateThreadUI();
+      chatHistory.innerHTML = welcomeHTML;
+      const note = document.createElement("div");
+      note.style.cssText = "text-align: center; font-size: 0.78rem; color: var(--st-text-muted); margin: 0.5rem 0;";
+      note.textContent = `⚡ Started fresh thread #${currentThreadId} with empty checkpointer state.`;
+      chatHistory.appendChild(note);
+    });
+  }
+
+  // Reload / Restore History Handler
+  if (btnReloadHistory) {
+    btnReloadHistory.addEventListener("click", async () => {
+      btnReloadHistory.textContent = "⏳ Restoring...";
+      await loadThreadHistory();
+      btnReloadHistory.textContent = "📜 Restore History";
+    });
+  }
+
+  // Clear History Handler
+  if (btnClearHistory) {
+    btnClearHistory.addEventListener("click", async () => {
+      if (!confirm("Are you sure you want to clear chat history for this tour thread in PostgreSQL?")) return;
+      try {
+        await apiClearChatHistory(currentThreadId);
+        chatHistory.innerHTML = welcomeHTML;
+      } catch (err) {
+        alert("Failed to clear history: " + err.message);
+      }
+    });
+  }
 
   // Suggestion chips handler
   chips.forEach(chip => {
@@ -74,8 +168,9 @@ export function initTourAgent() {
 
     let fullMarkdown = "";
 
-    // 3. Connect via streamAgent (SSE with automatic REST fallback)
+    // 3. Connect via streamAgent with current thread session_id
     streamAgent("tour", query, {
+      sessionId: currentThreadId,
       onStatus: (data) => {
         if (statusLabel) {
           const msg = data.message || "Processing...";
@@ -111,14 +206,14 @@ export function initTourAgent() {
       },
       onToken: (token) => {
         fullMarkdown += token;
-        markdownBody.innerHTML = marked.parse(fullMarkdown);
+        markdownBody.innerHTML = window.marked ? marked.parse(fullMarkdown) : escapeHtml(fullMarkdown);
       },
       onDone: (data) => {
         if (statusBadge) statusBadge.style.display = "none";
         sendBtn.disabled = false;
         const text = data.content || data.full_text || fullMarkdown || "";
         if (text) {
-          markdownBody.innerHTML = marked.parse(text);
+          markdownBody.innerHTML = window.marked ? marked.parse(text) : escapeHtml(text);
         }
       },
       onError: (err) => {

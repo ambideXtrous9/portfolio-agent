@@ -180,12 +180,14 @@ export async function fetchAPI(endpoint, options = {}) {
  * @param {string} query
  * @param {object} callbacks - { onStatus, onToolCall, onToolResult, onToken, onDone, onError }
  */
-export function streamAgent(agentType, query, { onStatus, onToolCall, onToolResult, onToken, onDone, onError }) {
+export function streamAgent(agentType, query, { sessionId, onStatus, onToolCall, onToolResult, onToken, onDone, onError }) {
+  const base = getAPIBase();
   const token = getAuthToken();
   const tokenParam = token ? `&token=${encodeURIComponent(token)}` : "";
+  const sessionParam = sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : "";
   const sseEndpoint = agentType === "tour" 
-    ? `${base}/tour/stream?query=${encodeURIComponent(query)}${tokenParam}`
-    : `${base}/harry/ask/stream?query=${encodeURIComponent(query)}${tokenParam}`;
+    ? `${base}/tour/stream?query=${encodeURIComponent(query)}${sessionParam}${tokenParam}`
+    : `${base}/harry/ask/stream?query=${encodeURIComponent(query)}${sessionParam}${tokenParam}`;
 
   console.log(`📡 [streamAgent] Starting SSE stream for ${agentType}: ${sseEndpoint}`);
 
@@ -217,10 +219,12 @@ export function streamAgent(agentType, query, { onStatus, onToolCall, onToolResu
 
     try {
       const endpoint = agentType === "tour" ? "/tour/plan" : "/harry/ask";
+      const payload = { query: query };
+      if (sessionId) payload.session_id = sessionId;
       const res = await fetchAPI(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: query })
+        body: JSON.stringify(payload)
       });
 
       let content = "";
@@ -442,4 +446,16 @@ export async function apiLogout() {
 export async function apiGetMe() {
   return await fetchAPI("/auth/me", { method: "GET" });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chat History & PostgreSQL Checkpoint Operations
+// ─────────────────────────────────────────────────────────────────────────────
+export async function apiGetChatHistory(threadId) {
+  return await fetchAPI(`/chat/threads/${encodeURIComponent(threadId)}/history`, { method: "GET" });
+}
+
+export async function apiClearChatHistory(threadId) {
+  return await fetchAPI(`/chat/threads/${encodeURIComponent(threadId)}`, { method: "DELETE" });
+}
+
 

@@ -174,39 +174,157 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnSwitchToSignup) btnSwitchToSignup.addEventListener("click", showSignupView);
   if (btnSwitchToLogin) btnSwitchToLogin.addEventListener("click", showLoginView);
 
+  function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   function updateAuthUI() {
-    if (!authContainer) return;
-    if (isLoggedIn) {
-      const userLabel = currentUser ? (currentUser.full_name || currentUser.email) : "Authenticated";
-      authContainer.innerHTML = `
-        <div style="font-size: 0.75rem; color: var(--st-text-muted); margin-bottom: 4px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 190px;" title="${userLabel}">👤 ${userLabel}</div>
-        <button class="st-auth-btn" id="btn-logout" style="width: 100%; justify-content: center; font-size: 0.82rem;">Logout</button>
-      `;
-      const btnLogout = document.getElementById("btn-logout");
-      if (btnLogout) {
-        btnLogout.addEventListener("click", async () => {
-          await apiLogout();
-          isLoggedIn = false;
-          currentUser = null;
-          updateAuthUI();
-          navigateToTab("tab-home", "boom");
-        });
+    const topUserArea = document.getElementById("top-user-area");
+    const loggedInContainer = document.getElementById("auth-logged-in-container");
+    const demoBanner = document.getElementById("auth-demo-banner");
+    const loginContainer = document.getElementById("auth-login-container");
+    const signupContainer = document.getElementById("auth-signup-container");
+    const userNameEl = document.getElementById("logged-in-name");
+    const userEmailEl = document.getElementById("logged-in-email");
+    const userRoleEl = document.getElementById("logged-in-role");
+    const userAvatarEl = document.getElementById("logged-in-avatar");
+
+    if (isLoggedIn && currentUser) {
+      const userLabel = currentUser.full_name || currentUser.email || "User";
+      const initials = (currentUser.full_name || currentUser.username || currentUser.email || "U")
+        .trim()
+        .split(/\s+/)
+        .map((p) => p[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase();
+      const role = currentUser.role || "user";
+      const isAdmin = role === "admin" || currentUser.is_superuser;
+
+      // 1. Update Top Global Header
+      if (topUserArea) {
+        topUserArea.innerHTML = `
+          <div class="st-user-pill" title="${escapeHtml(currentUser.email)}">
+            <span class="st-user-avatar">${escapeHtml(initials)}</span>
+            <span>${escapeHtml(userLabel)}</span>
+            <span class="st-role-badge ${isAdmin ? 'st-role-admin' : 'st-role-user'}">${escapeHtml(role)}</span>
+          </div>
+          <button class="st-session-btn" id="top-btn-logout" title="Sign Out">Sign Out</button>
+        `;
+        document.getElementById("top-btn-logout")?.addEventListener("click", handleLogout);
       }
+
+      // 2. Update Left Sidebar Auth Section
+      if (authContainer) {
+        authContainer.innerHTML = `
+          <div class="st-sidebar-user-card">
+            <div class="st-sidebar-user-header">
+              <div class="st-user-avatar">${escapeHtml(initials)}</div>
+              <div class="st-sidebar-user-details">
+                <div class="st-sidebar-user-name" title="${escapeHtml(userLabel)}">${escapeHtml(userLabel)}</div>
+                <div class="st-sidebar-user-email" title="${escapeHtml(currentUser.email)}">${escapeHtml(currentUser.email)}</div>
+              </div>
+              <span class="st-role-badge ${isAdmin ? 'st-role-admin' : 'st-role-user'}">${escapeHtml(role)}</span>
+            </div>
+            <button class="st-auth-btn" id="btn-logout" style="width: 100%; justify-content: center; font-size: 0.82rem; margin-top: 4px;">Log Out</button>
+          </div>
+        `;
+        document.getElementById("btn-logout")?.addEventListener("click", handleLogout);
+      }
+
+      // 3. Update Login Tab
+      if (loggedInContainer) loggedInContainer.style.display = "block";
+      if (demoBanner) demoBanner.style.display = "none";
+      if (loginContainer) loginContainer.style.display = "none";
+      if (signupContainer) signupContainer.style.display = "none";
+      if (userNameEl) userNameEl.textContent = userLabel;
+      if (userEmailEl) userEmailEl.textContent = currentUser.email;
+      if (userAvatarEl) userAvatarEl.textContent = initials;
+      if (userRoleEl) {
+        userRoleEl.textContent = role.toUpperCase();
+        userRoleEl.className = `st-role-badge ${isAdmin ? 'st-role-admin' : 'st-role-user'}`;
+      }
+      document.getElementById("btn-profile-logout")?.addEventListener("click", handleLogout);
+      document.getElementById("btn-go-agents")?.addEventListener("click", () => {
+        navigateToTab("tab-harry", "harry");
+      });
+
     } else {
-      authContainer.innerHTML = `
-        <button class="st-auth-btn" id="btn-login">Login</button>
-        <button class="st-auth-btn" id="btn-signup">Signup</button>
-      `;
-      const btnLogin = document.getElementById("btn-login");
-      const btnSignup = document.getElementById("btn-signup");
-      if (btnLogin) btnLogin.addEventListener("click", () => {
-        showLoginView();
-        activateView("tab-login", "boom");
-      });
-      if (btnSignup) btnSignup.addEventListener("click", () => {
-        showSignupView();
-        activateView("tab-login", "boom");
-      });
+      // 1. Update Top Global Header
+      if (topUserArea) {
+        topUserArea.innerHTML = `
+          <button class="st-session-btn" id="top-btn-login">Sign In</button>
+          <button class="st-demo-login-btn" id="top-btn-demo" style="padding: 4px 12px; font-size: 0.78rem;">⚡ 1-Click Demo</button>
+        `;
+        document.getElementById("top-btn-login")?.addEventListener("click", () => {
+          showLoginView();
+          activateView("tab-login", "boom");
+        });
+        document.getElementById("top-btn-demo")?.addEventListener("click", performQuickDemoLogin);
+      }
+
+      // 2. Update Left Sidebar Auth Section
+      if (authContainer) {
+        authContainer.innerHTML = `
+          <button class="st-auth-btn" id="btn-login">Login</button>
+          <button class="st-auth-btn" id="btn-signup">Signup</button>
+          <button class="st-auth-btn" id="btn-sidebar-demo" style="background: linear-gradient(135deg, rgba(30, 136, 229, 0.08), rgba(124, 77, 255, 0.08)); border-color: #1E88E5; color: #1565C0; font-weight: 700;" title="Instantly authenticate with pre-seeded demo credentials">⚡ Demo</button>
+        `;
+        document.getElementById("btn-login")?.addEventListener("click", () => {
+          showLoginView();
+          activateView("tab-login", "boom");
+        });
+        document.getElementById("btn-signup")?.addEventListener("click", () => {
+          showSignupView();
+          activateView("tab-login", "boom");
+        });
+        document.getElementById("btn-sidebar-demo")?.addEventListener("click", performQuickDemoLogin);
+      }
+
+      // 3. Update Login Tab
+      if (loggedInContainer) loggedInContainer.style.display = "none";
+      if (demoBanner) demoBanner.style.display = "flex";
+      showLoginView();
+      document.getElementById("btn-quick-demo-login")?.addEventListener("click", performQuickDemoLogin);
+    }
+  }
+
+  async function handleLogout() {
+    await apiLogout();
+    isLoggedIn = false;
+    currentUser = null;
+    updateAuthUI();
+    navigateToTab("tab-home", "boom");
+  }
+
+  async function performQuickDemoLogin() {
+    const bannerBtn = document.getElementById("btn-quick-demo-login");
+    const topBtn = document.getElementById("top-btn-demo");
+    const sideBtn = document.getElementById("btn-sidebar-demo");
+    if (bannerBtn) bannerBtn.textContent = "⏳ Signing in...";
+    if (topBtn) topBtn.textContent = "⏳...";
+    if (sideBtn) sideBtn.textContent = "⏳...";
+
+    try {
+      const res = await apiLogin("abc", "123");
+      isLoggedIn = true;
+      currentUser = res.user;
+      updateAuthUI();
+      const dest = redirectAfterLogin || "tab-harry";
+      redirectAfterLogin = null;
+      navigateToTab(dest, dest.replace("tab-", ""));
+    } catch (err) {
+      alert("Demo sign-in note: " + err.message);
+    } finally {
+      if (bannerBtn) bannerBtn.textContent = "⚡ Sign In as Demo User";
+      if (topBtn) topBtn.textContent = "⚡ 1-Click Demo";
+      if (sideBtn) sideBtn.textContent = "⚡ Demo";
     }
   }
 
@@ -434,12 +552,34 @@ function initBackendManager() {
     if (text) text.textContent = "Probing Backend...";
     if (dot) dot.style.background = "#ffaa00";
     const health = await checkBackendHealth();
+    const topDbStatus = document.getElementById("top-db-status");
+    const topDbText = document.getElementById("top-db-text");
+    const topAuthStatus = document.getElementById("top-auth-status");
+    const topAuthText = document.getElementById("top-auth-text");
+
     if (health.ok) {
       if (dot) dot.style.background = "#00e676";
       if (text) text.textContent = "Backend: Live";
+
+      const dbInfo = health.data?.database;
+      if (topDbText) {
+        if (dbInfo?.postgres_connected) {
+          topDbText.textContent = "Postgres Checkpointer: Active";
+          if (topDbStatus) topDbStatus.className = "st-status-pill st-status-pill-db";
+        } else {
+          topDbText.textContent = "Checkpointer: Memory Fallback";
+          if (topDbStatus) topDbStatus.className = "st-status-pill st-status-pill-offline";
+        }
+      }
+      if (topAuthText) {
+        topAuthText.textContent = "JWT Auth Guard: Enforced";
+        if (topAuthStatus) topAuthStatus.className = "st-status-pill st-status-pill-auth";
+      }
     } else {
       if (dot) dot.style.background = "#ff3d00";
       if (text) text.textContent = "Backend: Disconnected";
+      if (topDbText) topDbText.textContent = "Checkpointer: Offline";
+      if (topDbStatus) topDbStatus.className = "st-status-pill st-status-pill-offline";
     }
   }
 
@@ -590,14 +730,18 @@ const ARCH_DATA = {
         desc: "High-throughput reasoning engine conducts deep narrative foil comparisons, virtue ethics alignment, and structural critique.",
       },
       {
-        title: "5. Real-Time Token Streaming",
+        title: "5. PostgreSQL State Checkpointing & History",
+        desc: "Persists multi-agent graph state with <code>AsyncPostgresSaver</code> and records conversational threads with <code>PostgresChatMessageHistory</code> for durable cross-session continuity.",
+      },
+      {
+        title: "6. Real-Time Token Streaming",
         desc: "Streams formatted markdown directly into the chat interface with character tags, philosophical footnotes, and interactive query suggestions.",
       },
     ],
   },
   tour: {
     title: "MCP-Powered LangGraph Tour Agent Architecture",
-    badge: "LangGraph + Airbnb MCP + Open-Meteo",
+    badge: "LangGraph + Airbnb MCP + PostgreSQL Checkpointer",
     protocol: "LangGraph StateGraph + Real-time Streaming WebSocket",
     svg: `<svg viewBox="0 0 860 220" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="display: block; max-height: 240px;">
       <defs>
@@ -680,6 +824,10 @@ const ARCH_DATA = {
       {
         title: "5. Structured Daily Itinerary",
         desc: "Produces an actionable, day-by-day plan integrating weather badges, accommodation cards, and curated dining highlights.",
+      },
+      {
+        title: "6. PostgreSQL State Checkpointing",
+        desc: "Persists supervisor graph state transitions and checkpoints to PostgreSQL with <code>AsyncPostgresSaver</code>, enabling resume and thread isolation.",
       },
     ],
   },
