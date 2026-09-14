@@ -154,3 +154,82 @@ async def get_voice_status(
             "langfuse_observability": is_langfuse_configured(),
         },
     }
+
+
+class VoiceChatRequest(BaseModel):
+    message: str
+    room: Optional[str] = None
+    session_id: Optional[str] = None
+
+
+class VoiceChatResponse(BaseModel):
+    reply: str
+    tools_used: list[str] = []
+    sender: str = "Agent"
+
+
+@router.post("/chat", response_model=VoiceChatResponse)
+async def voice_chat(
+    payload: VoiceChatRequest,
+    current_user: Optional[UserResponse] = Depends(get_optional_user),
+):
+    """
+    Direct voice conversational chat endpoint.
+    Executes the Groq LangGraph agent node with tool dispatch (weather, news, bio)
+    and returns concise spoken-text answers with tool execution telemetry.
+    Acts as the serverless bridge for the frontend Voice Assistant.
+    """
+    user_query = (payload.message or "").strip()
+    if not user_query:
+        return VoiceChatResponse(
+            reply="I didn't catch that. Could you please say or send your question again?",
+            tools_used=[],
+            sender="Agent",
+        )
+
+    logger.info("Voice chat request received: '%s'", user_query)
+
+    try:
+        from langchain_core.messages import HumanMessage
+        from backend.app.voice_agent.graph import build_langgraph_workflow
+
+        workflow = build_langgraph_workflow()
+        result = await workflow.ainvoke({"messages": [HumanMessage(content=user_query)]})
+
+        messages = result.get("messages", [])
+        tools_used: list[str] = []
+        for msg in messages:
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                for tc in msg.tool_calls:
+                    name = tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", None)
+                    if name and name not in tools_used:
+                        tools_used.append(name)
+            if type(msg).__name__ == "ToolMessage":
+                tool_name = getattr(msg, "name", None)
+                if tool_name and tool_name not in tools_used:
+                    tools_used.append(tool_name)
+
+        reply_content = ""
+        if messages:
+            last_msg = messages[-1]
+            reply_content = getattr(last_msg, "content", "")
+            if isinstance(reply_content, list):
+                reply_content = " ".join(str(c) for c in reply_content if c)
+
+        reply_content = (reply_content or "").strip()
+        if not reply_content:
+            reply_content = "I processed your request, but have no response to return. Please try another question."
+
+        return VoiceChatResponse(
+            reply=reply_content,
+            tools_used=tools_used,
+            sender="Agent",
+        )
+    except Exception as exc:
+        logger.error("Error generating voice chat reply for '%s': %s", user_query, exc, exc_info=True)
+        return VoiceChatResponse(
+            reply="I'm having a brief connection issue with the AI backend. Please ask your question again in a moment.",
+            tools_used=[],
+            sender="Agent",
+        )
+

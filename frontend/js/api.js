@@ -150,6 +150,9 @@ export async function fetchAPI(endpoint, options = {}) {
                           endpoint.includes("/auth/signup") ||
                           endpoint.includes("/auth/forgot-password") ||
                           endpoint.includes("/auth/reset-password") ||
+                          endpoint.includes("/voice") ||
+                          endpoint.includes("/portfolio") ||
+                          endpoint.includes("/stock") ||
                           endpoint.includes("/cluster");
 
   if (!token && !isPublicEndpoint) {

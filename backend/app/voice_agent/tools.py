@@ -48,6 +48,7 @@ except Exception:
     OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY") or os.getenv("WEATHER_API_KEY")
     TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
+@tool
 @observe(name="get_weather")
 async def get_weather(city: str) -> str:
     """Get the current weather and temperature for a given city or location."""
