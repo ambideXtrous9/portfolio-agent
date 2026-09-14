@@ -21,7 +21,7 @@ export function getAPIBase() {
   } catch (_) {}
 
   if (isLocal) {
-    if (window.location.port === "8000" || window.location.port === "3000" || window.location.port === "80") {
+    if (window.location.port === "8000" || window.location.port === "80") {
       return "/api";
     }
     return "http://localhost:8000/api";
@@ -108,14 +108,14 @@ export function getWebSocketURL(path) {
 
   const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   
-  if (window.location.port === "3000" || window.location.port === "80" || window.location.port === "") {
-    // Via Nginx or Vercel reverse proxy
-    return `${wsProtocol}//${window.location.host}/ws${cleanPath}${tokenQuery}`;
-  } else if (window.location.port === "8000") {
-    // Direct to FastAPI backend
+  const isLocal = window.location.hostname === "localhost" ||
+                  window.location.hostname === "127.0.0.1" ||
+                  window.location.hostname.startsWith("192.168.");
+
+  if (!isLocal || window.location.port === "8000" || window.location.port === "80") {
     return `${wsProtocol}//${window.location.host}/ws${cleanPath}${tokenQuery}`;
   } else {
-    // External dev server fallback to port 8000
+    // External local dev server (port 3000, 5173, etc.) fallback to FastAPI port 8000
     return `${wsProtocol}//${window.location.hostname}:8000/ws${cleanPath}${tokenQuery}`;
   }
 }
