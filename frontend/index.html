@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ambideXtrous</title>
   <link rel="icon" href="assets/images/boom.png" type="image/png">
-  <link rel="stylesheet" href="css/style.css?v=3.0">
+  <link rel="stylesheet" href="css/style.css?v=3.8">
   
   <!-- CDNs for Plotly, Marked and LiveKit -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -380,29 +380,23 @@
           </div>
 
           <div class="st-chat-workspace state-hero" id="harry-workspace">
+            <!-- Dedicated Chat History Sidebar for Harry Potter -->
+            <aside class="st-chat-history-sidebar">
+              <button type="button" class="st-agent-new-chat-btn" id="harry-btn-new-chat-sidebar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                <span>New Chat</span>
+              </button>
+              <div class="st-chat-history-header">
+                <span class="st-chat-history-title">Recent Chats</span>
+                <span class="st-agent-thread-badge" id="harry-thread-id-display" style="font-size: 0.72rem; padding: 2px 6px;">#hp-session</span>
+              </div>
+              <div class="st-chat-history-list" id="harry-history-list">
+                <div class="st-history-empty">No recent chats yet.</div>
+              </div>
+            </aside>
+
             <!-- Main Agent Conversation Canvas -->
             <div class="st-chat-main-area">
-              <!-- Sleek Agent Topbar -->
-              <div class="st-agent-topbar" id="harry-session-bar">
-                <div class="st-agent-title-wrap">
-                  <span class="st-agent-name">🪄 Lore Scholar</span>
-                </div>
-                <div class="st-agent-topbar-actions">
-                  <span class="st-agent-thread-badge" id="harry-thread-id-display">#hp-session</span>
-                  <button type="button" class="st-topbar-btn" id="harry-btn-new-chat" title="Start fresh conversation">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                    <span>New</span>
-                  </button>
-                  <button type="button" class="st-topbar-btn" id="harry-btn-reload-history" title="Restore past conversation from PostgreSQL">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                    <span>Restore</span>
-                  </button>
-                  <button type="button" class="st-topbar-btn st-topbar-btn-danger" id="harry-btn-clear-history" title="Clear thread in PostgreSQL">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    <span>Clear</span>
-                  </button>
-                </div>
-              </div>
 
               <!-- Content Area: Hero State & Chat Messages -->
               <div class="st-agent-scroll-area" id="harry-scroll-area">
@@ -480,29 +474,23 @@
           </div>
 
           <div class="st-chat-workspace state-hero" id="tour-workspace">
+            <!-- Dedicated Chat History Sidebar for Tour Agent -->
+            <aside class="st-chat-history-sidebar">
+              <button type="button" class="st-agent-new-chat-btn" id="tour-btn-new-chat-sidebar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                <span>New Chat</span>
+              </button>
+              <div class="st-chat-history-header">
+                <span class="st-chat-history-title">Recent Chats</span>
+                <span class="st-agent-thread-badge" id="tour-thread-id-display" style="font-size: 0.72rem; padding: 2px 6px;">#tour-session</span>
+              </div>
+              <div class="st-chat-history-list" id="tour-history-list">
+                <div class="st-history-empty">No recent chats yet.</div>
+              </div>
+            </aside>
+
             <!-- Main Agent Conversation Canvas -->
             <div class="st-chat-main-area">
-              <!-- Sleek Agent Topbar -->
-              <div class="st-agent-topbar" id="tour-session-bar">
-                <div class="st-agent-title-wrap">
-                  <span class="st-agent-name">🏡 Tour Agent</span>
-                </div>
-                <div class="st-agent-topbar-actions">
-                  <span class="st-agent-thread-badge" id="tour-thread-id-display">#tour-session</span>
-                  <button type="button" class="st-topbar-btn" id="tour-btn-new-chat" title="Start fresh conversation">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                    <span>New</span>
-                  </button>
-                  <button type="button" class="st-topbar-btn" id="tour-btn-reload-history" title="Restore past conversation from PostgreSQL">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                    <span>Restore</span>
-                  </button>
-                  <button type="button" class="st-topbar-btn st-topbar-btn-danger" id="tour-btn-clear-history" title="Clear thread in PostgreSQL">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    <span>Clear</span>
-                  </button>
-                </div>
-              </div>
 
               <!-- Content Area: Hero State & Chat Messages -->
               <div class="st-agent-scroll-area" id="tour-scroll-area">
@@ -1193,6 +1181,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Client Application Scripts -->
-  <script type="module" src="js/app.js?v=3.7"></script>
+  <script type="module" src="js/app.js?v=3.8"></script>
 </body>
 </html>

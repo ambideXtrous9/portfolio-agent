@@ -2438,14 +2438,7 @@ canvas#voiceOrbCanvas {
 
 /* Minimalist Agent Topbar */
 .st-agent-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 20px;
-  background: #F8F9FB;
-  border-bottom: 1px solid var(--st-border-color, #E6E9EF);
-  flex-wrap: wrap;
-  gap: 10px;
+  display: none !important;
 }
 
 .st-agent-title-wrap {
