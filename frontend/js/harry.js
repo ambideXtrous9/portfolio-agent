@@ -15,16 +15,10 @@ export function initHarryScholar() {
   // Hero Inputs
   const heroInput = document.getElementById("harry-user-input");
   const heroSendBtn = document.getElementById("harry-send-btn");
-  const heroThinkBtn = document.getElementById("harry-think-btn");
-  const heroMicBtn = document.getElementById("harry-mic-btn");
-  const heroPlusBtn = document.getElementById("harry-plus-btn");
 
-  // Bottom Floating Inputs
+  // Bottom Docked Inputs
   const bottomInput = document.getElementById("harry-bottom-input");
   const bottomSendBtn = document.getElementById("harry-bottom-send-btn");
-  const bottomThinkBtn = document.getElementById("harry-bottom-think-btn");
-  const bottomMicBtn = document.getElementById("harry-bottom-mic-btn");
-  const bottomPlusBtn = document.getElementById("harry-bottom-plus-btn");
 
   // Topbar / Controls
   const threadDisplay = document.getElementById("harry-thread-id-display");
@@ -48,8 +42,6 @@ export function initHarryScholar() {
     }
   };
   updateThreadUI();
-
-  let isThinkingEnabled = false;
 
   function setHeroState(isHero) {
     if (isHero) {
@@ -109,95 +101,6 @@ export function initHarryScholar() {
 
   // Initial load
   loadThreadHistory();
-
-  // Think button toggler
-  function toggleThink() {
-    isThinkingEnabled = !isThinkingEnabled;
-    [heroThinkBtn, bottomThinkBtn].forEach((btn) => {
-      if (btn) {
-        btn.classList.toggle("is-active", isThinkingEnabled);
-        btn.title = isThinkingEnabled ? "Deep Reasoning: Enabled" : "Toggle Deep Reasoning";
-      }
-    });
-  }
-  heroThinkBtn?.addEventListener("click", toggleThink);
-  bottomThinkBtn?.addEventListener("click", toggleThink);
-
-  // Mic speech recognition setup
-  function setupMic(micBtn, targetInput) {
-    if (!micBtn || !targetInput) return;
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      micBtn.addEventListener("click", () => {
-        alert("Voice speech recognition is supported in modern Chrome, Edge, and Safari.");
-      });
-      return;
-    }
-
-    let recognition = null;
-    let isListening = false;
-
-    micBtn.addEventListener("click", () => {
-      if (isListening) {
-        if (recognition) recognition.stop();
-        return;
-      }
-
-      try {
-        recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.lang = "en-US";
-
-        recognition.onstart = () => {
-          isListening = true;
-          micBtn.classList.add("is-listening");
-          micBtn.title = "Listening... Click to finish";
-          targetInput.placeholder = "Listening to your voice...";
-        };
-
-        recognition.onresult = (e) => {
-          const text = Array.from(e.results).map((r) => r[0].transcript).join("");
-          targetInput.value = text;
-        };
-
-        recognition.onerror = () => {
-          cleanup();
-        };
-
-        recognition.onend = () => {
-          cleanup();
-          if (targetInput.value.trim()) {
-            submitHarryQuery(targetInput.value.trim());
-          }
-        };
-
-        recognition.start();
-      } catch (err) {
-        cleanup();
-      }
-
-      function cleanup() {
-        isListening = false;
-        micBtn.classList.remove("is-listening");
-        micBtn.title = "Voice Input";
-        targetInput.placeholder = "Ask anything...";
-      }
-    });
-  }
-
-  setupMic(heroMicBtn, heroInput);
-  setupMic(bottomMicBtn, bottomInput);
-
-  // Plus button sample context prompt
-  function setupPlus(btn, inputEl) {
-    btn?.addEventListener("click", () => {
-      inputEl.focus();
-      inputEl.value = "Examine the philosophical alignment between ";
-    });
-  }
-  setupPlus(heroPlusBtn, heroInput);
-  setupPlus(bottomPlusBtn, bottomInput);
 
   // Start fresh thread
   function startNewChat() {

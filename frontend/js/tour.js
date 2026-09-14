@@ -15,16 +15,10 @@ export function initTourAgent() {
   // Hero Inputs
   const heroInput = document.getElementById("tour-user-input");
   const heroSendBtn = document.getElementById("tour-send-btn");
-  const heroThinkBtn = document.getElementById("tour-think-btn");
-  const heroMicBtn = document.getElementById("tour-mic-btn");
-  const heroPlusBtn = document.getElementById("tour-plus-btn");
 
-  // Bottom Floating Inputs
+  // Bottom Docked Inputs
   const bottomInput = document.getElementById("tour-bottom-input");
   const bottomSendBtn = document.getElementById("tour-bottom-send-btn");
-  const bottomThinkBtn = document.getElementById("tour-bottom-think-btn");
-  const bottomMicBtn = document.getElementById("tour-bottom-mic-btn");
-  const bottomPlusBtn = document.getElementById("tour-bottom-plus-btn");
 
   // Topbar / Controls
   const threadDisplay = document.getElementById("tour-thread-id-display");
@@ -48,8 +42,6 @@ export function initTourAgent() {
     }
   };
   updateThreadUI();
-
-  let isThinkingEnabled = false;
 
   function setHeroState(isHero) {
     if (isHero) {
@@ -109,95 +101,6 @@ export function initTourAgent() {
 
   // Initial load
   loadThreadHistory();
-
-  // Think button toggler
-  function toggleThink() {
-    isThinkingEnabled = !isThinkingEnabled;
-    [heroThinkBtn, bottomThinkBtn].forEach((btn) => {
-      if (btn) {
-        btn.classList.toggle("is-active", isThinkingEnabled);
-        btn.title = isThinkingEnabled ? "Deep Reasoning: Enabled" : "Toggle Deep Reasoning";
-      }
-    });
-  }
-  heroThinkBtn?.addEventListener("click", toggleThink);
-  bottomThinkBtn?.addEventListener("click", toggleThink);
-
-  // Mic speech recognition setup
-  function setupMic(micBtn, targetInput) {
-    if (!micBtn || !targetInput) return;
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      micBtn.addEventListener("click", () => {
-        alert("Voice speech recognition is supported in modern Chrome, Edge, and Safari.");
-      });
-      return;
-    }
-
-    let recognition = null;
-    let isListening = false;
-
-    micBtn.addEventListener("click", () => {
-      if (isListening) {
-        if (recognition) recognition.stop();
-        return;
-      }
-
-      try {
-        recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.lang = "en-US";
-
-        recognition.onstart = () => {
-          isListening = true;
-          micBtn.classList.add("is-listening");
-          micBtn.title = "Listening... Click to finish";
-          targetInput.placeholder = "Listening to your destination ideas...";
-        };
-
-        recognition.onresult = (e) => {
-          const text = Array.from(e.results).map((r) => r[0].transcript).join("");
-          targetInput.value = text;
-        };
-
-        recognition.onerror = () => {
-          cleanup();
-        };
-
-        recognition.onend = () => {
-          cleanup();
-          if (targetInput.value.trim()) {
-            submitTourQuery(targetInput.value.trim());
-          }
-        };
-
-        recognition.start();
-      } catch (err) {
-        cleanup();
-      }
-
-      function cleanup() {
-        isListening = false;
-        micBtn.classList.remove("is-listening");
-        micBtn.title = "Voice Input";
-        targetInput.placeholder = "Ask anything...";
-      }
-    });
-  }
-
-  setupMic(heroMicBtn, heroInput);
-  setupMic(bottomMicBtn, bottomInput);
-
-  // Plus button sample context prompt
-  function setupPlus(btn, inputEl) {
-    btn?.addEventListener("click", () => {
-      inputEl.focus();
-      inputEl.value = "Plan a vacation itinerary for 2 adults to ";
-    });
-  }
-  setupPlus(heroPlusBtn, heroInput);
-  setupPlus(bottomPlusBtn, bottomInput);
 
   // Start fresh thread
   function startNewChat() {
