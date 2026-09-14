@@ -67,25 +67,25 @@ export function initVoiceAgent() {
 
       let grad = ctx.createRadialGradient(centerX, centerY, 30, centerX, centerY, baseRadius + 28);
       if (currentAgentState === 'speaking') {
-        grad.addColorStop(0, 'rgba(236, 72, 153, 0.55)');
-        grad.addColorStop(0.5, 'rgba(139, 92, 246, 0.35)');
-        grad.addColorStop(1, 'rgba(6, 182, 212, 0)');
+        grad.addColorStop(0, 'rgba(200, 104, 77, 0.65)');
+        grad.addColorStop(0.5, 'rgba(178, 84, 59, 0.35)');
+        grad.addColorStop(1, 'rgba(250, 248, 245, 0)');
       } else if (currentAgentState === 'listening') {
-        grad.addColorStop(0, 'rgba(6, 182, 212, 0.55)');
-        grad.addColorStop(0.5, 'rgba(16, 185, 129, 0.32)');
-        grad.addColorStop(1, 'rgba(59, 130, 246, 0)');
+        grad.addColorStop(0, 'rgba(79, 117, 96, 0.6)');
+        grad.addColorStop(0.5, 'rgba(61, 94, 76, 0.32)');
+        grad.addColorStop(1, 'rgba(250, 248, 245, 0)');
       } else if (currentAgentState === 'thinking') {
-        grad.addColorStop(0, 'rgba(245, 158, 11, 0.55)');
-        grad.addColorStop(0.6, 'rgba(139, 92, 246, 0.35)');
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        grad.addColorStop(0, 'rgba(214, 129, 107, 0.55)');
+        grad.addColorStop(0.6, 'rgba(188, 178, 161, 0.3)');
+        grad.addColorStop(1, 'rgba(250, 248, 245, 0)');
       } else if (currentAgentState === 'connecting') {
-        grad.addColorStop(0, 'rgba(245, 158, 11, 0.4)');
-        grad.addColorStop(0.5, 'rgba(99, 102, 241, 0.2)');
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        grad.addColorStop(0, 'rgba(188, 178, 161, 0.45)');
+        grad.addColorStop(0.5, 'rgba(200, 104, 77, 0.2)');
+        grad.addColorStop(1, 'rgba(250, 248, 245, 0)');
       } else {
-        grad.addColorStop(0, 'rgba(99, 102, 241, 0.35)');
-        grad.addColorStop(0.7, 'rgba(139, 92, 246, 0.18)');
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        grad.addColorStop(0, 'rgba(200, 104, 77, 0.35)');
+        grad.addColorStop(0.7, 'rgba(142, 130, 112, 0.18)');
+        grad.addColorStop(1, 'rgba(250, 248, 245, 0)');
       }
 
       ctx.fillStyle = grad;

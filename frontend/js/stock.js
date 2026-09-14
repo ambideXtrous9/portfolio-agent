@@ -125,12 +125,12 @@ export function initStockScreener() {
       dataDisplayHtml = `
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; margin: 1rem 0;">
           ${stocks.map((s, idx) => `
-            <div class="stock-clickable-item" data-symbol="${s["Symbol"] || s.symbol}" style="padding: 0.65rem 0.85rem; background: #F8F9FA; border: 1px solid var(--st-border-input); border-radius: 4px; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;">
+            <div class="stock-clickable-item" data-symbol="${s["Symbol"] || s.symbol}" style="padding: 0.65rem 0.85rem; background: rgba(255, 255, 255, 0.8); border: 1px solid var(--sand-200); border-radius: var(--st-radius); box-shadow: 0 1px 3px rgba(60, 50, 40, 0.02); font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;">
               <div>
                 <span style="font-weight: 700; color: var(--st-text-muted); margin-right: 6px;">#${idx + 1}</span>
-                <strong style="color: #1E88E5;">${s["Symbol"]}</strong> — ${s["Company Name"] || ""} (${s["Change %"] || ""})
+                <strong style="color: var(--terracotta-600); font-family: var(--st-font-mono);">${s["Symbol"]}</strong> — ${s["Company Name"] || ""} (${s["Change %"] || ""})
               </div>
-              <span style="font-size: 0.85rem; background: #E3F2FD; color: #1565C0; padding: 2px 8px; border-radius: 4px; font-weight: 600;">${s["Vol Ratio"] || ""}</span>
+              <span style="font-size: 0.82rem; background: var(--sage-50); color: var(--sage-700); border: 1px solid var(--sage-200); padding: 3px 10px; border-radius: 9999px; font-weight: 600; font-family: var(--st-font-mono);">${s["Vol Ratio"] || ""}</span>
             </div>
           `).join("")}
         </div>
@@ -168,7 +168,7 @@ export function initStockScreener() {
     const scannedTxt = res.total_scanned ? ` (Scanned all ${res.total_scanned} stocks in ${(res.universe || 'NIFTY500').toUpperCase()})` : '';
 
     container.innerHTML = `
-      <div style="background-color: #D4EDDA; color: #155724; border: 1px solid #C3E6CB; border-radius: var(--st-radius); padding: 0.75rem 1rem; margin-bottom: 0.75rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+      <div style="background-color: var(--sage-50); color: var(--sage-700); border: 1px solid var(--sage-200); border-radius: var(--st-radius-lg); padding: 0.85rem 1.25rem; margin-bottom: 1rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
         <span>✅ Scan Complete: ${countDisplay}${scannedTxt}</span>
         <span style="font-size: 0.88rem; font-weight: 500; opacity: 0.9;">💡 Ranked best to worst • Click any stock to view full analysis</span>
       </div>
@@ -484,13 +484,13 @@ export function initStockScreener() {
         <!-- Company Header (render_company_header) -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
           <div>
-            <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: var(--st-text-color);">${data.company_name}</h1>
+            <h1 class="serif-heading" style="margin: 0; font-size: 2.2rem; font-weight: 300; color: var(--sand-900);">${data.company_name}</h1>
             <div style="font-size: 14px; color: #666; margin-top: 4px;">
               ${data.symbol} • ${data.industry}
             </div>
           </div>
           <div style="text-align: right;">
-            <div style="font-size: 2.2rem; font-weight: 800; color: #1E88E5;">${data.current_price}</div>
+            <div class="serif-heading" style="font-size: 2.4rem; font-weight: 400; color: var(--terracotta-600);">${data.current_price}</div>
             <div style="font-size: 0.85rem; color: var(--st-text-muted);">Current Market Price</div>
           </div>
         </div>
@@ -519,7 +519,7 @@ export function initStockScreener() {
         <div class="deepdive-pane" id="tab-funda-overview" style="display: block;">
           <h3 style="font-size: 1.2rem; margin-top: 1rem;">Company Information</h3>
           <div style="margin: 0.5rem 0 1rem; font-size: 0.95rem;"><strong>Industry:</strong> ${data.industry}</div>
-          <div style="background: #F8F9FA; border-left: 4px solid #1E88E5; padding: 1rem 1.25rem; border-radius: 4px; font-size: 0.95rem; line-height: 1.6; color: #333;">
+          <div style="background: rgba(255, 255, 255, 0.8); border-left: 3px solid var(--terracotta-500); padding: 1.15rem 1.35rem; border-radius: 0 var(--st-radius) var(--st-radius) 0; font-size: 0.96rem; line-height: 1.7; color: var(--sand-800); border-top: 1px solid var(--sand-200); border-right: 1px solid var(--sand-200); border-bottom: 1px solid var(--sand-200);">
             <h4 style="margin: 0 0 0.5rem 0;">About</h4>
             <em>${data.about}</em>
           </div>
@@ -651,7 +651,7 @@ export function initStockScreener() {
               <ul style="margin: 0; padding-left: 1.25rem; line-height: 2.2;">
                 ${data.news.map((n) => `
                   <li>
-                    <a href="${n.url}" target="_blank" style="color: #1E88E5; font-weight: 600; text-decoration: none; font-size: 0.98rem;">${n.title}</a>
+                    <a href="${n.url}" target="_blank" style="color: var(--terracotta-600); font-weight: 600; text-decoration: none; font-size: 0.98rem;">${n.title}</a>
                     ${n.publisher ? `<span style="color: var(--st-text-muted); font-size: 0.85rem; margin-left: 8px;">— ${n.publisher}</span>` : ""}
                   </li>
                 `).join("")}
@@ -912,8 +912,8 @@ export function initStockScreener() {
       margin: { t: 30, r: 30, b: 35, l: 50 },
       height: 580,
       template: "plotly_white",
-      paper_bgcolor: "#FFFFFF",
-      plot_bgcolor: "#FFFFFF",
+      paper_bgcolor: "rgba(250, 248, 245, 0.6)",
+      plot_bgcolor: "rgba(250, 248, 245, 0.6)",
       showlegend: true,
       legend: { orientation: "h", y: 1.06, x: 0 },
       xaxis: {
@@ -991,8 +991,8 @@ export function initStockScreener() {
       xaxis: { rangeslider: { visible: true } },
       yaxis: { title: "Price (₹)" },
       template: "plotly_white",
-      paper_bgcolor: "#FFFFFF",
-      plot_bgcolor: "#FFFFFF",
+      paper_bgcolor: "rgba(250, 248, 245, 0.6)",
+      plot_bgcolor: "rgba(250, 248, 245, 0.6)",
     };
 
     window.Plotly.newPlot("stock-candlestick-chart", [trace], layout, {
@@ -1019,12 +1019,12 @@ export function initStockScreener() {
     };
 
     const colorsMap = {
-      Quarter: "#1E88E5",
-      Yearly: "#00897B",
-      Promoters: "#7B1FA2",
-      FII: "#FB8C00",
-      DII: "#43A047",
-      Public: "#E53935",
+      Quarter: "#C8684D",
+      Yearly: "#4F7560",
+      Promoters: "#736857",
+      FII: "#D97706",
+      DII: "#3D5E4C",
+      Public: "#B2543B",
     };
 
     const keys = ["Quarter", "Yearly", "Promoters", "FII", "DII", "Public"].filter(
@@ -1034,8 +1034,8 @@ export function initStockScreener() {
     container.innerHTML = keys
       .map(
         (key) => `
-        <div style="background: #FFFFFF; padding: 1rem; border-radius: var(--st-radius); border: 1px solid var(--st-border-input); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-          <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.5rem; color: #2C3E50;">${titlesMap[key] || key}</div>
+        <div style="background: rgba(255, 255, 255, 0.85); padding: 1.25rem; border-radius: var(--st-radius-lg); border: 1px solid var(--sand-200); box-shadow: 0 4px 16px rgba(60, 50, 40, 0.03);">
+          <div style="font-family: var(--st-font-serif); font-size: 1.15rem; margin-bottom: 0.5rem; color: var(--sand-900); font-weight: 400;">${titlesMap[key] || key}</div>
           <div id="plot-series-${key}" style="width: 100%; height: 240px;"></div>
         </div>
       `
@@ -1050,8 +1050,8 @@ export function initStockScreener() {
         y: vals,
         type: "scatter",
         mode: "lines+markers",
-        line: { color: colorsMap[key] || "#1E88E5", width: 2.5 },
-        marker: { size: 7, color: colorsMap[key] || "#1E88E5" },
+        line: { color: colorsMap[key] || "#C8684D", width: 2.5 },
+        marker: { size: 7, color: colorsMap[key] || "#C8684D" },
         showlegend: false,
       };
 
@@ -1059,8 +1059,8 @@ export function initStockScreener() {
         margin: { t: 20, r: 25, b: 35, l: 45 },
         height: 240,
         template: "plotly_white",
-        paper_bgcolor: "#FFFFFF",
-        plot_bgcolor: "#FFFFFF",
+        paper_bgcolor: "rgba(250, 248, 245, 0.6)",
+        plot_bgcolor: "rgba(250, 248, 245, 0.6)",
         yaxis: {
           title: isProfit ? "Net Profit" : "Holding (%)",
           ticksuffix: isProfit ? "" : "%",

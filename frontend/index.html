@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ambideXtrous</title>
   <link rel="icon" href="assets/images/boom.png" type="image/png">
-  <link rel="stylesheet" href="css/style.css?v=3.8">
+  <!-- Google Fonts: Newsreader (Editorial Serif), Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=4.0">
   
   <!-- CDNs for Plotly, Marked and LiveKit -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -130,23 +134,28 @@
 
           <hr style="margin: 1.5rem 0;" />
 
-          <!-- About Me Section -->
-          <h2 style="font-size: 2.2rem; font-weight: 700; color: #262730; margin: 1.25rem 0 1rem;">
-            👨‍💻 About Me
-          </h2>
+          <!-- About Me Section in Zen Card -->
+          <div class="zen-card" style="padding: 2.25rem 2.5rem; margin-bottom: 2rem;">
+            <span class="st-eyebrow">Biography &amp; Foundations</span>
+            <h2 class="serif-heading text-3xl font-light text-sand-900" style="margin: 0.2rem 0 1.25rem;">
+              About <span class="serif-italic font-normal">Me</span>
+            </h2>
 
-          <p style="font-size: 1.08rem; line-height: 1.7; color: #31333F; margin-bottom: 1rem;">
-            👋 Hi there! I'm <strong>Sushovan Saha</strong> — currently working as a founding <strong>AI Engineer</strong> at a <strong>Stealth Startup</strong>, building production-grade intelligent systems with deep focus on <strong>Large Language Models (LLMs)</strong>, <strong>Generative AI</strong>, <strong>Voice Agents</strong>, <strong>Deep Learning</strong>, <strong>Natural Language Processing (NLP)</strong>, and <strong>Computer Vision (CV)</strong>.
-          </p>
+            <p style="font-size: 1.04rem; line-height: 1.8; color: var(--sand-800); margin-bottom: 1rem;">
+              👋 Hi there! I'm <strong>Sushovan Saha</strong> — currently working as a founding <strong>AI Engineer</strong> at a <strong>Stealth Startup</strong>, building production-grade intelligent systems with deep focus on <strong>Large Language Models (LLMs)</strong>, <strong>Generative AI</strong>, <strong>Voice Agents</strong>, <strong>Deep Learning</strong>, <strong>Natural Language Processing (NLP)</strong>, and <strong>Computer Vision (CV)</strong>.
+            </p>
 
-          <p style="font-size: 1.08rem; line-height: 1.7; color: #31333F; margin-bottom: 1.5rem;">
-            🎓 I hold an <strong>M.Tech in Data Science from IIT Guwahati</strong> and I'm currently a <a href="https://www.kaggle.com/sushovansaha9" target="_blank" style="color: #1E88E5; font-weight: 600;">Kaggle Notebook Expert</a> with a strong inclination toward solving real-world challenges using intelligent systems.
-          </p>
+            <p style="font-size: 1.04rem; line-height: 1.8; color: var(--sand-800); margin-bottom: 0;">
+              🎓 I hold an <strong>M.Tech in Data Science from IIT Guwahati</strong> and I'm currently a <a href="https://www.kaggle.com/sushovansaha9" target="_blank" style="color: var(--terracotta-600); font-weight: 600;">Kaggle Notebook Expert</a> with a strong inclination toward solving real-world challenges using intelligent systems.
+            </p>
+          </div>
 
-          <!-- Skills Section -->
-          <h2 style="font-size: 2rem; font-weight: 700; color: #262730; margin: 2rem 0 1rem;">
-            🚀 My Skills:
-          </h2>
+          <!-- Skills Section in Zen Card -->
+          <div class="zen-card" style="padding: 2.25rem 2.5rem; margin-bottom: 2rem;">
+            <span class="st-eyebrow">Technical Competencies</span>
+            <h2 class="serif-heading text-3xl font-light text-sand-900" style="margin: 0.2rem 0 1.25rem;">
+              Engineering <span class="serif-italic font-normal">Capabilities</span>
+            </h2>
 
           <ul style="font-size: 1.05rem; line-height: 1.75; color: #31333F; padding-left: 1.5rem; margin-bottom: 1.75rem;">
             <li style="margin-bottom: 0.65rem;"><strong>LLMs &amp; Generative AI:</strong> Proficient in <strong>RAG, GraphRAG, Agentic RAG, MCP, LangChain, LangGraph, Google ADK</strong>, and building <strong>Agentic Workflows</strong></li>
@@ -162,7 +171,10 @@
 
           <hr style="margin: 2rem 0;" />
 
-          <h3 style="margin-top: 1.75rem; font-size: 1.15rem; color: var(--st-text-color);">🛠️ Frameworks & Ecosystem</h3>
+            <span class="st-eyebrow">Tooling &amp; Platform Stack</span>
+            <h3 class="serif-heading text-2xl font-light text-sand-900" style="margin: 0.2rem 0 1rem;">
+              Frameworks &amp; <span class="serif-italic font-normal">Ecosystem</span>
+            </h3>
 
           <!-- Tile Icons -->
           <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 1rem 0;">
@@ -179,45 +191,44 @@
           </div>
 
           <!-- SkillIcons Badge Row -->
-          <div style="margin: 1.25rem 0;">
-            <a href="https://skillicons.dev" target="_blank">
-              <img src="https://skillicons.dev/icons?i=cpp,python,pytorch,fastapi,linux,docker,aws,gcp,git,githubactions&perline=10" alt="Core Technologies" style="max-width: 100%; border-radius: 8px;" />
-            </a>
+            <div style="margin: 1.25rem 0;">
+              <a href="https://skillicons.dev" target="_blank">
+                <img src="https://skillicons.dev/icons?i=cpp,python,pytorch,fastapi,linux,docker,aws,gcp,git,githubactions&perline=10" alt="Core Technologies" style="max-width: 100%; border-radius: 8px;" />
+              </a>
+            </div>
           </div>
 
-          <hr style="margin: 1.75rem 0;" />
+          <!-- Featured App & Free Time in Zen Card -->
+          <div class="zen-card" style="padding: 2.25rem 2.5rem; margin-bottom: 2rem;">
+            <span class="st-eyebrow">Highlighted Innovation</span>
+            <h2 class="serif-heading text-3xl font-light text-sand-900" style="margin: 0.2rem 0 1.25rem;">
+              Featured <span class="serif-italic font-normal">Application</span>
+            </h2>
+            <p style="font-size: 1.04rem; line-height: 1.8; color: var(--sand-800); margin-bottom: 1.5rem;">
+              Explore my latest project powered by Gen AI agents and real-time research:<br>
+              👉 <a href="https://github.com/ambideXtrous9/portfolio-agent" target="_blank" style="color: var(--terracotta-600); font-weight: 700; font-size: 1.08rem;">AI Research Agent &amp; Portfolio</a> &nbsp;
+              <a href="https://github.com/ambideXtrous9/portfolio-agent" target="_blank">
+                <span class="st-status-badge" style="background: var(--terracotta-50); color: var(--terracotta-700); border: 1px solid var(--terracotta-200); font-weight: 600; padding: 4px 12px; border-radius: 9999px; vertical-align: middle;">★ GitHub Repo</span>
+              </a>
+            </p>
 
-          <!-- Featured App Section -->
-          <h2 style="display: flex; align-items: center; gap: 8px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Comet.png" alt="Comet" width="30" height="30" />
-            Featured App
-          </h2>
-          <p style="font-size: 1.05rem; margin-top: 0.5rem;">
-            Explore my latest project powered by Gen AI agents and real-time research:<br>
-            👉 <a href="https://github.com/ambideXtrous9/portfolio-agent" target="_blank" style="color: #1E88E5; font-weight: 700; font-size: 1.1rem;">AI Research Agent &amp; Portfolio</a> &nbsp;
-            <a href="https://github.com/ambideXtrous9/portfolio-agent" target="_blank">
-              <span class="st-badge" style="background: rgba(30, 136, 229, 0.12); color: #1E88E5; border: 1px solid rgba(30, 136, 229, 0.25); font-weight: 600; padding: 4px 10px; border-radius: 6px; vertical-align: middle;">★ GitHub Repo</span>
-            </a>
-          </p>
+            <hr style="margin: 1.75rem 0;" />
 
-          <hr style="margin: 1.75rem 0;" />
+            <!-- Free Time Section -->
+            <span class="st-eyebrow">Beyond the Code</span>
+            <h2 class="serif-heading text-3xl font-light text-sand-900" style="margin: 0.2rem 0 1.25rem;">
+              Personal <span class="serif-italic font-normal">Pursuits</span>
+            </h2>
+            <ul style="font-size: 1.02rem; line-height: 1.8; margin-top: 0.5rem; color: var(--sand-800);">
+              <li>Contributing to the ML community on <a href="https://www.kaggle.com/sushovansaha9" target="_blank" style="color: var(--terracotta-600);">Kaggle</a></li>
+              <li>Writing practical ML blogs on <a href="https://medium.com/@sushovansaha95" target="_blank" style="color: var(--terracotta-600);">Medium</a></li>
+              <li>Exploring new AI tools, frameworks, and academic papers to stay at the cutting edge</li>
+            </ul>
 
-          <!-- Free Time Section -->
-          <h2 style="display: flex; align-items: center; gap: 8px;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Objects/Books.webp" alt="Books" width="28" height="28" />
-            In my free time, you’ll find me:
-          </h2>
-          <ul style="font-size: 1.02rem; line-height: 1.8; margin-top: 0.5rem;">
-            <li>Contributing to the ML community on <a href="https://www.kaggle.com/sushovansaha9" target="_blank" style="color: #1E88E5;">Kaggle</a></li>
-            <li>Writing practical ML blogs on <a href="https://medium.com/@sushovansaha95" target="_blank" style="color: #1E88E5;">Medium</a></li>
-            <li>Exploring new AI tools, frameworks, and academic papers to stay at the cutting edge</li>
-          </ul>
-
-          <blockquote style="margin: 1.5rem 0; padding: 1rem 1.25rem; border-left: 4px solid #1E88E5; background: rgba(30, 136, 229, 0.05); border-radius: 0 8px 8px 0; font-size: 1.05rem;">
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/High%20Voltage.png" alt="High Voltage" width="22" height="22" style="vertical-align: middle;" />
-            <strong>I'm always eager to collaborate on innovative projects, exchange ideas, and learn from the community. Let’s build something amazing with AI!</strong>
-            <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Handshake.webp" alt="Handshake" width="24" height="24" style="vertical-align: middle;" />
-          </blockquote>
+            <blockquote style="margin: 1.5rem 0 0; padding: 1.1rem 1.4rem; border-left: 3px solid var(--terracotta-500); background: var(--terracotta-50); border-radius: 0 var(--st-radius) var(--st-radius) 0; font-size: 1rem; line-height: 1.7; color: var(--terracotta-900);">
+              <strong>I'm always eager to collaborate on innovative projects, exchange ideas, and learn from the community. Let’s build something amazing with AI!</strong>
+            </blockquote>
+          </div>
 
           <hr style="margin: 2rem 0 1.5rem;" />
 
@@ -265,9 +276,17 @@
         <!-- 💹 Tab 2: AI Stock Research Agent                                   -->
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-stock">
-          <h1>🚀 <span style="color: #1E88E5;">Stock Screener</span></h1>
-          <p style="color: var(--st-text-muted);">This is a Stock Screener that can help you find stocks that are breaking out with volume.</p>
-          <h2 style="margin-top: 1rem;">Range Breakout with Volume</h2>
+          <div class="st-tab-header-row">
+            <div class="st-tab-header-title">
+              <span class="st-eyebrow">Quantitative Intelligence &bull; Indian Equities</span>
+              <h1 class="serif-heading text-4xl sm:text-5xl font-light text-sand-900 leading-tight">
+                AI Stock Research <span class="serif-italic font-normal">Agent</span>
+              </h1>
+              <p class="st-lead-subtitle">
+                High-probability range breakouts, financial health diagnostics, and deep fundamental screening across NIFTY500 and MICROCAP250.
+              </p>
+            </div>
+          </div>
 
           <!-- Global Screener Universe Selector -->
           <div class="st-radio-group" style="margin: 1.25rem 0 0.85rem 0; display: flex; align-items: center; gap: 1.25rem; background: #F8F9FA; padding: 0.6rem 1rem; border-radius: var(--st-radius); border: 1px solid var(--st-border-input); width: fit-content;">
@@ -350,7 +369,7 @@
               <select id="analysis-company-select" class="st-chat-input-field" style="border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.5rem 0.8rem; background: #FFF; font-size: 0.95rem; max-width: 600px; width: 100%;">
                 <option value="">Select the Stock</option>
               </select>
-              <div id="analysis-selected-display" style="margin-top: 0.75rem; font-weight: 600; color: #1E88E5;"></div>
+              <div id="analysis-selected-display" style="margin-top: 0.75rem; font-weight: 600; color: var(--terracotta-600);"></div>
             </div>
           </div>
 
@@ -365,8 +384,13 @@
         <section class="st-tab-view" id="tab-harry">
           <div class="st-tab-header-row">
             <div class="st-tab-header-title">
-              <h1>🪄 <span style="color: #1E88E5;">Harry Potter &amp; Mythology Agent</span></h1>
-              <p style="color: var(--st-text-muted);">Cross-examine Harry Potter lore, spells, Horcruxes, and Indian ancient epics via Pinecone vector retrieval and LangGraph checkpointing.</p>
+              <span class="st-eyebrow">Pinecone Vector RAG &bull; LangGraph Checkpointing</span>
+              <h1 class="serif-heading text-4xl sm:text-5xl font-light text-sand-900 leading-tight">
+                Harry Potter &amp; Ancient <span class="serif-italic font-normal">Mythology</span>
+              </h1>
+              <p class="st-lead-subtitle">
+                Cross-examine wizarding lore, Horcruxes, and Vedic philosophical archetypes with grounded multi-vector retrieval.
+              </p>
             </div>
             <button type="button" class="st-arch-trigger-btn" data-arch="harry" title="View Agentic Architecture">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -459,8 +483,13 @@
         <section class="st-tab-view" id="tab-tour">
           <div class="st-tab-header-row">
             <div class="st-tab-header-title">
-              <h1>🏡 <span style="color: #1E88E5;">Tour Agent</span></h1>
-              <p style="color: var(--st-text-muted);">Query live Airbnb accommodations via MCP and real-time weather forecasts to curate verified vacation itineraries with LangGraph checkpointing.</p>
+              <span class="st-eyebrow">Airbnb MCP &bull; Weather Real-Time Pipeline</span>
+              <h1 class="serif-heading text-4xl sm:text-5xl font-light text-sand-900 leading-tight">
+                Autonomous Tour <span class="serif-italic font-normal">Planner</span>
+              </h1>
+              <p class="st-lead-subtitle">
+                Curate verified vacation itineraries with live accommodations, weather models, and interactive journey maps.
+              </p>
             </div>
             <button type="button" class="st-arch-trigger-btn" data-arch="tour" title="View Agentic Architecture">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -553,8 +582,13 @@
         <section class="st-tab-view" id="tab-voice">
           <div class="st-tab-header-row">
             <div class="st-tab-header-title">
-              <h1>🎙️ <span style="color: #1E88E5;">Voice AI Agent</span></h1>
-              <p style="color: var(--st-text-muted);">Real-time, ultra-low-latency voice assistant powered by LiveKit WebRTC, Groq LLM, Silero VAD, and LangGraph tool calling.</p>
+              <span class="st-eyebrow">Low-Latency WebRTC &bull; Silero VAD &bull; Groq</span>
+              <h1 class="serif-heading text-4xl sm:text-5xl font-light text-sand-900 leading-tight">
+                Real-Time Voice <span class="serif-italic font-normal">Agent</span>
+              </h1>
+              <p class="st-lead-subtitle">
+                Ultra-low-latency conversational intelligence with full-duplex audio streaming and dynamic tool dispatch.
+              </p>
             </div>
             <button type="button" class="st-arch-trigger-btn" data-arch="voice" title="View Agentic Architecture">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -646,7 +680,17 @@
         <!-- 🚀 Tab 5: Yolo for Logo                                             -->
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-yolo">
-          <h1>🚀 <span style="color: #1E88E5;">YOLO for Logo!</span> 😎</h1>
+          <div class="st-tab-header-row">
+            <div class="st-tab-header-title">
+              <span class="st-eyebrow">Computer Vision &bull; Flickr27 Transfer Learning</span>
+              <h1 class="serif-heading text-4xl sm:text-5xl font-light text-sand-900 leading-tight">
+                YOLO Object <span class="serif-italic font-normal">Detection</span>
+              </h1>
+              <p class="st-lead-subtitle">
+                State-of-the-art brand mark localization and real-time bounding box prediction on custom imagery.
+              </p>
+            </div>
+          </div>
 
           <div style="font-size: 1rem; line-height: 1.7; margin-bottom: 1.5rem;">
             <h3>🚀 <strong>YOLOv8.1: The Latest in Object Detection</strong></h3>
@@ -701,7 +745,17 @@
         <!-- 🏆 Tab 6: Play with Image Classifier (Exact match to Screenshot 5)  -->
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-classifier">
-          <h1>🚀 <span style="color: #1E88E5;">Image Classification</span> 😎</h1>
+          <div class="st-tab-header-row">
+            <div class="st-tab-header-title">
+              <span class="st-eyebrow">Deep Learning Benchmarks &bull; Transfer Learning</span>
+              <h1 class="serif-heading text-4xl sm:text-5xl font-light text-sand-900 leading-tight">
+                Image Classification <span class="serif-italic font-normal">Matrix</span>
+              </h1>
+              <p class="st-lead-subtitle">
+                Comparing inference latency, parameter footprint, and top-1 accuracy across modern vision architectures.
+              </p>
+            </div>
+          </div>
 
           <div style="font-size: 1rem; line-height: 1.7; margin-bottom: 1.5rem;">
             <h3>🚀 <strong>Exploring Image Classification Models with Transfer Learning!</strong></h3>
@@ -810,7 +864,17 @@
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-cluster">
           <div class="st-cluster-container">
-            <h1>🐙 <span style="color: #1E88E5;">Play with Clusters</span> 😎</h1>
+            <div class="st-tab-header-row" style="margin-bottom: 1.5rem; text-align: center;">
+              <div class="st-tab-header-title" style="margin: 0 auto;">
+                <span class="st-eyebrow">Unsupervised Machine Learning &bull; Density vs Centroids</span>
+                <h1 class="serif-heading text-4xl sm:text-5xl font-light text-sand-900 leading-tight">
+                  Clustering <span class="serif-italic font-normal">Playground</span>
+                </h1>
+                <p class="st-lead-subtitle" style="margin: 0.35rem auto 0.5rem;">
+                  Explore dataset partitioning via K-Means and density-based spatial clustering (DBSCAN).
+                </p>
+              </div>
+            </div>
 
             <!-- Initial Scatter Plot -->
             <div id="cluster-raw-plot"></div>
@@ -866,7 +930,7 @@
                 </label>
               </div>
               <div id="cluster-kdist-plot" style="display: none;"></div>
-              <div id="cluster-kdist-note" style="margin-top: 0.5rem; font-weight: 600; color: #1E88E5; display: none;">
+              <div id="cluster-kdist-note" style="margin-top: 0.5rem; font-weight: 600; color: var(--terracotta-600); display: none;">
                 🧠 Now change the eps and see the result!
               </div>
             </div>
@@ -887,7 +951,17 @@
         <!-- 🌐 Tab 8: Social                                                   -->
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-social">
-          <h1>Social</h1>
+          <div class="st-tab-header-row">
+            <div class="st-tab-header-title">
+              <span class="st-eyebrow">Open-Source Community &amp; Research</span>
+              <h1 class="serif-heading text-4xl sm:text-5xl font-light text-sand-900 leading-tight">
+                Connect &amp; <span class="serif-italic font-normal">Collaborate</span>
+              </h1>
+              <p class="st-lead-subtitle">
+                Connect with me across platforms, explore open-source code repositories, or read my technical publications.
+              </p>
+            </div>
+          </div>
 
           <div style="font-size: 1.1rem; margin: 2rem 0;">
             <p>Connect with me across platforms, view my open-source code repositories, or read my technical AI/ML publications:</p>
@@ -939,18 +1013,23 @@
         <!-- 🔐 Tab 9: Login & Signup (Matches login.py)                        -->
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-login">
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--st-border-card); padding-bottom: 0.8rem; margin-bottom: 1.5rem;">
-            <div>
-              <h2 style="margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">🔐 User Authentication & Access Control</h2>
-              <div style="font-size: 0.88rem; color: var(--st-text-muted);">PostgreSQL JWT Bearer Authentication & Role-Based Access Control (RBAC)</div>
+          <div class="st-tab-header-row">
+            <div class="st-tab-header-title">
+              <span class="st-eyebrow">Identity &bull; Role-Based Access Control</span>
+              <h1 class="serif-heading text-4xl sm:text-5xl font-light text-sand-900 leading-tight">
+                User <span class="serif-italic font-normal">Authentication</span>
+              </h1>
+              <p class="st-lead-subtitle">
+                PostgreSQL JWT Bearer Authentication and persistent session checkpointing.
+              </p>
             </div>
-            <div style="display: flex; gap: 8px; background: rgba(0,0,0,0.06); padding: 4px; border-radius: var(--st-radius);">
-              <button type="button" id="tab-btn-show-login" class="st-btn st-btn-primary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Sign In</button>
-              <button type="button" id="tab-btn-show-signup" class="st-btn" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Register (Sign Up)</button>
+            <div class="st-sublime-switcher">
+              <button type="button" id="tab-btn-show-login" class="st-sublime-btn active">Sign In</button>
+              <button type="button" id="tab-btn-show-signup" class="st-sublime-btn">Register</button>
             </div>
           </div>
 
-          <div class="st-card" style="margin-bottom: 1.5rem; padding: 0.9rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-left: 4px solid var(--st-primary-color);">
+          <div class="st-card" style="margin-bottom: 1.5rem; padding: 0.9rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-left: 4px solid var(--st-primary);">
             <div>
               <div style="font-weight: 600; font-size: 0.95rem; color: var(--st-text-color);">🛡️ PostgreSQL & JWT Identity System</div>
               <div style="font-size: 0.84rem; color: var(--st-text-muted); margin-top: 2px;">Role-Based Access Control and PostgreSQL session checkpointing. Visitors have instant guest access enabled.</div>

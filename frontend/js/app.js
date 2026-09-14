@@ -917,57 +917,57 @@ const ARCH_DATA = {
     protocol: "FastAPI Server-Sent Events (SSE) & Native Full-Duplex WebSocket",
     svg: `<svg viewBox="0 0 860 220" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="display: block; max-height: 240px;">
       <defs>
-        <linearGradient id="gradHPUser" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#EFF6FF"/><stop offset="100%" stop-color="#DBEAFE"/></linearGradient>
-        <linearGradient id="gradHPRoute" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F5F3FF"/><stop offset="100%" stop-color="#EDE9FE"/></linearGradient>
-        <linearGradient id="gradHPPine" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ECFDF5"/><stop offset="100%" stop-color="#D1FAE5"/></linearGradient>
-        <linearGradient id="gradHPEpic" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFFBEB"/><stop offset="100%" stop-color="#FEF3C7"/></linearGradient>
-        <linearGradient id="gradHPGroq" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FEF2F2"/><stop offset="100%" stop-color="#FEE2E2"/></linearGradient>
+        <linearGradient id="gradHPUser" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDFCFB"/><stop offset="100%" stop-color="#F6F3EE"/></linearGradient>
+        <linearGradient id="gradHPRoute" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDF6F4"/><stop offset="100%" stop-color="#F8ECE7"/></linearGradient>
+        <linearGradient id="gradHPPine" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F3F6F4"/><stop offset="100%" stop-color="#E4ECE6"/></linearGradient>
+        <linearGradient id="gradHPEpic" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDFCFB"/><stop offset="100%" stop-color="#F6F3EE"/></linearGradient>
+        <linearGradient id="gradHPGroq" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDF6F4"/><stop offset="100%" stop-color="#F8ECE7"/></linearGradient>
         <linearGradient id="gradHPOut" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F0FDF4"/><stop offset="100%" stop-color="#DCFCE7"/></linearGradient>
-        <marker id="arrowHP" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#3B82F6"/></marker>
-        <marker id="arrowHPGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#10B981"/></marker>
+        <marker id="arrowHP" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#C8684D"/></marker>
+        <marker id="arrowHPGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#4F7560"/></marker>
         <filter id="shadowHP" x="-5%" y="-5%" width="115%" height="115%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08"/></filter>
       </defs>
-      <path d="M 135 110 L 175 110" stroke="#3B82F6" stroke-width="2" marker-end="url(#arrowHP)"/>
-      <path d="M 295 95 C 320 95, 320 50, 345 50" stroke="#3B82F6" stroke-width="2" fill="none" marker-end="url(#arrowHP)"/>
-      <path d="M 295 125 C 320 125, 320 170, 345 170" stroke="#3B82F6" stroke-width="2" fill="none" marker-end="url(#arrowHP)"/>
-      <path d="M 505 50 C 530 50, 530 95, 555 95" stroke="#3B82F6" stroke-width="2" fill="none" marker-end="url(#arrowHP)"/>
-      <path d="M 505 170 C 530 170, 530 125, 555 125" stroke="#3B82F6" stroke-width="2" fill="none" marker-end="url(#arrowHP)"/>
-      <path d="M 695 110 L 735 110" stroke="#10B981" stroke-width="2" marker-end="url(#arrowHPGreen)"/>
+      <path d="M 135 110 L 175 110" stroke="#C8684D" stroke-width="2" marker-end="url(#arrowHP)"/>
+      <path d="M 295 95 C 320 95, 320 50, 345 50" stroke="#C8684D" stroke-width="2" fill="none" marker-end="url(#arrowHP)"/>
+      <path d="M 295 125 C 320 125, 320 170, 345 170" stroke="#C8684D" stroke-width="2" fill="none" marker-end="url(#arrowHP)"/>
+      <path d="M 505 50 C 530 50, 530 95, 555 95" stroke="#C8684D" stroke-width="2" fill="none" marker-end="url(#arrowHP)"/>
+      <path d="M 505 170 C 530 170, 530 125, 555 125" stroke="#C8684D" stroke-width="2" fill="none" marker-end="url(#arrowHP)"/>
+      <path d="M 695 110 L 735 110" stroke="#4F7560" stroke-width="2" marker-end="url(#arrowHPGreen)"/>
       <g filter="url(#shadowHP)">
-        <rect x="15" y="75" width="120" height="70" rx="10" fill="url(#gradHPUser)" stroke="#3B82F6" stroke-width="1.5"/>
-        <text x="75" y="102" font-size="12" font-weight="700" fill="#1E3A8A" text-anchor="middle" font-family="system-ui, sans-serif">User Query</text>
-        <text x="75" y="119" font-size="9.5" fill="#3B82F6" text-anchor="middle" font-family="system-ui, sans-serif">Lore / Comparison</text>
-        <text x="75" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">Natural Language</text>
+        <rect x="15" y="75" width="120" height="70" rx="10" fill="url(#gradHPUser)" stroke="#C8684D" stroke-width="1.5"/>
+        <text x="75" y="102" font-size="12" font-weight="700" fill="#23201B" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">User Query</text>
+        <text x="75" y="119" font-size="9.5" fill="#C8684D" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Lore / Comparison</text>
+        <text x="75" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Natural Language</text>
       </g>
       <g filter="url(#shadowHP)">
-        <rect x="175" y="75" width="120" height="70" rx="10" fill="url(#gradHPRoute)" stroke="#8B5CF6" stroke-width="1.5"/>
-        <text x="235" y="102" font-size="12" font-weight="700" fill="#4C1D95" text-anchor="middle" font-family="system-ui, sans-serif">Intent &amp; Router</text>
-        <text x="235" y="119" font-size="9.5" fill="#7C3AED" text-anchor="middle" font-family="system-ui, sans-serif">Named Entities</text>
-        <text x="235" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">Dual-Domain Split</text>
+        <rect x="175" y="75" width="120" height="70" rx="10" fill="url(#gradHPRoute)" stroke="#8E8270" stroke-width="1.5"/>
+        <text x="235" y="102" font-size="12" font-weight="700" fill="#23201B" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Intent &amp; Router</text>
+        <text x="235" y="119" font-size="9.5" fill="#B2543B" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Named Entities</text>
+        <text x="235" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Dual-Domain Split</text>
       </g>
       <g filter="url(#shadowHP)">
-        <rect x="345" y="15" width="160" height="70" rx="10" fill="url(#gradHPPine)" stroke="#10B981" stroke-width="1.5"/>
-        <text x="425" y="42" font-size="12" font-weight="700" fill="#064E3B" text-anchor="middle" font-family="system-ui, sans-serif">Pinecone Vector DB</text>
-        <text x="425" y="59" font-size="9.5" fill="#059669" text-anchor="middle" font-family="system-ui, sans-serif">Index: hpvdb-openai</text>
-        <text x="425" y="73" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">Top-K MCP Similarity</text>
+        <rect x="345" y="15" width="160" height="70" rx="10" fill="url(#gradHPPine)" stroke="#4F7560" stroke-width="1.5"/>
+        <text x="425" y="42" font-size="12" font-weight="700" fill="#2D4739" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Pinecone Vector DB</text>
+        <text x="425" y="59" font-size="9.5" fill="#4F7560" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Index: hpvdb-openai</text>
+        <text x="425" y="73" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Top-K MCP Similarity</text>
       </g>
       <g filter="url(#shadowHP)">
         <rect x="345" y="135" width="160" height="70" rx="10" fill="url(#gradHPEpic)" stroke="#F59E0B" stroke-width="1.5"/>
-        <text x="425" y="162" font-size="12" font-weight="700" fill="#78350F" text-anchor="middle" font-family="system-ui, sans-serif">Indian Epics KB</text>
-        <text x="425" y="179" font-size="9.5" fill="#D97706" text-anchor="middle" font-family="system-ui, sans-serif">Ramayana / Mahabharata</text>
-        <text x="425" y="193" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">Astras, Karma &amp; Dharma</text>
+        <text x="425" y="162" font-size="12" font-weight="700" fill="#78350F" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Indian Epics KB</text>
+        <text x="425" y="179" font-size="9.5" fill="#D97706" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Ramayana / Mahabharata</text>
+        <text x="425" y="193" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Astras, Karma &amp; Dharma</text>
       </g>
       <g filter="url(#shadowHP)">
         <rect x="555" y="75" width="140" height="70" rx="10" fill="url(#gradHPGroq)" stroke="#EF4444" stroke-width="1.5"/>
-        <text x="625" y="102" font-size="12" font-weight="700" fill="#7F1D1D" text-anchor="middle" font-family="system-ui, sans-serif">Groq LLM Engine</text>
-        <text x="625" y="119" font-size="9.5" fill="#DC2626" text-anchor="middle" font-family="system-ui, sans-serif">Llama-3.3-70B Versatile</text>
-        <text x="625" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">Foil &amp; Mythos Synthesis</text>
+        <text x="625" y="102" font-size="12" font-weight="700" fill="#7F1D1D" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Groq LLM Engine</text>
+        <text x="625" y="119" font-size="9.5" fill="#DC2626" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Llama-3.3-70B Versatile</text>
+        <text x="625" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Foil &amp; Mythos Synthesis</text>
       </g>
       <g filter="url(#shadowHP)">
-        <rect x="735" y="75" width="110" height="70" rx="10" fill="url(#gradHPOut)" stroke="#10B981" stroke-width="1.5"/>
-        <text x="790" y="102" font-size="12" font-weight="700" fill="#064E3B" text-anchor="middle" font-family="system-ui, sans-serif">Stream Egress</text>
-        <text x="790" y="119" font-size="9.5" fill="#059669" text-anchor="middle" font-family="system-ui, sans-serif">SSE / WebSocket</text>
-        <text x="790" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">Live Markdown</text>
+        <rect x="735" y="75" width="110" height="70" rx="10" fill="url(#gradHPOut)" stroke="#4F7560" stroke-width="1.5"/>
+        <text x="790" y="102" font-size="12" font-weight="700" fill="#2D4739" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Stream Egress</text>
+        <text x="790" y="119" font-size="9.5" fill="#4F7560" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">SSE / WebSocket</text>
+        <text x="790" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Live Markdown</text>
       </g>
     </svg>`,
     steps: [
@@ -1003,63 +1003,63 @@ const ARCH_DATA = {
     protocol: "LangGraph StateGraph + Real-time Streaming WebSocket",
     svg: `<svg viewBox="0 0 860 220" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="display: block; max-height: 240px;">
       <defs>
-        <linearGradient id="gradTRPrompt" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#EFF6FF"/><stop offset="100%" stop-color="#DBEAFE"/></linearGradient>
-        <linearGradient id="gradTRSuper" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F5F3FF"/><stop offset="100%" stop-color="#EDE9FE"/></linearGradient>
+        <linearGradient id="gradTRPrompt" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDFCFB"/><stop offset="100%" stop-color="#F6F3EE"/></linearGradient>
+        <linearGradient id="gradTRSuper" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDF6F4"/><stop offset="100%" stop-color="#F8ECE7"/></linearGradient>
         <linearGradient id="gradTRBnb" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFF1F2"/><stop offset="100%" stop-color="#FFE4E6"/></linearGradient>
         <linearGradient id="gradTRMeteo" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F0FDF4"/><stop offset="100%" stop-color="#DCFCE7"/></linearGradient>
-        <linearGradient id="gradTRWeb" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFFBEB"/><stop offset="100%" stop-color="#FEF3C7"/></linearGradient>
-        <linearGradient id="gradTRAggr" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ECFDF5"/><stop offset="100%" stop-color="#D1FAE5"/></linearGradient>
-        <linearGradient id="gradTROut" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#EFF6FF"/><stop offset="100%" stop-color="#DBEAFE"/></linearGradient>
-        <marker id="arrowTR" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#3B82F6"/></marker>
-        <marker id="arrowTRGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#10B981"/></marker>
+        <linearGradient id="gradTRWeb" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDFCFB"/><stop offset="100%" stop-color="#F6F3EE"/></linearGradient>
+        <linearGradient id="gradTRAggr" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F3F6F4"/><stop offset="100%" stop-color="#E4ECE6"/></linearGradient>
+        <linearGradient id="gradTROut" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDFCFB"/><stop offset="100%" stop-color="#F6F3EE"/></linearGradient>
+        <marker id="arrowTR" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#C8684D"/></marker>
+        <marker id="arrowTRGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#4F7560"/></marker>
         <filter id="shadowTR" x="-5%" y="-5%" width="115%" height="115%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08"/></filter>
       </defs>
-      <path d="M 135 110 L 175 110" stroke="#3B82F6" stroke-width="2" marker-end="url(#arrowTR)"/>
-      <path d="M 315 90 C 335 90, 335 40, 355 40" stroke="#3B82F6" stroke-width="2" fill="none" marker-end="url(#arrowTR)"/>
-      <path d="M 315 110 L 355 110" stroke="#3B82F6" stroke-width="2" marker-end="url(#arrowTR)"/>
-      <path d="M 315 130 C 335 130, 335 180, 355 180" stroke="#3B82F6" stroke-width="2" fill="none" marker-end="url(#arrowTR)"/>
-      <path d="M 505 40 C 525 40, 525 90, 545 90" stroke="#3B82F6" stroke-width="2" fill="none" marker-end="url(#arrowTR)"/>
-      <path d="M 505 110 L 545 110" stroke="#3B82F6" stroke-width="2" marker-end="url(#arrowTR)"/>
-      <path d="M 505 180 C 525 180, 525 130, 545 130" stroke="#3B82F6" stroke-width="2" fill="none" marker-end="url(#arrowTR)"/>
-      <path d="M 685 110 L 725 110" stroke="#10B981" stroke-width="2" marker-end="url(#arrowTRGreen)"/>
+      <path d="M 135 110 L 175 110" stroke="#C8684D" stroke-width="2" marker-end="url(#arrowTR)"/>
+      <path d="M 315 90 C 335 90, 335 40, 355 40" stroke="#C8684D" stroke-width="2" fill="none" marker-end="url(#arrowTR)"/>
+      <path d="M 315 110 L 355 110" stroke="#C8684D" stroke-width="2" marker-end="url(#arrowTR)"/>
+      <path d="M 315 130 C 335 130, 335 180, 355 180" stroke="#C8684D" stroke-width="2" fill="none" marker-end="url(#arrowTR)"/>
+      <path d="M 505 40 C 525 40, 525 90, 545 90" stroke="#C8684D" stroke-width="2" fill="none" marker-end="url(#arrowTR)"/>
+      <path d="M 505 110 L 545 110" stroke="#C8684D" stroke-width="2" marker-end="url(#arrowTR)"/>
+      <path d="M 505 180 C 525 180, 525 130, 545 130" stroke="#C8684D" stroke-width="2" fill="none" marker-end="url(#arrowTR)"/>
+      <path d="M 685 110 L 725 110" stroke="#4F7560" stroke-width="2" marker-end="url(#arrowTRGreen)"/>
       <g filter="url(#shadowTR)">
-        <rect x="15" y="75" width="120" height="70" rx="10" fill="url(#gradTRPrompt)" stroke="#3B82F6" stroke-width="1.5"/>
-        <text x="75" y="102" font-size="12" font-weight="700" fill="#1E3A8A" text-anchor="middle" font-family="system-ui, sans-serif">Travel Request</text>
-        <text x="75" y="119" font-size="9.5" fill="#3B82F6" text-anchor="middle" font-family="system-ui, sans-serif">Destination &amp; Dates</text>
-        <text x="75" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">Budget &amp; Guests</text>
+        <rect x="15" y="75" width="120" height="70" rx="10" fill="url(#gradTRPrompt)" stroke="#C8684D" stroke-width="1.5"/>
+        <text x="75" y="102" font-size="12" font-weight="700" fill="#23201B" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Travel Request</text>
+        <text x="75" y="119" font-size="9.5" fill="#C8684D" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Destination &amp; Dates</text>
+        <text x="75" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Budget &amp; Guests</text>
       </g>
       <g filter="url(#shadowTR)">
-        <rect x="175" y="75" width="140" height="70" rx="10" fill="url(#gradTRSuper)" stroke="#8B5CF6" stroke-width="1.5"/>
-        <text x="245" y="102" font-size="12" font-weight="700" fill="#4C1D95" text-anchor="middle" font-family="system-ui, sans-serif">Supervisor Graph</text>
-        <text x="245" y="119" font-size="9.5" fill="#7C3AED" text-anchor="middle" font-family="system-ui, sans-serif">LangGraph StateFlow</text>
-        <text x="245" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">Parallel Tool Planner</text>
+        <rect x="175" y="75" width="140" height="70" rx="10" fill="url(#gradTRSuper)" stroke="#8E8270" stroke-width="1.5"/>
+        <text x="245" y="102" font-size="12" font-weight="700" fill="#23201B" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Supervisor Graph</text>
+        <text x="245" y="119" font-size="9.5" fill="#B2543B" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">LangGraph StateFlow</text>
+        <text x="245" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Parallel Tool Planner</text>
       </g>
       <g filter="url(#shadowTR)">
         <rect x="355" y="12" width="150" height="56" rx="8" fill="url(#gradTRBnb)" stroke="#E11D48" stroke-width="1.5"/>
-        <text x="430" y="34" font-size="11" font-weight="700" fill="#881337" text-anchor="middle" font-family="system-ui, sans-serif">Airbnb MCP Server</text>
-        <text x="430" y="50" font-size="9" fill="#BE123C" text-anchor="middle" font-family="system-ui, sans-serif">Real Stays, Prices &amp; Rating</text>
+        <text x="430" y="34" font-size="11" font-weight="700" fill="#881337" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Airbnb MCP Server</text>
+        <text x="430" y="50" font-size="9" fill="#BE123C" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Real Stays, Prices &amp; Rating</text>
       </g>
       <g filter="url(#shadowTR)">
         <rect x="355" y="82" width="150" height="56" rx="8" fill="url(#gradTRMeteo)" stroke="#059669" stroke-width="1.5"/>
-        <text x="430" y="104" font-size="11" font-weight="700" fill="#064E3B" text-anchor="middle" font-family="system-ui, sans-serif">Open-Meteo Weather</text>
-        <text x="430" y="120" font-size="9" fill="#047857" text-anchor="middle" font-family="system-ui, sans-serif">7-Day Hourly Forecast</text>
+        <text x="430" y="104" font-size="11" font-weight="700" fill="#2D4739" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Open-Meteo Weather</text>
+        <text x="430" y="120" font-size="9" fill="#047857" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">7-Day Hourly Forecast</text>
       </g>
       <g filter="url(#shadowTR)">
         <rect x="355" y="152" width="150" height="56" rx="8" fill="url(#gradTRWeb)" stroke="#D97706" stroke-width="1.5"/>
-        <text x="430" y="174" font-size="11" font-weight="700" fill="#78350F" text-anchor="middle" font-family="system-ui, sans-serif">Attractions &amp; Dining</text>
-        <text x="430" y="190" font-size="9" fill="#B45309" text-anchor="middle" font-family="system-ui, sans-serif">DuckDuckGo / Tavily Search</text>
+        <text x="430" y="174" font-size="11" font-weight="700" fill="#78350F" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Attractions &amp; Dining</text>
+        <text x="430" y="190" font-size="9" fill="#B45309" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">DuckDuckGo / Tavily Search</text>
       </g>
       <g filter="url(#shadowTR)">
-        <rect x="545" y="75" width="140" height="70" rx="10" fill="url(#gradTRAggr)" stroke="#10B981" stroke-width="1.5"/>
-        <text x="615" y="102" font-size="12" font-weight="700" fill="#064E3B" text-anchor="middle" font-family="system-ui, sans-serif">State Aggregator</text>
-        <text x="615" y="119" font-size="9.5" fill="#059669" text-anchor="middle" font-family="system-ui, sans-serif">Merge Constraints</text>
-        <text x="615" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">Day-by-Day Optimizer</text>
+        <rect x="545" y="75" width="140" height="70" rx="10" fill="url(#gradTRAggr)" stroke="#4F7560" stroke-width="1.5"/>
+        <text x="615" y="102" font-size="12" font-weight="700" fill="#2D4739" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">State Aggregator</text>
+        <text x="615" y="119" font-size="9.5" fill="#4F7560" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Merge Constraints</text>
+        <text x="615" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Day-by-Day Optimizer</text>
       </g>
       <g filter="url(#shadowTR)">
-        <rect x="725" y="75" width="120" height="70" rx="10" fill="url(#gradTROut)" stroke="#3B82F6" stroke-width="1.5"/>
-        <text x="785" y="102" font-size="12" font-weight="700" fill="#1E3A8A" text-anchor="middle" font-family="system-ui, sans-serif">Trip Itinerary</text>
-        <text x="785" y="119" font-size="9.5" fill="#2563EB" text-anchor="middle" font-family="system-ui, sans-serif">Interactive Plan</text>
-        <text x="785" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">Airbnb Cards + Weather</text>
+        <rect x="725" y="75" width="120" height="70" rx="10" fill="url(#gradTROut)" stroke="#C8684D" stroke-width="1.5"/>
+        <text x="785" y="102" font-size="12" font-weight="700" fill="#23201B" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Trip Itinerary</text>
+        <text x="785" y="119" font-size="9.5" fill="#2563EB" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Interactive Plan</text>
+        <text x="785" y="133" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Airbnb Cards + Weather</text>
       </g>
     </svg>`,
     steps: [
@@ -1095,58 +1095,58 @@ const ARCH_DATA = {
     protocol: "WebRTC PeerConnection (Opus 48kHz) + Ultra-low Latency Media Plane",
     svg: `<svg viewBox="0 0 860 220" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="display: block; max-height: 240px;">
       <defs>
-        <linearGradient id="gradVCMic" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#EFF6FF"/><stop offset="100%" stop-color="#DBEAFE"/></linearGradient>
-        <linearGradient id="gradVCSfu" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F5F3FF"/><stop offset="100%" stop-color="#EDE9FE"/></linearGradient>
-        <linearGradient id="gradVCVad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFFBEB"/><stop offset="100%" stop-color="#FEF3C7"/></linearGradient>
-        <linearGradient id="gradVCStt" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ECFDF5"/><stop offset="100%" stop-color="#D1FAE5"/></linearGradient>
-        <linearGradient id="gradVCLlm" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FEF2F2"/><stop offset="100%" stop-color="#FEE2E2"/></linearGradient>
+        <linearGradient id="gradVCMic" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDFCFB"/><stop offset="100%" stop-color="#F6F3EE"/></linearGradient>
+        <linearGradient id="gradVCSfu" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDF6F4"/><stop offset="100%" stop-color="#F8ECE7"/></linearGradient>
+        <linearGradient id="gradVCVad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDFCFB"/><stop offset="100%" stop-color="#F6F3EE"/></linearGradient>
+        <linearGradient id="gradVCStt" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F3F6F4"/><stop offset="100%" stop-color="#E4ECE6"/></linearGradient>
+        <linearGradient id="gradVCLlm" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDF6F4"/><stop offset="100%" stop-color="#F8ECE7"/></linearGradient>
         <linearGradient id="gradVCTts" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDF4FF"/><stop offset="100%" stop-color="#FAE8FF"/></linearGradient>
-        <marker id="arrowVC" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#3B82F6"/></marker>
-        <marker id="arrowVCReturn" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#8B5CF6"/></marker>
+        <marker id="arrowVC" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#C8684D"/></marker>
+        <marker id="arrowVCReturn" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#8E8270"/></marker>
         <filter id="shadowVC" x="-5%" y="-5%" width="115%" height="115%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08"/></filter>
       </defs>
-      <path d="M 125 90 L 155 90" stroke="#3B82F6" stroke-width="2" marker-end="url(#arrowVC)"/>
-      <path d="M 275 90 L 305 90" stroke="#3B82F6" stroke-width="2" marker-end="url(#arrowVC)"/>
-      <path d="M 425 90 L 455 90" stroke="#3B82F6" stroke-width="2" marker-end="url(#arrowVC)"/>
-      <path d="M 575 90 L 605 90" stroke="#3B82F6" stroke-width="2" marker-end="url(#arrowVC)"/>
-      <path d="M 725 90 L 755 90" stroke="#3B82F6" stroke-width="2" marker-end="url(#arrowVC)"/>
-      <path d="M 805 125 C 805 190, 215 190, 215 130" stroke="#8B5CF6" stroke-width="2" stroke-dasharray="4,4" fill="none" marker-end="url(#arrowVCReturn)"/>
-      <text x="510" y="180" font-size="10" font-weight="600" fill="#7C3AED" text-anchor="middle" font-family="system-ui, sans-serif">⚡ Full-Duplex WebRTC Audio Return Stream (&lt;100ms TTFB)</text>
+      <path d="M 125 90 L 155 90" stroke="#C8684D" stroke-width="2" marker-end="url(#arrowVC)"/>
+      <path d="M 275 90 L 305 90" stroke="#C8684D" stroke-width="2" marker-end="url(#arrowVC)"/>
+      <path d="M 425 90 L 455 90" stroke="#C8684D" stroke-width="2" marker-end="url(#arrowVC)"/>
+      <path d="M 575 90 L 605 90" stroke="#C8684D" stroke-width="2" marker-end="url(#arrowVC)"/>
+      <path d="M 725 90 L 755 90" stroke="#C8684D" stroke-width="2" marker-end="url(#arrowVC)"/>
+      <path d="M 805 125 C 805 190, 215 190, 215 130" stroke="#8E8270" stroke-width="2" stroke-dasharray="4,4" fill="none" marker-end="url(#arrowVCReturn)"/>
+      <text x="510" y="180" font-size="10" font-weight="600" fill="#B2543B" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">⚡ Full-Duplex WebRTC Audio Return Stream (&lt;100ms TTFB)</text>
       <g filter="url(#shadowVC)">
-        <rect x="15" y="55" width="110" height="70" rx="10" fill="url(#gradVCMic)" stroke="#3B82F6" stroke-width="1.5"/>
-        <text x="70" y="82" font-size="12" font-weight="700" fill="#1E3A8A" text-anchor="middle" font-family="system-ui, sans-serif">Browser Mic</text>
-        <text x="70" y="99" font-size="9.5" fill="#2563EB" text-anchor="middle" font-family="system-ui, sans-serif">Opus 48kHz Audio</text>
-        <text x="70" y="113" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">WebRTC Client</text>
+        <rect x="15" y="55" width="110" height="70" rx="10" fill="url(#gradVCMic)" stroke="#C8684D" stroke-width="1.5"/>
+        <text x="70" y="82" font-size="12" font-weight="700" fill="#23201B" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Browser Mic</text>
+        <text x="70" y="99" font-size="9.5" fill="#2563EB" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Opus 48kHz Audio</text>
+        <text x="70" y="113" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">WebRTC Client</text>
       </g>
       <g filter="url(#shadowVC)">
-        <rect x="155" y="55" width="120" height="70" rx="10" fill="url(#gradVCSfu)" stroke="#8B5CF6" stroke-width="1.5"/>
-        <text x="215" y="82" font-size="12" font-weight="700" fill="#4C1D95" text-anchor="middle" font-family="system-ui, sans-serif">LiveKit SFU</text>
-        <text x="215" y="99" font-size="9.5" fill="#7C3AED" text-anchor="middle" font-family="system-ui, sans-serif">Cloud Media Mesh</text>
-        <text x="215" y="113" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">&lt;15ms Latency</text>
+        <rect x="155" y="55" width="120" height="70" rx="10" fill="url(#gradVCSfu)" stroke="#8E8270" stroke-width="1.5"/>
+        <text x="215" y="82" font-size="12" font-weight="700" fill="#23201B" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">LiveKit SFU</text>
+        <text x="215" y="99" font-size="9.5" fill="#B2543B" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Cloud Media Mesh</text>
+        <text x="215" y="113" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">&lt;15ms Latency</text>
       </g>
       <g filter="url(#shadowVC)">
         <rect x="305" y="55" width="120" height="70" rx="10" fill="url(#gradVCVad)" stroke="#F59E0B" stroke-width="1.5"/>
-        <text x="365" y="82" font-size="12" font-weight="700" fill="#78350F" text-anchor="middle" font-family="system-ui, sans-serif">Silero VAD</text>
-        <text x="365" y="99" font-size="9.5" fill="#D97706" text-anchor="middle" font-family="system-ui, sans-serif">30ms Voice Activity</text>
-        <text x="365" y="113" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">BVC Gate + Interrupts</text>
+        <text x="365" y="82" font-size="12" font-weight="700" fill="#78350F" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Silero VAD</text>
+        <text x="365" y="99" font-size="9.5" fill="#D97706" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">30ms Voice Activity</text>
+        <text x="365" y="113" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">BVC Gate + Interrupts</text>
       </g>
       <g filter="url(#shadowVC)">
-        <rect x="455" y="55" width="120" height="70" rx="10" fill="url(#gradVCStt)" stroke="#10B981" stroke-width="1.5"/>
-        <text x="515" y="82" font-size="12" font-weight="700" fill="#064E3B" text-anchor="middle" font-family="system-ui, sans-serif">Deepgram STT</text>
-        <text x="515" y="99" font-size="9.5" fill="#059669" text-anchor="middle" font-family="system-ui, sans-serif">Nova-2 Streaming</text>
-        <text x="515" y="113" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">Instant Words</text>
+        <rect x="455" y="55" width="120" height="70" rx="10" fill="url(#gradVCStt)" stroke="#4F7560" stroke-width="1.5"/>
+        <text x="515" y="82" font-size="12" font-weight="700" fill="#2D4739" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Deepgram STT</text>
+        <text x="515" y="99" font-size="9.5" fill="#4F7560" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Nova-2 Streaming</text>
+        <text x="515" y="113" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Instant Words</text>
       </g>
       <g filter="url(#shadowVC)">
         <rect x="605" y="55" width="120" height="70" rx="10" fill="url(#gradVCLlm)" stroke="#EF4444" stroke-width="1.5"/>
-        <text x="665" y="82" font-size="12" font-weight="700" fill="#7F1D1D" text-anchor="middle" font-family="system-ui, sans-serif">Groq LLM</text>
-        <text x="665" y="99" font-size="9.5" fill="#DC2626" text-anchor="middle" font-family="system-ui, sans-serif">Llama-3.3-70B</text>
-        <text x="665" y="113" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">&gt;300 Tok/s + Tools</text>
+        <text x="665" y="82" font-size="12" font-weight="700" fill="#7F1D1D" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Groq LLM</text>
+        <text x="665" y="99" font-size="9.5" fill="#DC2626" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Llama-3.3-70B</text>
+        <text x="665" y="113" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">&gt;300 Tok/s + Tools</text>
       </g>
       <g filter="url(#shadowVC)">
         <rect x="755" y="55" width="95" height="70" rx="10" fill="url(#gradVCTts)" stroke="#C026D3" stroke-width="1.5"/>
-        <text x="802" y="82" font-size="12" font-weight="700" fill="#701A75" text-anchor="middle" font-family="system-ui, sans-serif">Cartesia TTS</text>
-        <text x="802" y="99" font-size="9.5" fill="#A21CAF" text-anchor="middle" font-family="system-ui, sans-serif">Sonic-3 (~90ms)</text>
-        <text x="802" y="113" font-size="9" fill="#6B7280" text-anchor="middle" font-family="system-ui, sans-serif">Audio &amp; 3D Orb</text>
+        <text x="802" y="82" font-size="12" font-weight="700" fill="#701A75" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Cartesia TTS</text>
+        <text x="802" y="99" font-size="9.5" fill="#A21CAF" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Sonic-3 (~90ms)</text>
+        <text x="802" y="113" font-size="9" fill="#6B7280" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif">Audio &amp; 3D Orb</text>
       </g>
     </svg>`,
     steps: [
