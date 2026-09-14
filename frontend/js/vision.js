@@ -3,7 +3,7 @@
  * Matches exact Streamlit functionality and side-by-side comparison UI.
  */
 
-import { API_BASE } from "./api.js";
+import { API_BASE, getAuthToken } from "./api.js";
 
 /**
  * 4-Model Image Classifier (Screenshot 5 Match)
@@ -49,6 +49,7 @@ export function initImageClassifier() {
       uploadedImg.src = e.target.result;
       resultsArea.style.display = "block";
       resetModelCardsToLoading();
+      resultsArea.scrollIntoView({ behavior: "smooth", block: "nearest" });
     };
     reader.readAsDataURL(file);
 
@@ -56,9 +57,17 @@ export function initImageClassifier() {
     const formData = new FormData();
     formData.append("file", file);
 
+    const token = getAuthToken();
+    const headers = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+
     try {
-      const res = await fetch(`${API_BASE}/vision/classify-all`, {
+      const res = await fetch(`${API_BASE}/vision/classify-all${tokenParam}`, {
         method: "POST",
+        headers,
         body: formData
       });
       if (!res.ok) throw new Error(`Evaluation failed: ${res.statusText}`);
@@ -192,9 +201,17 @@ export function initYoloLogo() {
     const formData = new FormData();
     formData.append("file", file);
 
+    const token = getAuthToken();
+    const headers = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+
     try {
-      const res = await fetch(`${API_BASE}/vision/yolo`, {
+      const res = await fetch(`${API_BASE}/vision/yolo${tokenParam}`, {
         method: "POST",
+        headers,
         body: formData
       });
       if (!res.ok) throw new Error(`YOLO detection failed: ${res.statusText}`);
