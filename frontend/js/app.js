@@ -26,7 +26,7 @@ import { initTourAgent } from "./tour.js?v=3.6";
 import { initHarryScholar } from "./harry.js?v=3.6";
 import { initStockScreener } from "./stock.js?v=3.6";
 import { initYoloLogo, initImageClassifier } from "./vision.js?v=3.6";
-import { initClusterSandbox } from "./cluster.js?v=3.6";
+import { initClusterSandbox } from "./cluster.js?v=3.7";
 import { initVoiceAgent } from "./voice.js?v=3.6";
 
 // Dynamic sidebar images matching section themes
@@ -49,7 +49,6 @@ const PROTECTED_TABS = [
   "tab-voice",
   "tab-yolo",
   "tab-classifier",
-  "tab-cluster",
   "tab-social"
 ];
 
@@ -171,6 +170,10 @@ document.addEventListener("DOMContentLoaded", () => {
       // Trigger dynamic stock catalog load if navigating to Stock Screener
       if (tabId === "tab-stock") {
         window.dispatchEvent(new CustomEvent("portfolio:load_stock_catalog"));
+      }
+      // Trigger cluster sandbox plot check and resize
+      if (tabId === "tab-cluster") {
+        window.dispatchEvent(new CustomEvent("portfolio:activate_cluster"));
       }
     }
 

@@ -149,7 +149,8 @@ export async function fetchAPI(endpoint, options = {}) {
                           endpoint.includes("/auth/login") || 
                           endpoint.includes("/auth/signup") ||
                           endpoint.includes("/auth/forgot-password") ||
-                          endpoint.includes("/auth/reset-password");
+                          endpoint.includes("/auth/reset-password") ||
+                          endpoint.includes("/cluster");
 
   if (!token && !isPublicEndpoint) {
     window.dispatchEvent(new CustomEvent("portfolio:unauthorized", { detail: { endpoint } }));
