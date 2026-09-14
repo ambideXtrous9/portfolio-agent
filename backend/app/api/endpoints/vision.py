@@ -172,12 +172,16 @@ def detect_brand_via_vision(image: Image.Image) -> Tuple[str, float]:
         classes_str = ", ".join(BRAND_CLASSES)
         prompt = (
             f"Identify which brand logo appears in this image from this exact list: {classes_str}. "
-            f"If none of these brands appear, respond with None. Output only the brand name."
+            f"If none of these brands appear or if the image has no logo, respond with None. Output only the brand name."
         )
 
         resp = client.chat.completions.create(
             model="qwen/qwen3.6-27b",
             messages=[
+                {
+                    "role": "system",
+                    "content": "You are a brand logo recognition expert. You respond ONLY with the detected brand name from the allowed list, or 'None'. No reasoning, no thoughts."
+                },
                 {
                     "role": "user",
                     "content": [
@@ -187,19 +191,17 @@ def detect_brand_via_vision(image: Image.Image) -> Tuple[str, float]:
                 }
             ],
             temperature=0.1,
-            max_tokens=600
+            max_tokens=300
         )
 
         content = resp.choices[0].message.content or ""
         clean_text = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+        if not clean_text or clean_text.lower() == "none":
+            return ("None", 0.0)
 
         for brand in BRAND_CLASSES:
             if re.search(r"\b" + re.escape(brand) + r"\b", clean_text, re.IGNORECASE):
                 return (brand, 0.94)
-
-        for brand in BRAND_CLASSES:
-            if re.search(r"\b" + re.escape(brand) + r"\b", content, re.IGNORECASE):
-                return (brand, 0.91)
 
     except Exception as e:
         print(f"⚠️ Vision detection note: {e}")
@@ -402,20 +404,19 @@ async def detect_logo_yolo(
     if not yolo_loaded:
         # High quality visual bounding box fallback with brand detection
         detected_brand, conf = detect_brand_via_vision(image)
-        draw = ImageDraw.Draw(annotated_img)
-        w, h = image.size
-        box = [w * 0.20, h * 0.20, w * 0.80, h * 0.80]
-        label_text = f"{detected_brand} ({round(conf * 100, 1)}%)" if detected_brand != "None" else "Brand Logo (94.2%)"
-        detected_label = detected_brand if detected_brand != "None" else "Brand Logo"
-        conf_val = conf if conf > 0 else 0.942
+        if detected_brand and detected_brand != "None":
+            draw = ImageDraw.Draw(annotated_img)
+            w, h = image.size
+            box = [w * 0.20, h * 0.20, w * 0.80, h * 0.80]
+            label_text = f"{detected_brand} ({round(conf * 100, 1)}%)"
 
-        draw.rectangle(box, outline="#00FF88", width=4)
-        draw.text((box[0] + 8, box[1] + 8), label_text, fill="#00FF88")
-        detections.append(BoundingBox(
-            label=detected_label,
-            confidence=conf_val,
-            box=box
-        ))
+            draw.rectangle(box, outline="#00FF88", width=4)
+            draw.text((box[0] + 8, box[1] + 8), label_text, fill="#00FF88")
+            detections.append(BoundingBox(
+                label=detected_brand,
+                confidence=conf,
+                box=box
+            ))
 
     # Convert annotated image to Base64 data URL
     buffered = io.BytesIO()
