@@ -5,7 +5,8 @@
   "cleanUrls": false,
   "functions": {
     "api/index.py": {
-      "excludeFiles": "{backend/models/**,frontend/**,*.pt,*.ckpt,.github/**,docker-compose*.yml,Dockerfile,.env*}"
+      "excludeFiles": "{backend/models/**,frontend/**,*.pt,*.ckpt,.github/**,docker-compose*.yml,Dockerfile,.env*}",
+      "maxDuration": 60
     }
   },
   "rewrites": [

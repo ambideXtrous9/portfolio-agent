@@ -4,18 +4,21 @@
 
 // Retrieve or compute active Backend API Base
 export function getAPIBase() {
+  const isLocal = window.location.hostname === "localhost" ||
+                  window.location.hostname === "127.0.0.1" ||
+                  window.location.hostname.startsWith("192.168.");
+
   try {
     const custom = localStorage.getItem("ai_portfolio_backend_url");
     if (custom && custom.trim()) {
       const clean = custom.trim().replace(/\/+$/, "");
+      if (!isLocal && (clean.includes("localhost") || clean.includes("127.0.0.1") || clean.startsWith("http://"))) {
+        // Discard stale localhost override when on public HTTPS deployment to prevent mixed content
+        return "/api";
+      }
       return clean.endsWith("/api") ? clean : `${clean}/api`;
     }
   } catch (_) {}
-
-  // Auto-detect local environments
-  const isLocal = window.location.hostname === "localhost" ||
-                  window.location.hostname === "127.0.0.1" ||
-                  window.location.hostname.startsWith("192.168.");
 
   if (isLocal) {
     if (window.location.port === "8000" || window.location.port === "3000" || window.location.port === "80") {

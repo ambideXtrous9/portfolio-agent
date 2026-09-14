@@ -151,7 +151,7 @@ def get_cached_model(model_name: str):
 
 def detect_brand_via_vision(image: Image.Image) -> Tuple[str, float]:
     """
-    Identifies brand from image using Groq Vision (qwen/qwen3.6-27b)
+    Identifies brand from image using Groq Vision (qwen/qwen3.8-27b with qwen/qwen3.6-27b fallback)
     when local PyTorch model weights are unavailable or in serverless environment.
     """
     groq_api_key = os.getenv("GROQ_API_KEY")
@@ -175,28 +175,37 @@ def detect_brand_via_vision(image: Image.Image) -> Tuple[str, float]:
             f"If none of these brands appear or if the image has no logo, respond with None. Output only the brand name."
         )
 
-        resp = client.chat.completions.create(
-            model="qwen/qwen3.6-27b",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a brand logo recognition expert. You respond ONLY with the detected brand name from the allowed list, or 'None'. No reasoning, no thoughts."
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_str}"}}
-                    ]
-                }
-            ],
-            temperature=0.1,
-            max_tokens=800
-        )
+        models_to_try = ["qwen/qwen3.8-27b", "qwen/qwen3.6-27b"]
+        answer = ""
 
-        content = resp.choices[0].message.content or ""
-        parts = content.split("</think>")
-        answer = parts[-1].strip() if len(parts) > 1 else content.strip().split("\n")[-1].strip()
+        for m_name in models_to_try:
+            try:
+                resp = client.chat.completions.create(
+                    model=m_name,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are a brand logo recognition expert. You respond ONLY with the detected brand name from the allowed list, or 'None'. No reasoning, no thoughts."
+                        },
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": prompt},
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_str}"}}
+                            ]
+                        }
+                    ],
+                    temperature=0.1,
+                    max_tokens=600
+                )
+                content = resp.choices[0].message.content or ""
+                parts = content.split("</think>")
+                answer = parts[-1].strip() if len(parts) > 1 else content.strip().split("\n")[-1].strip()
+                if answer:
+                    break
+            except Exception as m_err:
+                print(f"⚠️ Groq model {m_name} note: {m_err}")
+                continue
 
         if not answer or answer.lower() == "none":
             return ("None", 0.0)
@@ -409,11 +418,30 @@ async def detect_logo_yolo(
         if detected_brand and detected_brand != "None":
             draw = ImageDraw.Draw(annotated_img)
             w, h = image.size
-            box = [w * 0.20, h * 0.20, w * 0.80, h * 0.80]
-            label_text = f"{detected_brand} ({round(conf * 100, 1)}%)"
+            box = [w * 0.15, h * 0.15, w * 0.85, h * 0.85]
+            label_text = f" {detected_brand} ({round(conf * 100, 1)}%) "
 
-            draw.rectangle(box, outline="#00FF88", width=4)
-            draw.text((box[0] + 8, box[1] + 8), label_text, fill="#00FF88")
+            line_w = max(3, int(min(w, h) * 0.008))
+            draw.rectangle(box, outline="#00FF88", width=line_w)
+
+            try:
+                from PIL import ImageFont
+                font_size = max(14, int(min(w, h) * 0.035))
+                font = ImageFont.load_default(size=font_size)
+            except Exception:
+                font = None
+
+            text_pos = (box[0] + 6, box[1] + 6)
+            if font and hasattr(draw, "textbbox"):
+                try:
+                    tb = draw.textbbox(text_pos, label_text, font=font)
+                    draw.rectangle(tb, fill="#00FF88")
+                    draw.text(text_pos, label_text, fill="#000000", font=font)
+                except Exception:
+                    draw.text(text_pos, label_text, fill="#00FF88", font=font)
+            else:
+                draw.text(text_pos, label_text, fill="#00FF88")
+
             detections.append(BoundingBox(
                 label=detected_brand,
                 confidence=conf,
