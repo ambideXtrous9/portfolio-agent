@@ -2568,14 +2568,14 @@ canvas#voiceOrbCanvas {
 .st-github-contrib-map {
   width: 100%;
   border-radius: var(--st-radius-lg);
-  box-shadow: 0 4px 18px rgba(60, 50, 40, 0.03) !important;
+  box-shadow: none !important;
   background: #FFFFFF;
   border: 1px solid var(--sand-200);
   display: block;
 }
 
 #tab-home img:not(.glowing-image) {
-  box-shadow: 0 4px 20px rgba(60, 50, 40, 0.06);
+  box-shadow: none !important;
 }
 
 /* Wide layout for agent chats */
