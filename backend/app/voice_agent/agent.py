@@ -178,15 +178,13 @@ async def EntryPoint(ctx: JobContext):
             prompt_text = (prompt_text or "").strip()
             if prompt_text:
                 logger.info("Triggering generate_reply for user prompt: '%s'", prompt_text)
-                asyncio.create_task(
-                    session.generate_reply(
-                        user_input=prompt_text,
-                        instructions=(
-                            f"The user selected or sent this prompt: '{prompt_text}'. "
-                            "Directly answer their query, calling get_weather or get_news if appropriate. "
-                            "Speak your response naturally and concisely in 1-3 sentences without markdown."
-                        ),
-                    )
+                session.generate_reply(
+                    user_input=prompt_text,
+                    instructions=(
+                        f"The user selected or sent this prompt: '{prompt_text}'. "
+                        "Directly answer their query, calling get_weather or get_news if appropriate. "
+                        "Speak your response naturally and concisely in 1-3 sentences without markdown."
+                    ),
                 )
         except Exception as e:
             logger.warning("Error processing received data packet: %s", e)
