@@ -50,10 +50,10 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -113,15 +113,15 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN || secrets.VERCEL_KEY }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js 22 (Active LTS)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
       - name: Install uv (Required by Vercel Python runtime)
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10.1.0
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
@@ -155,10 +155,10 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN || secrets.VERCEL_KEY }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python 3.12 (For Telegram Alerts)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -177,12 +177,12 @@ jobs:
           PR_ACTION: ${{ github.event.action }}
 
       - name: Setup Node.js 22 (Active LTS)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
       - name: Install uv (Required by Vercel Python runtime)
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10.1.0
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
