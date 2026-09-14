@@ -150,13 +150,33 @@ export function initHarryScholar() {
     }
   });
 
-  // Suggestion action prompts handler
+  // Suggestion action prompts handler: event delegation + direct binding
+  function handlePromptClick(promptElement) {
+    if (!promptElement) return;
+    const q = promptElement.getAttribute("data-query") || promptElement.getAttribute("data-prompt") || promptElement.textContent.trim();
+    if (!q) return;
+
+    if (heroInput) heroInput.value = q;
+    if (bottomInput) bottomInput.value = q;
+    submitHarryQuery(q);
+  }
+
+  // Delegated listener on tab-harry
+  document.getElementById("tab-harry")?.addEventListener("click", (e) => {
+    const chip = e.target.closest(".st-agent-prompt-item, .st-suggestion-chip");
+    if (chip) {
+      e.preventDefault();
+      e.stopPropagation();
+      handlePromptClick(chip);
+    }
+  });
+
+  // Direct listeners for immediate responsiveness
   document.querySelectorAll("#tab-harry .st-agent-prompt-item, #tab-harry .st-suggestion-chip").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      const q = chip.getAttribute("data-query") || chip.textContent.trim();
-      if (q) {
-        submitHarryQuery(q);
-      }
+    chip.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handlePromptClick(chip);
     });
   });
 

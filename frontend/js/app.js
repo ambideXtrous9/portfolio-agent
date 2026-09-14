@@ -21,13 +21,13 @@ import {
   apiResetPassword,
   apiGetChatHistory,
   apiClearChatHistory,
-} from "./api.js";
-import { initTourAgent } from "./tour.js";
-import { initHarryScholar } from "./harry.js";
-import { initStockScreener } from "./stock.js";
-import { initYoloLogo, initImageClassifier } from "./vision.js";
-import { initClusterSandbox } from "./cluster.js";
-import { initVoiceAgent } from "./voice.js";
+} from "./api.js?v=3.5";
+import { initTourAgent } from "./tour.js?v=3.5";
+import { initHarryScholar } from "./harry.js?v=3.5";
+import { initStockScreener } from "./stock.js?v=3.5";
+import { initYoloLogo, initImageClassifier } from "./vision.js?v=3.5";
+import { initClusterSandbox } from "./cluster.js?v=3.5";
+import { initVoiceAgent } from "./voice.js?v=3.5";
 
 // Dynamic sidebar images matching section themes
 const SIDEBAR_IMAGES = {
@@ -157,6 +157,16 @@ document.addEventListener("DOMContentLoaded", () => {
       setTimeout(() => {
         window.dispatchEvent(new Event("resize"));
       }, 50);
+
+      // Wide layout toggle for conversational agent workspaces to utilize full area
+      const blockContainer = document.querySelector(".st-block-container");
+      if (blockContainer) {
+        if (tabId === "tab-tour" || tabId === "tab-harry") {
+          blockContainer.classList.add("st-wide-layout");
+        } else {
+          blockContainer.classList.remove("st-wide-layout");
+        }
+      }
 
       // Trigger dynamic stock catalog load if navigating to Stock Screener
       if (tabId === "tab-stock") {
