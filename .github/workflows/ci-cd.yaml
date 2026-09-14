@@ -115,10 +115,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22 (Active LTS)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install uv (Required by Vercel Python runtime)
         uses: astral-sh/setup-uv@v5
@@ -176,10 +176,10 @@ jobs:
           PR_MERGED: ${{ github.event.pull_request.merged }}
           PR_ACTION: ${{ github.event.action }}
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22 (Active LTS)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install uv (Required by Vercel Python runtime)
         uses: astral-sh/setup-uv@v5

@@ -64,6 +64,7 @@ htmlcov/
 # Node.js
 node_modules/
 nodev20/
+nodev22/
 
 # CI/CD and deployment
 .github/
