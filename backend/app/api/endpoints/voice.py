@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 
 from backend.app.config import settings
-from backend.app.api.deps import get_current_active_user
+from backend.app.api.deps import get_optional_user
 from backend.app.schemas.auth import UserResponse
 try:
     from backend.app.voice_agent.telemetry import is_langfuse_configured
@@ -93,13 +93,17 @@ async def get_voice_token(
     room: Optional[str] = Query(None, description="Target room name"),
     name: Optional[str] = Query(None, description="Participant display name"),
     identity: Optional[str] = Query(None, description="Unique caller identifier"),
-    current_user: UserResponse = Depends(get_current_active_user),
+    current_user: Optional[UserResponse] = Depends(get_optional_user),
 ):
     """Generate and return a LiveKit WebRTC access token via GET request."""
     url = settings.LIVEKIT_URL or os.getenv("LIVEKIT_URL", "wss://my-voice-agent-6wug4ta7.livekit.cloud")
     room_name = (room or "").strip() or f"voice-tour-{uuid.uuid4().hex[:6]}"
-    participant_name = (name or "").strip() or (current_user.full_name or "Traveler")
-    caller_identity = (identity or "").strip() or f"user-{current_user.id[:8]}"
+    if current_user:
+        participant_name = (name or "").strip() or (current_user.full_name or "Traveler")
+        caller_identity = (identity or "").strip() or f"user-{current_user.id[:8]}"
+    else:
+        participant_name = (name or "").strip() or "Guest Traveler"
+        caller_identity = (identity or "").strip() or f"guest-{uuid.uuid4().hex[:6]}"
 
     jwt_token = generate_livekit_token(room_name, participant_name, caller_identity)
     logger.info("Issued LiveKit token for %s in room %s", caller_identity, room_name)
@@ -116,7 +120,7 @@ async def get_voice_token(
 @router.post("/token", response_model=TokenResponse)
 async def post_voice_token(
     payload: TokenRequest,
-    current_user: UserResponse = Depends(get_current_active_user),
+    current_user: Optional[UserResponse] = Depends(get_optional_user),
 ):
     """Generate and return a LiveKit WebRTC access token via POST request."""
     return await get_voice_token(
@@ -129,7 +133,7 @@ async def post_voice_token(
 
 @router.get("/status")
 async def get_voice_status(
-    current_user: UserResponse = Depends(get_current_active_user),
+    current_user: Optional[UserResponse] = Depends(get_optional_user),
 ):
     """Health & configuration status of the LiveKit voice integration."""
     api_key = settings.LIVEKIT_API_KEY or os.getenv("LIVEKIT_API_KEY", "")
@@ -146,7 +150,7 @@ async def get_voice_status(
             "groq_tool_calling": True,
             "stt_fallback": ["AssemblyAI", "Deepgram"],
             "tts_fallback": ["Cartesia Sonic-3", "Inworld"],
-            "tools": [t.name for t in agent_tools],
+            "tools": [getattr(t, "name", getattr(t, "__name__", str(t))) for t in agent_tools],
             "langfuse_observability": is_langfuse_configured(),
         },
     }

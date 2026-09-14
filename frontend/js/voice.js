@@ -300,6 +300,10 @@ export function initVoiceAgent() {
         } catch (e) {}
       });
 
+      room.on(window.LivekitClient.RoomEvent.ParticipantConnected, (participant) => {
+        addTranscript('System', `AI Agent (${participant.identity || 'Agent'}) joined the room.`);
+      });
+
       room.on(window.LivekitClient.RoomEvent.Disconnected, () => {
         disconnectCall();
       });
@@ -307,6 +311,13 @@ export function initVoiceAgent() {
       // Connect to SFU and enable microphone
       await room.connect(url, token);
       await room.localParticipant.setMicrophoneEnabled(true);
+
+      // Check for remote agent presence
+      setTimeout(() => {
+        if (isConnected && room && (!room.remoteParticipants || room.remoteParticipants.size === 0)) {
+          addTranscript('System', '⏳ Live WebRTC room open. Waiting for agent worker to respond. If running locally or on server, start the worker with: python -m backend.app.voice_agent.agent dev');
+        }
+      }, 6000);
 
       // Local microphone analyser
       try {
@@ -321,7 +332,11 @@ export function initVoiceAgent() {
 
     } catch (err) {
       console.error('Call connection error:', err);
-      addTranscript('System', `Connection error: ${err.message}. Make sure your agent worker is running!`);
+      if (err.name === 'NotAllowedError' || (err.message && err.message.toLowerCase().includes('permission'))) {
+        addTranscript('System', 'Microphone access denied. Please allow microphone permissions in your browser.');
+      } else {
+        addTranscript('System', `Connection error: ${err.message || 'Unable to establish WebRTC connection.'}`);
+      }
       disconnectCall();
     }
   }

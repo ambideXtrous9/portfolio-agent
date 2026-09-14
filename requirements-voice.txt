@@ -1,0 +1,6 @@
+# LiveKit Voice Agent Worker Dependencies
+# Used for persistent WebRTC workers (Docker, local, or worker hosts).
+livekit-agents>=1.8.0
+livekit-plugins-silero>=1.8.0
+livekit-plugins-noise-cancellation>=0.3.0
+livekit-plugins-langchain>=1.8.0

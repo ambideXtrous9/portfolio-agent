@@ -9,11 +9,27 @@ import os
 import urllib.parse
 import xml.etree.ElementTree as ET
 import httpx
+try:
+    from langfuse import observe
+except ImportError:
+    def observe(*args, **kwargs):
+        def decorator(fn):
+            return fn
+        if args and callable(args[0]):
+            return args[0]
+        return decorator
+
+try:
+    from langchain_community.tools import DuckDuckGoSearchRun
+    from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+    ddg_news_tool = DuckDuckGoSearchRun(api_wrapper=DuckDuckGoSearchAPIWrapper(max_results=3, source="news"))
+    ddg_text_tool = DuckDuckGoSearchRun(api_wrapper=DuckDuckGoSearchAPIWrapper(max_results=3, source="text"))
+except ImportError:
+    ddg_news_tool = None
+    ddg_text_tool = None
+
 from dotenv import find_dotenv, load_dotenv
-from langchain_community.tools import DuckDuckGoSearchRun
-from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 from langchain_core.tools import tool
-from langfuse import observe
 
 load_dotenv(find_dotenv())
 
@@ -32,11 +48,6 @@ except Exception:
     OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY") or os.getenv("WEATHER_API_KEY")
     TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
-ddg_news_tool = DuckDuckGoSearchRun(api_wrapper=DuckDuckGoSearchAPIWrapper(max_results=3, source="news"))
-ddg_text_tool = DuckDuckGoSearchRun(api_wrapper=DuckDuckGoSearchAPIWrapper(max_results=3, source="text"))
-
-
-@tool
 @observe(name="get_weather")
 async def get_weather(city: str) -> str:
     """Get the current weather and temperature for a given city or location."""
@@ -195,22 +206,25 @@ async def get_news(query: str) -> str:
     except Exception as e:
         logger.warning("Direct ddgs news search failed: %s", e)
 
-    try:
-        results = await ddg_news_tool.ainvoke(sanitized_query)
-        if results and "No good DuckDuckGo search result" not in results and "403 Forbidden" not in results:
-            logger.info("get_news success via ddg_news_tool for: '%s'", sanitized_query)
-            return results
-    except Exception as e:
-        logger.warning("DuckDuckGo news wrapper failed for '%s': %s", sanitized_query, e)
+    if ddg_news_tool:
+        try:
+            results = await ddg_news_tool.ainvoke(sanitized_query)
+            if results and "No good DuckDuckGo search result" not in results and "403 Forbidden" not in results:
+                logger.info("get_news success via ddg_news_tool for: '%s'", sanitized_query)
+                return results
+        except Exception as e:
+            logger.warning("DuckDuckGo news wrapper failed for '%s': %s", sanitized_query, e)
 
-    try:
-        fallback_query = f"{sanitized_query} news"
-        results = await ddg_text_tool.ainvoke(fallback_query)
-        if results and "No good DuckDuckGo search result" not in results:
-            logger.info("get_news success via ddg_text_tool for: '%s'", fallback_query)
-            return results
-    except Exception as e:
-        logger.error("All news search fallbacks exhausted for '%s': %s", sanitized_query, e)
+    if ddg_text_tool:
+        try:
+            fallback_query = f"{sanitized_query} news"
+            results = await ddg_text_tool.ainvoke(fallback_query)
+            if results and "No good DuckDuckGo search result" not in results:
+                logger.info("get_news success via ddg_text_tool for: '%s'", fallback_query)
+                return results
+        except Exception as e:
+            logger.error("All news search fallbacks exhausted for '%s': %s", sanitized_query, e)
+
 
     return f"I couldn't retrieve recent news for '{sanitized_query}' at this time."
 

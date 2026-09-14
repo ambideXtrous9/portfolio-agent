@@ -9,9 +9,17 @@ from langchain_core.messages import BaseMessage, SystemMessage
 from langchain_groq import ChatGroq
 from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode, tools_condition
-from langfuse import observe
+try:
+    from langfuse import observe
+except ImportError:
+    def observe(*args, **kwargs):
+        def decorator(fn):
+            return fn
+        if args and callable(args[0]):
+            return args[0]
+        return decorator
 
+from langgraph.prebuilt import ToolNode, tools_condition
 from backend.app.voice_agent.tools import agent_tools
 
 load_dotenv(find_dotenv())

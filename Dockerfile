@@ -30,13 +30,15 @@ RUN /uv/bin/uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy requirements for optimal layer caching
-COPY requirements.txt .
+COPY requirements.txt requirements-voice.txt* .
 
 # Install CPU-optimized torch, torchvision and requirements
 RUN /uv/bin/uv pip install --no-cache torch --index-url https://download.pytorch.org/whl/cpu && \
     /uv/bin/uv pip install --no-cache torchvision --index-url https://download.pytorch.org/whl/cpu && \
     /uv/bin/uv pip install --no-cache timm pytorch-lightning torchmetrics ultralytics && \
-    /uv/bin/uv pip install --no-cache -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
+    /uv/bin/uv pip install --no-cache -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match && \
+    /uv/bin/uv pip install --no-cache -r requirements-voice.txt
+
 
 # Clean virtual environment
 RUN find /opt/venv -name '*.so' -type f -exec strip --strip-unneeded '{}' + 2>/dev/null || true && \
