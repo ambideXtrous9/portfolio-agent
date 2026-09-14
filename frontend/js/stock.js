@@ -41,7 +41,7 @@ export function initStockScreener() {
       const universe = document.querySelector("input[name='stock-universe']:checked")?.value || "NIFTY500";
       btnVolScan.disabled = true;
       btnVolScan.innerHTML = `<span class="st-spinner"></span> Scanning ${universe}...`;
-      volResults.innerHTML = `<div class="st-caption"><span class="st-spinner"></span> Scanning complete ${universe} universe for breakout momentum and volume expansion...</div>`;
+      volResults.innerHTML = `<div class="st-caption"><span class="st-spinner"></span> Scanning complete ${universe} universe for top volume breakout candidates...</div>`;
 
       try {
         const res = await fetchAPI("/stock/scan", {
@@ -51,7 +51,7 @@ export function initStockScreener() {
             universe: universe,
             mode: "volume_breakout",
             min_volume_ratio: 1.4,
-            limit: 500,
+            limit: 25,
           }),
         });
         renderScanResults(volResults, res, "vol");
@@ -87,7 +87,7 @@ export function initStockScreener() {
       const universe = document.querySelector("input[name='stock-universe']:checked")?.value || "NIFTY500";
       btn.disabled = true;
       btn.innerHTML = `<span class="st-spinner"></span> Scanning ${universe}...`;
-      container.innerHTML = `<div class="st-caption"><span class="st-spinner"></span> Scanning complete ${universe} universe for ${mode.replace(/_/g, ' ')}...</div>`;
+      container.innerHTML = `<div class="st-caption"><span class="st-spinner"></span> Scanning complete ${universe} universe for top ${mode.replace(/_/g, ' ')} stocks...</div>`;
 
       try {
         const res = await fetchAPI("/stock/scan", {
@@ -96,7 +96,7 @@ export function initStockScreener() {
           body: JSON.stringify({
             universe: universe,
             mode: mode,
-            limit: 500,
+            limit: 25,
           }),
         });
         renderScanResults(container, res, prefix);
@@ -124,9 +124,10 @@ export function initStockScreener() {
     if (res.mode === "volume_breakout") {
       dataDisplayHtml = `
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; margin: 1rem 0;">
-          ${stocks.map((s) => `
+          ${stocks.map((s, idx) => `
             <div class="stock-clickable-item" data-symbol="${s["Symbol"] || s.symbol}" style="padding: 0.65rem 0.85rem; background: #F8F9FA; border: 1px solid var(--st-border-input); border-radius: 4px; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;">
               <div>
+                <span style="font-weight: 700; color: var(--st-text-muted); margin-right: 6px;">#${idx + 1}</span>
                 <strong style="color: #1E88E5;">${s["Symbol"]}</strong> — ${s["Company Name"] || ""} (${s["Change %"] || ""})
               </div>
               <span style="font-size: 0.85rem; background: #E3F2FD; color: #1565C0; padding: 2px 8px; border-radius: 4px; font-weight: 600;">${s["Vol Ratio"] || ""}</span>
@@ -139,13 +140,17 @@ export function initStockScreener() {
         <div class="st-dataframe-container">
           <table class="st-table">
             <thead>
-              <tr>${columns.map((c) => `<th>${c}</th>`).join("")}</tr>
+              <tr>
+                <th style="width: 48px;">#</th>
+                ${columns.map((c) => `<th>${c}</th>`).join("")}
+              </tr>
             </thead>
             <tbody>
-              ${stocks.map((row) => {
+              ${stocks.map((row, idx) => {
                 const sym = row["Symbol"] || row["symbol"] || Object.values(row)[0];
                 return `
                 <tr class="stock-clickable-row" data-symbol="${sym}" title="Click to analyze ${sym}">
+                  <td style="font-weight: 600; color: var(--st-text-muted);">${idx + 1}</td>
                   ${columns.map((col) => `<td>${row[col] !== undefined && row[col] !== null ? row[col] : "N/A"}</td>`).join("")}
                 </tr>
               `;
@@ -156,11 +161,16 @@ export function initStockScreener() {
       `;
     }
 
+    const matchCount = res.matches_found || stocks.length;
+    const countDisplay = matchCount > stocks.length
+      ? `Top ${stocks.length} of ${matchCount} Matches Found`
+      : `${stocks.length} Stocks Found`;
     const scannedTxt = res.total_scanned ? ` (Scanned all ${res.total_scanned} stocks in ${(res.universe || 'NIFTY500').toUpperCase()})` : '';
+
     container.innerHTML = `
       <div style="background-color: #D4EDDA; color: #155724; border: 1px solid #C3E6CB; border-radius: var(--st-radius); padding: 0.75rem 1rem; margin-bottom: 0.75rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-        <span>✅ Scan Complete: ${stocks.length} Stocks Found${scannedTxt}</span>
-        <span style="font-size: 0.88rem; font-weight: 500; opacity: 0.9;">💡 Click any stock row below to view full analysis</span>
+        <span>✅ Scan Complete: ${countDisplay}${scannedTxt}</span>
+        <span style="font-size: 0.88rem; font-weight: 500; opacity: 0.9;">💡 Ranked best to worst • Click any stock to view full analysis</span>
       </div>
 
       ${dataDisplayHtml}

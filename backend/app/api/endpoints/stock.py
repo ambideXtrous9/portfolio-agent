@@ -160,7 +160,7 @@ async def scan_stocks(
     candidate_symbols = df["YFSYMBOL"].tolist()
     symbol_to_name = dict(zip(df["YFSYMBOL"], df["Company Name"]))
     total_scanned = len(candidate_symbols)
-    limit = request.limit if request.limit > 0 else total_scanned
+    limit = request.limit if (request.limit and request.limit > 0) else 25
 
     # 1. VOLUME BREAKOUT
     if mode == "volume_breakout":
@@ -270,6 +270,7 @@ async def scan_stocks(
                     cr = item.get("current_ratio")
                     pe = item.get("pe")
                     mcap = item.get("market_cap")
+                    mcap_val = float(mcap) if mcap else 0.0
                     results.append({
                         "Symbol": sym,
                         "Company Name": symbol_to_name.get(sym, sym),
@@ -277,10 +278,11 @@ async def scan_stocks(
                         "Current Ratio": round(float(cr), 2) if cr else "N/A",
                         "P/E": round(float(pe), 2) if pe else "N/A",
                         "Mkt Cap (Cr)": f"₹{mcap:,.1f}" if mcap else "N/A",
-                        "_raw_de": de_norm
+                        "_raw_de": de_norm,
+                        "_raw_mcap": mcap_val
                     })
 
-        results.sort(key=lambda x: x.get("_raw_de", 1.0))
+        results.sort(key=lambda x: (x.get("_raw_de", 1.0), -x.get("_raw_mcap", 0.0)))
         return StockScanResponse(
             universe=request.universe,
             mode="low_debt",
