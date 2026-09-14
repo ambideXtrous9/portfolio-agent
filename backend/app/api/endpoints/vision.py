@@ -191,16 +191,18 @@ def detect_brand_via_vision(image: Image.Image) -> Tuple[str, float]:
                 }
             ],
             temperature=0.1,
-            max_tokens=300
+            max_tokens=800
         )
 
         content = resp.choices[0].message.content or ""
-        clean_text = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
-        if not clean_text or clean_text.lower() == "none":
+        parts = content.split("</think>")
+        answer = parts[-1].strip() if len(parts) > 1 else content.strip().split("\n")[-1].strip()
+
+        if not answer or answer.lower() == "none":
             return ("None", 0.0)
 
         for brand in BRAND_CLASSES:
-            if re.search(r"\b" + re.escape(brand) + r"\b", clean_text, re.IGNORECASE):
+            if re.search(r"\b" + re.escape(brand) + r"\b", answer, re.IGNORECASE):
                 return (brand, 0.94)
 
     except Exception as e:
