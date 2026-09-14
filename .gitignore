@@ -60,3 +60,5 @@ TXT.txt
 .vercel
 .env*
 _uv/
+.agents/
+skills-lock.json
