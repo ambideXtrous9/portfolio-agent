@@ -2267,12 +2267,17 @@ canvas#voiceOrbCanvas {
 .st-main:has(#tab-tour.active) .st-block-container,
 .st-main:has(#tab-harry.active) .st-block-container {
   max-width: 100% !important;
-  padding: 0.75rem 1.75rem 1.5rem !important;
+  padding: 0.5rem 1.5rem 1rem !important;
 }
 
 #tab-harry, #tab-tour {
   width: 100%;
-  padding: 0 0 1rem;
+  padding: 0 0 0.5rem;
+}
+
+#tab-harry .st-tab-header-row,
+#tab-tour .st-tab-header-row {
+  margin-bottom: 0.65rem;
 }
 
 .st-chat-workspace {
@@ -2281,8 +2286,8 @@ canvas#voiceOrbCanvas {
   border: 1px solid var(--st-border-color, #E6E9EF);
   border-radius: var(--st-radius-lg, 12px);
   width: 100%;
-  min-height: calc(100vh - 165px);
-  height: calc(100vh - 165px);
+  min-height: 680px;
+  height: calc(100vh - 135px);
   color: var(--st-text-color, #31333F);
   position: relative;
   overflow: hidden;
@@ -2527,15 +2532,15 @@ canvas#voiceOrbCanvas {
 
 /* Hero State (Assimilated Centered Welcome View) */
 .st-agent-hero-view {
-  max-width: 940px;
+  max-width: 1100px;
   width: 100%;
   margin: auto;
   text-align: center;
-  padding: 2.5rem 1.5rem 2rem;
+  padding: 2.5rem 2rem 2rem;
 }
 
 .st-agent-hero-title {
-  font-size: 2.1rem;
+  font-size: 2.2rem;
   font-weight: 700;
   color: var(--st-text-color, #31333F);
   margin-bottom: 0.6rem;
@@ -2544,11 +2549,11 @@ canvas#voiceOrbCanvas {
 }
 
 .st-agent-hero-subtitle {
-  font-size: 1rem;
+  font-size: 1.02rem;
   color: var(--st-text-muted, #555867);
   margin-bottom: 2.25rem;
   line-height: 1.5;
-  max-width: 720px;
+  max-width: 850px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -2558,12 +2563,12 @@ canvas#voiceOrbCanvas {
   background: #FFFFFF;
   border: 1.5px solid var(--st-border-input, #CBD5E1);
   border-radius: 28px;
-  padding: 6px 8px 6px 20px;
+  padding: 8px 10px 8px 22px;
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  max-width: 880px;
+  max-width: 1050px;
   margin: 0 auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   transition: all 0.2s ease;
@@ -2622,8 +2627,8 @@ canvas#voiceOrbCanvas {
   margin-top: 2rem;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  max-width: 880px;
+  gap: 14px;
+  max-width: 1050px;
   width: 100%;
   margin-left: auto;
   margin-right: auto;
@@ -2633,11 +2638,11 @@ canvas#voiceOrbCanvas {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 13px 16px;
+  padding: 14px 18px;
   border-radius: 12px;
   color: var(--st-text-color, #31333F);
   font-family: var(--st-font);
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -2679,7 +2684,7 @@ canvas#voiceOrbCanvas {
 }
 
 .st-agent-bottom-bar .st-agent-input-bar {
-  max-width: 1000px;
+  max-width: 1150px;
 }
 
 /* Active Conversational Messages in Agent Workspace */
@@ -2688,7 +2693,7 @@ canvas#voiceOrbCanvas {
   flex-direction: column;
   gap: 1.25rem;
   width: 100%;
-  max-width: 1000px;
+  max-width: 1150px;
   margin: 0 auto;
   padding-bottom: 2rem;
 }
@@ -2696,14 +2701,14 @@ canvas#voiceOrbCanvas {
 #harry-chat-history .st-chat-message,
 #tour-chat-history .st-chat-message {
   border-radius: var(--st-radius-lg, 12px);
-  padding: 12px 18px;
+  padding: 14px 20px;
   font-size: 0.98rem;
   line-height: 1.6;
 }
 
 #harry-chat-history .st-chat-message.user,
 #tour-chat-history .st-chat-message.user {
-  max-width: 82%;
+  max-width: 85%;
   margin-left: auto;
   background: #E8F0FE;
   border: 1px solid #D2E3FC;
@@ -2713,7 +2718,7 @@ canvas#voiceOrbCanvas {
 
 #harry-chat-history .st-chat-message.assistant,
 #tour-chat-history .st-chat-message.assistant {
-  max-width: 95%;
+  max-width: 98%;
   background: #F8F9FB;
   border: 1px solid var(--st-border-color, #E6E9EF);
   border-radius: 14px 14px 14px 2px;
