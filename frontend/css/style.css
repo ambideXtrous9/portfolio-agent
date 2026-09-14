@@ -2888,8 +2888,9 @@ canvas#voiceOrbCanvas {
   margin: 1.5rem auto;
   border-radius: var(--st-radius-lg, 12px);
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-  background-color: #000000;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--st-border-color, #E6EAF1);
+  background-color: #FFFFFF;
 }
 
 #cluster-kdist-plot {
@@ -2899,8 +2900,9 @@ canvas#voiceOrbCanvas {
   margin: 1rem auto;
   border-radius: var(--st-radius-lg, 12px);
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-  background-color: #000000;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--st-border-color, #E6EAF1);
+  background-color: #FFFFFF;
 }
 
 @media (max-width: 720px) {

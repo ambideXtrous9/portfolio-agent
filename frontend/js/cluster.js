@@ -115,38 +115,47 @@ export function initClusterSandbox() {
         name: "Data",
         marker: {
           size: 7,
-          color: "cyan",
-          opacity: 0.7,
-          line: { color: "darkblue", width: 1 },
+          color: "#0284C7",
+          opacity: 0.75,
+          line: { color: "#0369A1", width: 1 },
         },
       };
 
       const layout = {
-        title: { text: "Dataset Visualization", font: { color: "#FFFFFF", size: 22 } },
-        paper_bgcolor: "#000000",
-        plot_bgcolor: "#000000",
+        title: {
+          text: "Dataset Visualization",
+          font: { color: "#1F2937", size: 20, family: "Source Sans Pro, sans-serif" },
+        },
+        paper_bgcolor: "#FFFFFF",
+        plot_bgcolor: "#FAFAFA",
         showlegend: false,
         autosize: true,
         margin: { l: 60, r: 60, t: 60, b: 60 },
         xaxis: {
-          title: { text: "Feature 1", font: { color: "#FFFFFF", size: 15 } },
+          title: { text: "Feature 1", font: { color: "#4B5563", size: 14 } },
           range: [-650, 650],
           fixedrange: true,
-          color: "#FFFFFF",
-          showgrid: false,
-          zeroline: false,
-          tickfont: { color: "#FFFFFF" },
+          color: "#4B5563",
+          showgrid: true,
+          gridcolor: "#E5E7EB",
+          gridwidth: 1,
+          zeroline: true,
+          zerolinecolor: "#D1D5DB",
+          tickfont: { color: "#6B7280", size: 12 },
         },
         yaxis: {
-          title: { text: "Feature 2", font: { color: "#FFFFFF", size: 15 } },
+          title: { text: "Feature 2", font: { color: "#4B5563", size: 14 } },
           range: [-650, 650],
           fixedrange: true,
           scaleanchor: "x",
           scaleratio: 1,
-          color: "#FFFFFF",
-          showgrid: false,
-          zeroline: false,
-          tickfont: { color: "#FFFFFF" },
+          color: "#4B5563",
+          showgrid: true,
+          gridcolor: "#E5E7EB",
+          gridwidth: 1,
+          zeroline: true,
+          zerolinecolor: "#D1D5DB",
+          tickfont: { color: "#6B7280", size: 12 },
         },
       };
 
@@ -212,11 +221,13 @@ export function initClusterSandbox() {
 
     const traces = uniqueClusters.map((c) => {
       const isNoise = c === -1;
-      let pointColor = "grey";
+      let pointColor = "#94A3B8";
+      let borderColor = "#64748B";
       if (!isNoise) {
         const idx = nonNoiseClusters.indexOf(c);
         const hue = Math.round((idx / totalColors) * 360);
-        pointColor = `hsl(${hue}, 100%, 50%)`;
+        pointColor = `hsl(${hue}, 85%, 48%)`;
+        borderColor = `hsl(${hue}, 90%, 30%)`;
       }
 
       return {
@@ -229,38 +240,47 @@ export function initClusterSandbox() {
         marker: {
           size: 7,
           color: pointColor,
-          opacity: 0.7,
-          line: { color: "darkblue", width: 1 },
+          opacity: 0.8,
+          line: { color: borderColor, width: 1 },
         },
       };
     });
 
     const layout = {
-      title: { text: titleText, font: { color: "#FFFFFF", size: 22 } },
-      paper_bgcolor: "#000000",
-      plot_bgcolor: "#000000",
+      title: {
+        text: titleText,
+        font: { color: "#1F2937", size: 20, family: "Source Sans Pro, sans-serif" },
+      },
+      paper_bgcolor: "#FFFFFF",
+      plot_bgcolor: "#FAFAFA",
       showlegend: false,
       autosize: true,
       margin: { l: 60, r: 60, t: 60, b: 60 },
       xaxis: {
-        title: { text: "Feature 1", font: { color: "#FFFFFF", size: 15 } },
+        title: { text: "Feature 1", font: { color: "#4B5563", size: 14 } },
         range: [-650, 650],
         fixedrange: true,
-        color: "#FFFFFF",
-        showgrid: false,
-        zeroline: false,
-        tickfont: { color: "#FFFFFF" },
+        color: "#4B5563",
+        showgrid: true,
+        gridcolor: "#E5E7EB",
+        gridwidth: 1,
+        zeroline: true,
+        zerolinecolor: "#D1D5DB",
+        tickfont: { color: "#6B7280", size: 12 },
       },
       yaxis: {
-        title: { text: "Feature 2", font: { color: "#FFFFFF", size: 15 } },
+        title: { text: "Feature 2", font: { color: "#4B5563", size: 14 } },
         range: [-650, 650],
         fixedrange: true,
         scaleanchor: "x",
         scaleratio: 1,
-        color: "#FFFFFF",
-        showgrid: false,
-        zeroline: false,
-        tickfont: { color: "#FFFFFF" },
+        color: "#4B5563",
+        showgrid: true,
+        gridcolor: "#E5E7EB",
+        gridwidth: 1,
+        zeroline: true,
+        zerolinecolor: "#D1D5DB",
+        tickfont: { color: "#6B7280", size: 12 },
       },
     };
 
@@ -304,35 +324,38 @@ export function initClusterSandbox() {
         y: data.y,
         mode: "lines",
         type: "scatter",
-        line: { color: "cyan", width: 2 },
+        line: { color: "#1E88E5", width: 2.5 },
         showlegend: false,
       };
 
       const layout = {
-        title: { text: "K-Distance Graph", font: { color: "#FFFFFF", size: 22 } },
-        paper_bgcolor: "#000000",
-        plot_bgcolor: "#000000",
+        title: {
+          text: "K-Distance Graph",
+          font: { color: "#1F2937", size: 20, family: "Source Sans Pro, sans-serif" },
+        },
+        paper_bgcolor: "#FFFFFF",
+        plot_bgcolor: "#FAFAFA",
         showlegend: false,
         autosize: true,
         margin: { l: 60, r: 40, t: 60, b: 60 },
         xaxis: {
-          title: { text: "Data Points Sorted by Distance", font: { color: "#FFFFFF", size: 15 } },
+          title: { text: "Data Points Sorted by Distance", font: { color: "#4B5563", size: 14 } },
           range: [0, data.x.length],
-          color: "#FFFFFF",
+          color: "#4B5563",
           showgrid: true,
-          gridcolor: "gray",
+          gridcolor: "#E5E7EB",
           gridwidth: 0.5,
           zeroline: false,
-          tickfont: { color: "#FFFFFF" },
+          tickfont: { color: "#6B7280", size: 12 },
         },
         yaxis: {
-          title: { text: "Epsilon", font: { color: "#FFFFFF", size: 15 } },
-          color: "#FFFFFF",
+          title: { text: "Epsilon", font: { color: "#4B5563", size: 14 } },
+          color: "#4B5563",
           showgrid: true,
-          gridcolor: "gray",
+          gridcolor: "#E5E7EB",
           gridwidth: 0.5,
           zeroline: false,
-          tickfont: { color: "#FFFFFF" },
+          tickfont: { color: "#6B7280", size: 12 },
         },
       };
 
