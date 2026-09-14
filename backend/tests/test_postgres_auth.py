@@ -29,13 +29,14 @@ async def run_tests():
         print("✅ 1. Public endpoint /api/system/health is accessible without auth.")
 
         # Test B: Unauthenticated access to protected feature endpoint returns 401
-        res = await client.get("/api/cluster/dataset")
-        assert res.status_code == 401, f"Expected 401 for unauthenticated /api/cluster/dataset, got {res.status_code}"
-        print("✅ 2. Protected endpoint /api/cluster/dataset returns 401 Unauthorized without token.")
+        res = await client.get("/api/auth/me")
+        assert res.status_code == 401, f"Expected 401 for unauthenticated /api/auth/me, got {res.status_code}"
+        print("✅ 2. Protected endpoint /api/auth/me returns 401 Unauthorized without token.")
 
-        res = await client.get("/api/voice/status")
-        assert res.status_code == 401, f"Expected 401 for /api/voice/status, got {res.status_code}"
-        print("✅ 3. Protected endpoint /api/voice/status returns 401 Unauthorized without token.")
+        res = await client.get("/api/voice/token")
+        assert res.status_code == 401, f"Expected 401 for unauthenticated /api/voice/token, got {res.status_code}"
+        print("✅ 3. Protected endpoint /api/voice/token returns 401 Unauthorized without token.")
+
 
         # Test C: Verify non-existent / unregistered login returns 401
         res = await client.post(
@@ -127,7 +128,7 @@ async def run_tests():
 
         # Subsequent call with revoked token must return 401 Unauthorized
         res = await client.get(
-            "/api/cluster/dataset",
+            "/api/auth/me",
             headers={"Authorization": f"Bearer {new_token}"}
         )
         assert res.status_code == 401, f"Expected 401 after logout, got {res.status_code}"

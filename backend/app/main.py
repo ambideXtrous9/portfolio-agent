@@ -82,18 +82,19 @@ app.add_middleware(
 
 @app.middleware("http")
 async def ensure_db_initialized(request: Request, call_next):
-    """Ensures database connection and demo accounts are initialized on serverless cold starts."""
-    if not auth_db_manager._initialized:
+    """Ensures database connection is initialized on serverless cold starts and retried on demand."""
+    if not auth_db_manager._initialized or (auth_db_manager._is_in_memory and settings.effective_auth_db_uri):
         try:
             await auth_db_manager.initialize()
-        except Exception as err:
+        except Exception:
             pass
-    if not db_manager._initialized:
+    if not db_manager._initialized or (db_manager._is_in_memory and settings.effective_db_uri):
         try:
             await db_manager.initialize()
-        except Exception as err:
+        except Exception:
             pass
     return await call_next(request)
+
 
 
 # Mount API endpoints (both with and without /api prefix for seamless Vercel Serverless routing)

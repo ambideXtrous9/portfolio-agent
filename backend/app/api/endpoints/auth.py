@@ -52,12 +52,19 @@ async def signup_endpoint(request: UserSignupRequest):
     # Hash password using Argon2id
     hashed_pwd = hash_password(request.password)
 
-    user_dict = await auth_db_manager.create_user(
-        email=request.email,
-        full_name=request.full_name,
-        hashed_password=hashed_pwd,
-        role="user",
-    )
+    try:
+        user_dict = await auth_db_manager.create_user(
+            email=request.email,
+            full_name=request.full_name,
+            hashed_password=hashed_pwd,
+            role="user",
+        )
+    except RuntimeError as db_err:
+        logger.error(f"Sign up database failure: {db_err}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Unable to register user: {db_err}",
+        )
 
     # Issue initial JWT Access Token
     token_payload = {

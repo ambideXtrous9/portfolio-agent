@@ -55,15 +55,26 @@ class DatabaseManager:
         self._is_in_memory: bool = True
         self._in_memory_chat_history: Dict[str, List[BaseMessage]] = {}
         self._initialized: bool = False
+        self.last_error: Optional[str] = None
+        self.psycopg_available: bool = POSTGRES_AVAILABLE
 
-    async def initialize(self) -> None:
+    async def initialize(self, force_retry: bool = False) -> None:
         """Initializes the AsyncConnectionPool, creates chat history tables, and sets up AsyncPostgresSaver."""
-        if self._initialized:
+        if self._initialized and not force_retry and not self._is_in_memory:
             return
         db_uri = settings.effective_db_uri
 
-        if not db_uri or not POSTGRES_AVAILABLE:
-            logger.info("No PostgreSQL DATABASE_URL / POSTGRES_URL configured or psycopg unavailable. Using in-memory checkpointer & chat history.")
+        if not db_uri:
+            self.last_error = "No PostgreSQL DATABASE_URL / POSTGRES_URL configured in environment."
+            logger.info("No PostgreSQL DATABASE_URL / POSTGRES_URL configured. Using in-memory checkpointer & chat history.")
+            self._is_in_memory = True
+            self.checkpointer = MemorySaver()
+            self._initialized = True
+            return
+
+        if not POSTGRES_AVAILABLE:
+            self.last_error = "PostgreSQL drivers (psycopg, psycopg_pool) not available."
+            logger.warning("PostgreSQL packages not available. Using in-memory checkpointer & chat history.")
             self._is_in_memory = True
             self.checkpointer = MemorySaver()
             self._initialized = True
@@ -73,10 +84,20 @@ class DatabaseManager:
         connection_kwargs = {"autocommit": True, "prepare_threshold": None}
 
         try:
+            if self.pool:
+                try:
+                    await self.pool.close()
+                except Exception:
+                    pass
+                self.pool = None
+
             self.pool = AsyncConnectionPool(
                 conninfo=db_uri,
                 min_size=settings.DB_POOL_MIN_SIZE,
                 max_size=settings.DB_POOL_MAX_SIZE,
+                timeout=settings.DB_POOL_TIMEOUT,
+                max_lifetime=300.0,
+                max_idle=60.0,
                 kwargs=connection_kwargs,
                 open=False,
             )
@@ -93,11 +114,14 @@ class DatabaseManager:
             await self.checkpointer.setup()
 
             self._is_in_memory = False
+            self.last_error = None
+            self._initialized = True
             logger.info("PostgreSQL database connection, chat history table, and LangGraph checkpointer initialized successfully.")
 
         except Exception as e:
+            self.last_error = f"{type(e).__name__}: {str(e)}"
             logger.warning(
-                f"Failed to connect to PostgreSQL ({e}). "
+                f"Failed to connect to PostgreSQL: {self.last_error}. "
                 "Gracefully falling back to in-memory checkpointer and chat history for development/preview."
             )
             if self.pool:
@@ -108,8 +132,7 @@ class DatabaseManager:
             self.pool = None
             self._is_in_memory = True
             self.checkpointer = MemorySaver()
-        finally:
-            self._initialized = True
+            self._initialized = False
 
     async def close(self) -> None:
         """Closes the AsyncConnectionPool on application shutdown."""
@@ -173,5 +196,16 @@ class DatabaseManager:
         """Returns True if running in in-memory fallback mode."""
         return self._is_in_memory
 
+    @property
+    def configured(self) -> bool:
+        """Returns True if PostgreSQL is configured via environment variables."""
+        return bool(settings.effective_db_uri)
+
+    @property
+    def host_masked(self) -> str:
+        """Returns masked host/connection info safe for display."""
+        return settings.mask_uri(settings.effective_db_uri)
+
 
 db_manager = DatabaseManager()
+

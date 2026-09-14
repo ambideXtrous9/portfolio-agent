@@ -43,10 +43,10 @@ class Settings(BaseSettings):
     # PostgreSQL Database & LangGraph Checkpointing
     DATABASE_URL: str = os.getenv("DATABASE_URL", os.getenv("POSTGRES_URL", ""))
     POSTGRES_URL: str = os.getenv("POSTGRES_URL", "")
-    AUTH_DATABASE_URL: str = os.getenv("AUTH_DATABASE_URL", os.getenv("DATABASE_URL", os.getenv("POSTGRES_URL", "")))
-    DB_POOL_MIN_SIZE: int = int(os.getenv("DB_POOL_MIN_SIZE", "1"))
+    AUTH_DATABASE_URL: str = os.getenv("AUTH_DATABASE_URL", "")
+    DB_POOL_MIN_SIZE: int = int(os.getenv("DB_POOL_MIN_SIZE", "0"))
     DB_POOL_MAX_SIZE: int = int(os.getenv("DB_POOL_MAX_SIZE", "10"))
-    DB_POOL_TIMEOUT: float = float(os.getenv("DB_POOL_TIMEOUT", "5.0"))
+    DB_POOL_TIMEOUT: float = float(os.getenv("DB_POOL_TIMEOUT", "20.0"))
     TABLE_NAME: str = os.getenv("TABLE_NAME", "portfolio_chat_history")
 
     # Security & Authentication (Argon2 / JWT)
@@ -58,24 +58,102 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: List[str] = ["*"]
 
-    @property
-    def effective_db_uri(self) -> str:
-        """Returns normalized PostgreSQL URI (handles postgres:// vs postgresql://)."""
-        uri = self.DATABASE_URL or self.POSTGRES_URL or ""
+    def _resolve_uri(self, *preferred_keys: str) -> str:
+        """Discovers and normalizes PostgreSQL URI across all common cloud/Vercel conventions."""
+        candidates = list(preferred_keys) + [
+            "AUTH_DATABASE_URL",
+            "DATABASE_URL",
+            "POSTGRES_URL_NON_POOLING",
+            "POSTGRES_URL",
+            "POSTGRES_PRISMA_URL",
+            "POSTGRESQL_URL",
+            "NEON_DATABASE_URL",
+            "SUPABASE_DATABASE_URL",
+            "SUPABASE_DB_URL",
+        ]
+        uri = ""
+        for cand in candidates:
+            if not cand:
+                continue
+            # If cand looks like a URI directly, use it
+            if "://" in cand:
+                uri = cand.strip()
+                break
+            # Otherwise look up from os.getenv
+            val = os.getenv(cand, "").strip()
+            if val:
+                uri = val
+                break
+
+        # If still empty, check discrete components provided by Vercel Postgres / Docker
+        if not uri:
+            host = os.getenv("POSTGRES_HOST", "").strip()
+            user = os.getenv("POSTGRES_USER", "").strip()
+            password = os.getenv("POSTGRES_PASSWORD", "").strip()
+            database = os.getenv("POSTGRES_DATABASE", os.getenv("POSTGRES_DB", "")).strip()
+            port = os.getenv("POSTGRES_PORT", "5432").strip()
+            if host and user and database:
+                uri = f"postgresql://{user}:{password}@{host}:{port}/{database}"
+
+        if not uri:
+            return ""
+
+        # Normalize scheme
         if uri.startswith("postgres://"):
             uri = uri.replace("postgres://", "postgresql://", 1)
+
+        # Ensure sslmode for remote cloud databases (Neon, Supabase, Vercel Postgres, AWS)
+        is_local = any(h in uri for h in ["localhost", "127.0.0.1", "@postgres:", "@postgres/"])
+        if not is_local and "sslmode=" not in uri:
+            delimiter = "&" if "?" in uri else "?"
+            uri = f"{uri}{delimiter}sslmode=require"
+
         return uri
+
+    @property
+    def effective_db_uri(self) -> str:
+        """Returns normalized PostgreSQL URI for chat history & checkpoints."""
+        return self._resolve_uri(self.DATABASE_URL, self.POSTGRES_URL)
 
     @property
     def effective_auth_db_uri(self) -> str:
         """Returns normalized Auth PostgreSQL URI."""
-        uri = self.AUTH_DATABASE_URL or self.DATABASE_URL or self.POSTGRES_URL or ""
-        if uri.startswith("postgres://"):
-            uri = uri.replace("postgres://", "postgresql://", 1)
-        return uri
+        return self._resolve_uri(self.AUTH_DATABASE_URL, self.DATABASE_URL, self.POSTGRES_URL)
+
+    @property
+    def detected_postgres_vars(self) -> List[str]:
+        """Returns the list of PostgreSQL-related environment variable keys detected in the environment."""
+        keys = [
+            "AUTH_DATABASE_URL",
+            "DATABASE_URL",
+            "POSTGRES_URL_NON_POOLING",
+            "POSTGRES_URL",
+            "POSTGRES_PRISMA_URL",
+            "POSTGRESQL_URL",
+            "NEON_DATABASE_URL",
+            "SUPABASE_DATABASE_URL",
+            "SUPABASE_DB_URL",
+            "POSTGRES_HOST",
+        ]
+        return [k for k in keys if os.getenv(k)]
+
+    @staticmethod
+    def mask_uri(uri: str) -> str:
+        """Returns masked URI safe for diagnostics/logging without revealing credentials."""
+        if not uri:
+            return ""
+        try:
+            if "@" in uri:
+                prefix, host_part = uri.split("@", 1)
+                scheme = prefix.split("://")[0] if "://" in prefix else "postgresql"
+                return f"{scheme}://****:****@{host_part}"
+            return uri
+        except Exception:
+            return "postgresql://****:****@masked"
 
     class Config:
         case_sensitive = True
 
 
 settings = Settings()
+
