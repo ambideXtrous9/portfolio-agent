@@ -5,6 +5,8 @@ Provides complete fidelity to the original Streamlit screener architecture.
 import os
 import re
 import math
+import json
+import time
 import requests
 import pandas as pd
 import numpy as np
@@ -15,7 +17,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from backend.app.core.llm import get_llm
-from backend.app.api.deps import get_current_active_user
+from backend.app.api.deps import get_current_active_user, get_optional_user
 from backend.app.schemas.auth import UserResponse
 from backend.app.schemas.stock import (
     StockScanRequest,
@@ -34,10 +36,59 @@ from backend.app.schemas.stock import (
 
 router = APIRouter(prefix="/stock", tags=["Stock Screener"])
 
-# Base path to CSVs
+# Base path to CSVs and Cache
 BACKEND_DIR = str(Path(__file__).resolve().parents[3])
 NIFTY_CSV = os.path.join(BACKEND_DIR, "data", "ind_nifty500list.csv")
 MICROCAP_CSV = os.path.join(BACKEND_DIR, "data", "ind_niftymicrocap250_list.csv")
+FUNDAMENTALS_CACHE_FILE = os.path.join(BACKEND_DIR, "data", "stock_fundamentals_cache.json")
+
+_fundamentals_cache: Optional[Dict[str, Any]] = None
+_fundamentals_cache_mtime: float = 0.0
+
+
+def get_fundamentals_cache() -> Dict[str, Any]:
+    global _fundamentals_cache, _fundamentals_cache_mtime
+    if not os.path.exists(FUNDAMENTALS_CACHE_FILE):
+        return {}
+    try:
+        mtime = os.path.getmtime(FUNDAMENTALS_CACHE_FILE)
+        if _fundamentals_cache is None or mtime > _fundamentals_cache_mtime:
+            with open(FUNDAMENTALS_CACHE_FILE, "r") as f:
+                _fundamentals_cache = json.load(f)
+                _fundamentals_cache_mtime = mtime
+    except Exception as e:
+        print(f"Error reading fundamentals cache: {e}")
+        if _fundamentals_cache is None:
+            _fundamentals_cache = {}
+    return _fundamentals_cache or {}
+
+
+_market_data_cache: Dict[str, Dict[str, Any]] = {}
+_MARKET_CACHE_TTL = 900  # 15 minutes TTL for market OHLCV downloads
+
+
+def get_market_data(universe_name: str, symbols: List[str]):
+    u_key = universe_name.lower().strip()
+    now = time.time()
+    cached = _market_data_cache.get(u_key)
+    if cached and (now - cached["time"] < _MARKET_CACHE_TTL) and cached.get("data") is not None:
+        return cached["data"]
+
+    import yfinance as yf
+    try:
+        data = yf.download(
+            symbols,
+            period="1mo",
+            interval="1d",
+            group_by="ticker",
+            threads=True,
+            progress=False,
+        )
+        _market_data_cache[u_key] = {"time": now, "data": data}
+        return data
+    except Exception as e:
+        print(f"Market download error for {u_key}: {e}")
+        return None
 
 
 def load_universe_df(universe: str) -> pd.DataFrame:
@@ -68,7 +119,7 @@ def load_all_companies_df() -> pd.DataFrame:
 @router.get("/universe")
 async def get_universe_list(
     universe: str = Query("nifty500", description="'nifty500' or 'microcap250'"),
-    current_user: UserResponse = Depends(get_current_active_user),
+    current_user: Optional[UserResponse] = Depends(get_optional_user),
 ):
     """Returns universe details and first 50 sample stocks."""
     df = load_universe_df(universe)
@@ -101,249 +152,237 @@ async def get_all_companies():
 @router.post("/scan", response_model=StockScanResponse)
 async def scan_stocks(
     request: StockScanRequest,
-    current_user: UserResponse = Depends(get_current_active_user),
+    current_user: Optional[UserResponse] = Depends(get_optional_user),
 ):
-    """Executes multi-mode screeners matching Streamlit screener tabs."""
-    import yfinance as yf
-
+    """Executes multi-mode screeners scanning the complete selected universe."""
     df = load_universe_df(request.universe)
-    mode = request.mode.lower()
-    candidate_symbols = df["YFSYMBOL"].tolist()[:60]
+    mode = request.mode.lower().strip()
+    candidate_symbols = df["YFSYMBOL"].tolist()
     symbol_to_name = dict(zip(df["YFSYMBOL"], df["Company Name"]))
+    total_scanned = len(candidate_symbols)
+    limit = request.limit if request.limit > 0 else total_scanned
 
     # 1. VOLUME BREAKOUT
     if mode == "volume_breakout":
         results = []
         columns = ["Symbol", "Company Name", "Current Price", "Change %", "Volume", "Avg Volume", "Vol Ratio", "RSI", "Signal"]
         try:
-            data = yf.download(
-                candidate_symbols[:45],
-                period="1mo",
-                interval="1d",
-                group_by="ticker",
-                threads=True,
-                progress=False
-            )
-            for sym in candidate_symbols[:45]:
-                try:
-                    stock_df = data[sym] if len(candidate_symbols[:45]) > 1 else data
-                    if stock_df.empty or len(stock_df) < 5:
+            data = get_market_data(request.universe, candidate_symbols)
+            if data is not None:
+                for sym in candidate_symbols:
+                    try:
+                        stock_df = data[sym] if len(candidate_symbols) > 1 else data
+                        if stock_df.empty or len(stock_df) < 5:
+                            continue
+                        closes = stock_df["Close"].dropna()
+                        volumes = stock_df["Volume"].dropna()
+                        if len(closes) < 5 or len(volumes) < 5:
+                            continue
+
+                        curr_price = round(float(closes.iloc[-1]), 2)
+                        prev_price = round(float(closes.iloc[-2]), 2)
+                        change_pct = round(((curr_price - prev_price) / prev_price) * 100, 2)
+                        curr_vol = int(volumes.iloc[-1])
+                        avg_vol = int(volumes.tail(20).mean())
+                        vol_ratio = round(curr_vol / avg_vol, 2) if avg_vol > 0 else 1.0
+
+                        delta = closes.diff()
+                        gain = (delta.where(delta > 0, 0)).rolling(14, min_periods=5).mean()
+                        loss = (-delta.where(delta < 0, 0)).rolling(14, min_periods=5).mean()
+                        rs = gain / loss
+                        rsi_val = round(float(100 - (100 / (1 + rs.iloc[-1]))), 2) if not rs.empty else 50.0
+
+                        high_20 = float(stock_df["High"].tail(20).max())
+                        is_breakout = curr_price >= (high_20 * 0.98) and vol_ratio >= request.min_volume_ratio
+                        signal = "STRONG BREAKOUT 🚀" if (is_breakout and change_pct > 2.0) else (
+                            "VOLUME SURGE ⚡" if vol_ratio >= request.min_volume_ratio else "CONSOLIDATION ⚪"
+                        )
+
+                        if vol_ratio >= request.min_volume_ratio or is_breakout:
+                            results.append({
+                                "Symbol": sym,
+                                "Company Name": symbol_to_name.get(sym, sym),
+                                "Current Price": f"₹{curr_price:,.2f}",
+                                "Change %": f"{'+' if change_pct >= 0 else ''}{change_pct}%",
+                                "Volume": f"{curr_vol:,}",
+                                "Avg Volume": f"{avg_vol:,}",
+                                "Vol Ratio": f"{vol_ratio}x",
+                                "RSI": rsi_val,
+                                "Signal": signal,
+                                "_raw_ratio": vol_ratio,
+                                "_raw_price": curr_price
+                            })
+                    except Exception:
                         continue
-                    closes = stock_df["Close"].dropna()
-                    volumes = stock_df["Volume"].dropna()
-                    if len(closes) < 5 or len(volumes) < 5:
-                        continue
-
-                    curr_price = round(float(closes.iloc[-1]), 2)
-                    prev_price = round(float(closes.iloc[-2]), 2)
-                    change_pct = round(((curr_price - prev_price) / prev_price) * 100, 2)
-                    curr_vol = int(volumes.iloc[-1])
-                    avg_vol = int(volumes.tail(20).mean())
-                    vol_ratio = round(curr_vol / avg_vol, 2) if avg_vol > 0 else 1.0
-
-                    delta = closes.diff()
-                    gain = (delta.where(delta > 0, 0)).rolling(14, min_periods=5).mean()
-                    loss = (-delta.where(delta < 0, 0)).rolling(14, min_periods=5).mean()
-                    rs = gain / loss
-                    rsi_val = round(float(100 - (100 / (1 + rs.iloc[-1]))), 2) if not rs.empty else 50.0
-
-                    high_20 = float(stock_df["High"].tail(20).max())
-                    is_breakout = curr_price >= (high_20 * 0.98) and vol_ratio >= request.min_volume_ratio
-                    signal = "STRONG BREAKOUT 🚀" if (is_breakout and change_pct > 2.0) else (
-                        "VOLUME SURGE ⚡" if vol_ratio >= request.min_volume_ratio else "CONSOLIDATION ⚪"
-                    )
-
-                    if vol_ratio >= request.min_volume_ratio or is_breakout or len(results) < 8:
-                        results.append({
-                            "Symbol": sym,
-                            "Company Name": symbol_to_name.get(sym, sym),
-                            "Current Price": f"₹{curr_price:,.2f}",
-                            "Change %": f"{'+' if change_pct >= 0 else ''}{change_pct}%",
-                            "Volume": f"{curr_vol:,}",
-                            "Avg Volume": f"{avg_vol:,}",
-                            "Vol Ratio": f"{vol_ratio}x",
-                            "RSI": rsi_val,
-                            "Signal": signal,
-                            "_raw_ratio": vol_ratio,
-                            "_raw_price": curr_price
-                        })
-                except Exception:
-                    continue
         except Exception as e:
-            print(f"Volume breakout scan note: {e}")
+            print(f"Volume breakout scan error: {e}")
 
         results.sort(key=lambda x: x.get("_raw_ratio", 0), reverse=True)
         return StockScanResponse(
             universe=request.universe,
             mode="volume_breakout",
-            total_scanned=len(candidate_symbols[:45]),
-            matches_found=len(results[:request.limit]),
+            total_scanned=total_scanned,
+            matches_found=len(results),
             columns=columns,
-            stocks=results[:request.limit]
+            stocks=results[:limit]
         )
 
     # 2. HIGHEST EPS
     elif mode == "highest_eps":
         columns = ["Symbol", "Company Name", "EPS", "P/E", "Mkt Cap (Cr)"]
         results = []
-        for sym in candidate_symbols[:35]:
-            try:
-                tick = yf.Ticker(sym)
-                info = tick.info or {}
-                eps = info.get("trailingEps")
-                pe = info.get("trailingPE")
-                mcap = info.get("marketCap")
-                if eps and eps > 0:
-                    results.append({
-                        "Symbol": sym,
-                        "Company Name": symbol_to_name.get(sym, sym),
-                        "EPS": round(float(eps), 2),
-                        "P/E": round(float(pe), 2) if pe else "N/A",
-                        "Mkt Cap (Cr)": f"₹{round(mcap / 1e7, 1):,.1f}" if mcap else "N/A",
-                        "_raw_eps": float(eps)
-                    })
-            except Exception:
-                continue
+        cache = get_fundamentals_cache()
+        for sym in candidate_symbols:
+            item = cache.get(sym)
+            if item and item.get("eps") is not None and item.get("eps") > 0:
+                eps = item["eps"]
+                pe = item.get("pe")
+                mcap = item.get("market_cap")
+                results.append({
+                    "Symbol": sym,
+                    "Company Name": symbol_to_name.get(sym, sym),
+                    "EPS": round(float(eps), 2),
+                    "P/E": round(float(pe), 2) if pe else "N/A",
+                    "Mkt Cap (Cr)": f"₹{mcap:,.1f}" if mcap else "N/A",
+                    "_raw_eps": float(eps)
+                })
 
         results.sort(key=lambda x: x.get("_raw_eps", 0), reverse=True)
         return StockScanResponse(
             universe=request.universe,
             mode="highest_eps",
-            total_scanned=len(candidate_symbols[:35]),
-            matches_found=len(results[:request.limit]),
+            total_scanned=total_scanned,
+            matches_found=len(results),
             columns=columns,
-            stocks=results[:request.limit]
+            stocks=results[:limit]
         )
 
     # 3. LOW DEBT COMPANIES (Debt/Equity < 0.5)
     elif mode == "low_debt":
         columns = ["Symbol", "Company Name", "Debt/Equity", "Current Ratio", "P/E", "Mkt Cap (Cr)"]
         results = []
-        for sym in candidate_symbols[:35]:
-            try:
-                tick = yf.Ticker(sym)
-                info = tick.info or {}
-                de_ratio = info.get("debtToEquity")
-                cr = info.get("currentRatio")
-                mcap = info.get("marketCap")
-                pe = info.get("trailingPE")
-                if de_ratio is not None and de_ratio < 50:
-                    de_norm = round(float(de_ratio) / 100, 2)
-                    if de_norm < 0.5:
-                        results.append({
-                            "Symbol": sym,
-                            "Company Name": symbol_to_name.get(sym, sym),
-                            "Debt/Equity": de_norm,
-                            "Current Ratio": round(float(cr), 2) if cr else "N/A",
-                            "P/E": round(float(pe), 2) if pe else "N/A",
-                            "Mkt Cap (Cr)": f"₹{round(mcap / 1e7, 1):,.1f}" if mcap else "N/A",
-                            "_raw_de": de_norm
-                        })
-            except Exception:
-                continue
+        cache = get_fundamentals_cache()
+        for sym in candidate_symbols:
+            item = cache.get(sym)
+            if item and item.get("debt_to_equity") is not None:
+                de_norm = item["debt_to_equity"]
+                if de_norm < 0.5:
+                    cr = item.get("current_ratio")
+                    pe = item.get("pe")
+                    mcap = item.get("market_cap")
+                    results.append({
+                        "Symbol": sym,
+                        "Company Name": symbol_to_name.get(sym, sym),
+                        "Debt/Equity": de_norm,
+                        "Current Ratio": round(float(cr), 2) if cr else "N/A",
+                        "P/E": round(float(pe), 2) if pe else "N/A",
+                        "Mkt Cap (Cr)": f"₹{mcap:,.1f}" if mcap else "N/A",
+                        "_raw_de": de_norm
+                    })
 
         results.sort(key=lambda x: x.get("_raw_de", 1.0))
         return StockScanResponse(
             universe=request.universe,
             mode="low_debt",
-            total_scanned=len(candidate_symbols[:35]),
-            matches_found=len(results[:request.limit]),
+            total_scanned=total_scanned,
+            matches_found=len(results),
             columns=columns,
-            stocks=results[:request.limit]
+            stocks=results[:limit]
         )
 
     # 4. BULLISH ENGULFING
     elif mode == "bullish_engulfing":
         columns = ["Symbol", "Company Name", "Close", "Volume Ratio", "Avg Volume", "Today Volume", "Body Size"]
         results = []
-        for sym in candidate_symbols[:35]:
-            try:
-                tick = yf.Ticker(sym)
-                h = tick.history(period="30d", interval="1d")
-                if len(h) < 3:
-                    continue
-                prev = h.iloc[-2]
-                curr = h.iloc[-1]
-                prev_bearish = prev["Close"] < prev["Open"]
-                curr_bullish = curr["Close"] > curr["Open"]
-                curr_body = abs(curr["Close"] - curr["Open"])
-                prev_body = abs(prev["Close"] - prev["Open"])
+        try:
+            data = get_market_data(request.universe, candidate_symbols)
+            if data is not None:
+                for sym in candidate_symbols:
+                    try:
+                        stock_df = data[sym] if len(candidate_symbols) > 1 else data
+                        if stock_df.empty or len(stock_df) < 5:
+                            continue
+                        closes = stock_df["Close"].dropna()
+                        opens = stock_df["Open"].dropna()
+                        volumes = stock_df["Volume"].dropna()
+                        if len(closes) < 3 or len(opens) < 3:
+                            continue
 
-                is_engulfing = (
-                    curr_bullish and prev_bearish and
-                    curr["Open"] <= prev["Close"] and
-                    curr["Close"] >= prev["Open"] and
-                    curr_body > prev_body
-                )
-                avg_vol = float(h["Volume"].mean())
-                curr_vol = float(curr["Volume"])
-                v_ratio = round(curr_vol / avg_vol, 2) if avg_vol > 0 else 1.0
+                        prev_close = float(closes.iloc[-2])
+                        prev_open = float(opens.iloc[-2])
+                        curr_close = float(closes.iloc[-1])
+                        curr_open = float(opens.iloc[-1])
 
-                if is_engulfing and v_ratio > 1.2:
-                    results.append({
-                        "Symbol": sym,
-                        "Company Name": symbol_to_name.get(sym, sym),
-                        "Close": f"₹{round(float(curr['Close']), 2):,.2f}",
-                        "Volume Ratio": f"{v_ratio}x",
-                        "Avg Volume": f"{int(avg_vol):,}",
-                        "Today Volume": f"{int(curr_vol):,}",
-                        "Body Size": round(float(curr_body), 2),
-                        "_raw_vr": v_ratio
-                    })
-            except Exception:
-                continue
+                        prev_bearish = prev_close < prev_open
+                        curr_bullish = curr_close > curr_open
+                        curr_body = abs(curr_close - curr_open)
+                        prev_body = abs(prev_close - prev_open)
+
+                        is_engulfing = (
+                            curr_bullish and prev_bearish and
+                            curr_open <= prev_close and
+                            curr_close >= prev_open and
+                            curr_body > prev_body
+                        )
+                        avg_vol = float(volumes.tail(20).mean())
+                        curr_vol = float(volumes.iloc[-1])
+                        v_ratio = round(curr_vol / avg_vol, 2) if avg_vol > 0 else 1.0
+
+                        if is_engulfing and v_ratio > 1.2:
+                            results.append({
+                                "Symbol": sym,
+                                "Company Name": symbol_to_name.get(sym, sym),
+                                "Close": f"₹{curr_close:,.2f}",
+                                "Volume Ratio": f"{v_ratio}x",
+                                "Avg Volume": f"{int(avg_vol):,}",
+                                "Today Volume": f"{int(curr_vol):,}",
+                                "Body Size": round(float(curr_body), 2),
+                                "_raw_vr": v_ratio
+                            })
+                    except Exception:
+                        continue
+        except Exception as e:
+            print(f"Bullish engulfing scan error: {e}")
 
         results.sort(key=lambda x: x.get("_raw_vr", 0), reverse=True)
         return StockScanResponse(
             universe=request.universe,
             mode="bullish_engulfing",
-            total_scanned=len(candidate_symbols[:35]),
-            matches_found=len(results[:request.limit]),
+            total_scanned=total_scanned,
+            matches_found=len(results),
             columns=columns,
-            stocks=results[:request.limit]
+            stocks=results[:limit]
         )
 
     # 5. PROFIT JUMP 200%+
     elif mode == "profit_jump":
         columns = ["Symbol", "Company Name", "Latest Quarter (Cr)", "Previous Quarter (Cr)", "Jump %"]
         results = []
-        for sym in candidate_symbols[:30]:
-            try:
-                tick = yf.Ticker(sym)
-                financials = tick.quarterly_income_stmt
-                if financials is None or financials.empty:
-                    continue
-                net_income = None
-                if "Net Income" in financials.index:
-                    net_income = financials.loc["Net Income"]
-                elif "Net Income From Continuing Operations" in financials.index:
-                    net_income = financials.loc["Net Income From Continuing Operations"]
-
-                if net_income is not None and len(net_income) >= 2:
-                    latest = float(net_income.iloc[0])
-                    prev = float(net_income.iloc[1])
-                    if prev > 0 and latest > prev:
-                        jump = round(((latest - prev) / prev) * 100, 1)
-                        if jump >= 100:  # Strong jump
-                            results.append({
-                                "Symbol": sym,
-                                "Company Name": symbol_to_name.get(sym, sym),
-                                "Latest Quarter (Cr)": f"₹{round(latest / 1e7, 1):,.1f}",
-                                "Previous Quarter (Cr)": f"₹{round(prev / 1e7, 1):,.1f}",
-                                "Jump %": f"+{jump}%",
-                                "_raw_jump": jump
-                            })
-            except Exception:
-                continue
+        cache = get_fundamentals_cache()
+        for sym in candidate_symbols:
+            item = cache.get(sym)
+            if item and item.get("profit_jump") is not None:
+                jump = item["profit_jump"]
+                latest = item.get("latest_q")
+                prev = item.get("prev_q")
+                if jump >= 100:  # Strong quarterly jump (100%+)
+                    results.append({
+                        "Symbol": sym,
+                        "Company Name": symbol_to_name.get(sym, sym),
+                        "Latest Quarter (Cr)": f"₹{round(latest / 1e7, 1):,.1f}" if latest is not None else "N/A",
+                        "Previous Quarter (Cr)": f"₹{round(prev / 1e7, 1):,.1f}" if prev is not None else "N/A",
+                        "Jump %": f"+{jump}%",
+                        "_raw_jump": jump
+                    })
 
         results.sort(key=lambda x: x.get("_raw_jump", 0), reverse=True)
         return StockScanResponse(
             universe=request.universe,
             mode="profit_jump",
-            total_scanned=len(candidate_symbols[:30]),
-            matches_found=len(results[:request.limit]),
+            total_scanned=total_scanned,
+            matches_found=len(results),
             columns=columns,
-            stocks=results[:request.limit]
+            stocks=results[:limit]
         )
 
     return StockScanResponse(

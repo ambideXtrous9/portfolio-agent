@@ -8,7 +8,7 @@ class StockScanRequest(BaseModel):
     universe: str = Field(default="nifty500", description="'nifty500' or 'microcap250'")
     mode: str = Field(default="volume_breakout", description="Scan mode: 'volume_breakout', 'highest_eps', 'low_debt', 'bullish_engulfing', 'profit_jump'")
     min_volume_ratio: float = Field(default=1.5, description="Volume relative to 20-day average")
-    limit: int = Field(default=30, description="Max results to return")
+    limit: int = Field(default=500, description="Max results to return")
 
 
 class StockItem(BaseModel):

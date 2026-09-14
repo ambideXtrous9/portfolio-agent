@@ -269,6 +269,17 @@
           <p style="color: var(--st-text-muted);">This is a Stock Screener that can help you find stocks that are breaking out with volume.</p>
           <h2 style="margin-top: 1rem;">Range Breakout with Volume</h2>
 
+          <!-- Global Screener Universe Selector -->
+          <div class="st-radio-group" style="margin: 1.25rem 0 0.85rem 0; display: flex; align-items: center; gap: 1.25rem; background: #F8F9FA; padding: 0.6rem 1rem; border-radius: var(--st-radius); border: 1px solid var(--st-border-input); width: fit-content;">
+            <span style="font-weight: 600; color: var(--st-text-main);">Stock Universe:</span>
+            <label class="st-radio-label" style="margin: 0; cursor: pointer;">
+              <input type="radio" name="stock-universe" value="NIFTY500" checked> <strong>NIFTY500</strong> (500 Stocks)
+            </label>
+            <label class="st-radio-label" style="margin: 0; cursor: pointer;">
+              <input type="radio" name="stock-universe" value="MICROCAP250"> <strong>MICROCAP250</strong> (250 Stocks)
+            </label>
+          </div>
+
           <!-- Screener Sub-Tabs -->
           <div class="st-tabs-nav" id="stock-subtabs">
             <button class="st-tab-trigger active" data-subtab="subtab-vol">📈 Volume Breakout</button>
@@ -281,16 +292,6 @@
 
           <!-- Subtab 1: Volume Breakout -->
           <div class="stock-subtab-content active" id="subtab-vol">
-            <div class="st-radio-group">
-              <span style="font-weight: 600;">Universe:</span>
-              <label class="st-radio-label">
-                <input type="radio" name="stock-universe" value="NIFTY500" checked> NIFTY500
-              </label>
-              <label class="st-radio-label">
-                <input type="radio" name="stock-universe" value="MICROCAP250"> MICROCAP250
-              </label>
-            </div>
-
             <div style="margin: 1rem 0;">
               <button class="st-btn st-btn-primary" id="btn-run-stock-scan">Run Scan</button>
             </div>
@@ -1181,6 +1182,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Client Application Scripts -->
-  <script type="module" src="js/app.js?v=3.8"></script>
+  <script type="module" src="js/app.js?v=3.9"></script>
 </body>
 </html>

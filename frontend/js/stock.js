@@ -41,7 +41,7 @@ export function initStockScreener() {
       const universe = document.querySelector("input[name='stock-universe']:checked")?.value || "NIFTY500";
       btnVolScan.disabled = true;
       btnVolScan.innerHTML = `<span class="st-spinner"></span> Scanning ${universe}...`;
-      volResults.innerHTML = `<div class="st-caption"><span class="st-spinner"></span> Scanning ${universe} breakout momentum and volume expansion...</div>`;
+      volResults.innerHTML = `<div class="st-caption"><span class="st-spinner"></span> Scanning complete ${universe} universe for breakout momentum and volume expansion...</div>`;
 
       try {
         const res = await fetchAPI("/stock/scan", {
@@ -51,7 +51,7 @@ export function initStockScreener() {
             universe: universe,
             mode: "volume_breakout",
             min_volume_ratio: 1.4,
-            limit: 20,
+            limit: 500,
           }),
         });
         renderScanResults(volResults, res, "vol");
@@ -84,18 +84,19 @@ export function initStockScreener() {
     if (!btn || !container) return;
 
     btn.addEventListener("click", async () => {
+      const universe = document.querySelector("input[name='stock-universe']:checked")?.value || "NIFTY500";
       btn.disabled = true;
-      btn.innerHTML = `<span class="st-spinner"></span> Scanning...`;
-      container.innerHTML = `<div class="st-caption"><span class="st-spinner"></span> Evaluating fundamental metrics across Nifty 500 universe...</div>`;
+      btn.innerHTML = `<span class="st-spinner"></span> Scanning ${universe}...`;
+      container.innerHTML = `<div class="st-caption"><span class="st-spinner"></span> Scanning complete ${universe} universe for ${mode.replace(/_/g, ' ')}...</div>`;
 
       try {
         const res = await fetchAPI("/stock/scan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            universe: "nifty500",
+            universe: universe,
             mode: mode,
-            limit: 25,
+            limit: 500,
           }),
         });
         renderScanResults(container, res, prefix);
@@ -155,9 +156,10 @@ export function initStockScreener() {
       `;
     }
 
+    const scannedTxt = res.total_scanned ? ` (Scanned all ${res.total_scanned} stocks in ${(res.universe || 'NIFTY500').toUpperCase()})` : '';
     container.innerHTML = `
       <div style="background-color: #D4EDDA; color: #155724; border: 1px solid #C3E6CB; border-radius: var(--st-radius); padding: 0.75rem 1rem; margin-bottom: 0.75rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-        <span>✅ Scan Complete: ${stocks.length} Stocks Found</span>
+        <span>✅ Scan Complete: ${stocks.length} Stocks Found${scannedTxt}</span>
         <span style="font-size: 0.88rem; font-weight: 500; opacity: 0.9;">💡 Click any stock row below to view full analysis</span>
       </div>
 
