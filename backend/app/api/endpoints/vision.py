@@ -118,6 +118,16 @@ def get_cached_model(model_name: str):
 
     try:
         import torch
+        import timm
+
+        # Intercept timm.create_model so it doesn't download external weights
+        # since the checkpoint already contains all weights
+        orig_create = timm.create_model
+        def fast_create(*args, **kwargs):
+            kwargs["pretrained"] = False
+            return orig_create(*args, **kwargs)
+        timm.create_model = fast_create
+
         ckpt_path = spec["checkpoint"]
         if not os.path.exists(ckpt_path):
             return None
@@ -137,7 +147,7 @@ def get_cached_model(model_name: str):
             model_obj = EfficientNet(num_classes=27, lr=0.001)
 
         if model_obj:
-            checkpoint = torch.load(ckpt_path, map_location="cpu")
+            checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=False)
             st_dict = checkpoint.get("state_dict", checkpoint)
             model_obj.load_state_dict(st_dict, strict=False)
             model_obj.eval()
@@ -276,18 +286,18 @@ def run_single_inference(
         start_time = time.time()
         try:
             import torch
-            import torchvision.transforms as transforms
+            from torchvision import transforms
             transform_norm = transforms.Compose([
-                transforms.Resize((224, 224)),
                 transforms.ToTensor(),
+                transforms.Resize((224, 224)),
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
             ])
             input_tensor = transform_norm(image.convert("RGB")).unsqueeze(0)
             with torch.no_grad():
                 out = model(input_tensor)
-                probs = torch.softmax(out, dim=1)[0]
-                idx = torch.argmax(probs).item()
-                prob = float(probs[idx].item())
+                probs = torch.exp(out)
+                idx = torch.argmax(probs, dim=1).item()
+                prob = float(probs[0][idx].item())
                 predicted_class = INDEX_TO_CLASS.get(idx, "None")
                 accuracy = round(prob, 2)
                 if accuracy < 0.80:

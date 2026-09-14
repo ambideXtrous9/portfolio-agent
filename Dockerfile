@@ -35,6 +35,7 @@ COPY requirements.txt .
 # Install CPU-optimized torch, torchvision and requirements
 RUN /uv/bin/uv pip install --no-cache torch --index-url https://download.pytorch.org/whl/cpu && \
     /uv/bin/uv pip install --no-cache torchvision --index-url https://download.pytorch.org/whl/cpu && \
+    /uv/bin/uv pip install --no-cache timm pytorch-lightning torchmetrics ultralytics && \
     /uv/bin/uv pip install --no-cache -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
 
 # Clean virtual environment
