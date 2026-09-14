@@ -290,7 +290,7 @@ export function initTourAgent() {
       },
       onToken: (token) => {
         fullMarkdown += token;
-        markdownBody.innerHTML = window.marked ? marked.parse(fullMarkdown) : escapeHtml(fullMarkdown);
+        // Suppress intermediate drafting so verified final itinerary is presented only upon completion
       },
       onDone: (data) => {
         if (statusBadge) statusBadge.style.display = "none";

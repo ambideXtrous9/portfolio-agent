@@ -861,73 +861,75 @@
         <!-- 🐙 Tab 7: Play with Cluster                                         -->
         <!-- ================================================================== -->
         <section class="st-tab-view" id="tab-cluster">
-          <h1>🐙 <span style="color: #1E88E5;">Play with Clusters</span> 😎</h1>
+          <div class="st-cluster-container">
+            <h1>🐙 <span style="color: #1E88E5;">Play with Clusters</span> 😎</h1>
 
-          <!-- Initial Scatter Plot -->
-          <div id="cluster-raw-plot" style="width: 100%; min-height: 520px; margin: 1rem 0;"></div>
+            <!-- Initial Scatter Plot -->
+            <div id="cluster-raw-plot"></div>
 
-          <!-- Algorithm Radio Selector -->
-          <div style="margin: 1.5rem 0;">
-            <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Choose Clustering Algorithm</label>
-            <div class="st-radio-group">
-              <label class="st-radio-label">
-                <input type="radio" name="cluster-algo" value="K-Means" checked> K-Means
-              </label>
-              <label class="st-radio-label">
-                <input type="radio" name="cluster-algo" value="DBSCAN"> DBSCAN
-              </label>
+            <!-- Algorithm Radio Selector -->
+            <div style="margin: 1.5rem 0;">
+              <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Choose Clustering Algorithm</label>
+              <div class="st-radio-group">
+                <label class="st-radio-label">
+                  <input type="radio" name="cluster-algo" value="K-Means" checked> K-Means
+                </label>
+                <label class="st-radio-label">
+                  <input type="radio" name="cluster-algo" value="DBSCAN"> DBSCAN
+                </label>
+              </div>
             </div>
-          </div>
 
-          <!-- K-Means Slider Control -->
-          <div id="kmeans-controls" class="st-slider-container">
-            <label>
-              <span>Number of clusters</span>
-              <span id="kmeans-val-display" style="color: var(--st-primary); font-weight: 700;">3</span>
-            </label>
-            <input type="range" id="kmeans-slider" class="st-slider" min="1" max="10" value="3" />
-          </div>
-
-          <!-- DBSCAN Slider Control -->
-          <div id="dbscan-controls" class="st-slider-container" style="display: none;">
-            <label>
-              <span>Epsilon (distance threshold)</span>
-              <span id="dbscan-val-display" style="color: var(--st-primary); font-weight: 700;">5</span>
-            </label>
-            <input type="range" id="dbscan-slider" class="st-slider" min="1" max="40" value="5" />
-          </div>
-
-          <!-- Clustered Output Plot -->
-          <div id="cluster-result-plot" style="width: 100%; min-height: 520px; margin: 1.5rem 0;"></div>
-
-          <!-- Feedback note -->
-          <div id="cluster-notes" style="font-size: 1rem; color: var(--st-text-color); margin-top: 1rem;">
-            💡 Why don't you try DBSCAN..!!
-          </div>
-
-          <!-- K-Distance Graph Section (matches show_k_graph in cluster_util.py) -->
-          <div id="dbscan-kdist-section" style="display: none; margin-top: 1.5rem; padding: 1rem 1.25rem; background: #F8F9FA; border-radius: var(--st-radius); border: 1px solid var(--st-border-input);">
-            <div style="font-weight: 600; margin-bottom: 0.5rem;">💡 Would you like to see the K-Distance Graph?</div>
-            <div class="st-radio-group">
-              <label class="st-radio-label">
-                <input type="radio" name="show-k-graph" value="Yes"> Yes
+            <!-- K-Means Slider Control -->
+            <div id="kmeans-controls" class="st-slider-container">
+              <label>
+                <span>Number of clusters</span>
+                <span id="kmeans-val-display" style="color: var(--st-primary); font-weight: 700;">3</span>
               </label>
-              <label class="st-radio-label">
-                <input type="radio" name="show-k-graph" value="No" checked> No
-              </label>
+              <input type="range" id="kmeans-slider" class="st-slider" min="1" max="10" value="3" />
             </div>
-            <div id="cluster-kdist-plot" style="width: 100%; min-height: 440px; margin-top: 1rem; display: none;"></div>
-            <div id="cluster-kdist-note" style="margin-top: 0.5rem; font-weight: 600; color: #1E88E5; display: none;">
-              🧠 Now change the eps and see the result!
-            </div>
-          </div>
 
-          <!-- Glowing Cluster Footer -->
-          <div class="glowing-footer" style="justify-content: flex-end; margin-top: 3rem;">
-            <div class="inner-container">
-              <a href="https://github.com/ambideXtrous9/Learning-Python/blob/main/ML%20and%20NN/Clustering.ipynb" target="_blank">
-                <img src="assets/images/clustering.png" class="glowing-image" alt="Clustering Article" />
-              </a>
+            <!-- DBSCAN Slider Control -->
+            <div id="dbscan-controls" class="st-slider-container" style="display: none;">
+              <label>
+                <span>Epsilon (distance threshold)</span>
+                <span id="dbscan-val-display" style="color: var(--st-primary); font-weight: 700;">5</span>
+              </label>
+              <input type="range" id="dbscan-slider" class="st-slider" min="1" max="40" value="5" />
+            </div>
+
+            <!-- Clustered Output Plot -->
+            <div id="cluster-result-plot"></div>
+
+            <!-- Feedback note -->
+            <div id="cluster-notes" style="font-size: 1rem; color: var(--st-text-color); margin-top: 1rem;">
+              💡 Why don't you try DBSCAN..!!
+            </div>
+
+            <!-- K-Distance Graph Section (matches show_k_graph in cluster_util.py) -->
+            <div id="dbscan-kdist-section" style="display: none; margin-top: 1.5rem; padding: 1rem 1.25rem; background: #F8F9FA; border-radius: var(--st-radius); border: 1px solid var(--st-border-input);">
+              <div style="font-weight: 600; margin-bottom: 0.5rem;">💡 Would you like to see the K-Distance Graph?</div>
+              <div class="st-radio-group">
+                <label class="st-radio-label">
+                  <input type="radio" name="show-k-graph" value="Yes"> Yes
+                </label>
+                <label class="st-radio-label">
+                  <input type="radio" name="show-k-graph" value="No" checked> No
+                </label>
+              </div>
+              <div id="cluster-kdist-plot" style="display: none;"></div>
+              <div id="cluster-kdist-note" style="margin-top: 0.5rem; font-weight: 600; color: #1E88E5; display: none;">
+                🧠 Now change the eps and see the result!
+              </div>
+            </div>
+
+            <!-- Glowing Cluster Footer -->
+            <div class="glowing-footer" style="justify-content: flex-end; margin-top: 3rem;">
+              <div class="inner-container">
+                <a href="https://github.com/ambideXtrous9/Learning-Python/blob/main/ML%20and%20NN/Clustering.ipynb" target="_blank">
+                  <img src="assets/images/clustering.png" class="glowing-image" alt="Clustering Article" />
+                </a>
+              </div>
             </div>
           </div>
         </section>

@@ -75,23 +75,26 @@ export function initClusterSandbox() {
     });
   });
 
-  // Tab visibility observer for proper Plotly sizing
+  // Tab visibility and window resize observers for proper Plotly sizing
   const clusterTab = document.getElementById("tab-cluster");
+  const resizePlots = () => {
+    if (clusterTab && clusterTab.classList.contains("active") && window.Plotly) {
+      const rawPlot = document.getElementById("cluster-raw-plot");
+      const resultPlot = document.getElementById("cluster-result-plot");
+      const kdistPlotEl = document.getElementById("cluster-kdist-plot");
+      if (rawPlot) window.Plotly.Plots.resize(rawPlot);
+      if (resultPlot) window.Plotly.Plots.resize(resultPlot);
+      if (kdistPlotEl && kdistPlotEl.style.display !== "none") window.Plotly.Plots.resize(kdistPlotEl);
+    }
+  };
+
   if (clusterTab) {
     const observer = new MutationObserver(() => {
-      if (clusterTab.classList.contains("active") && window.Plotly) {
-        setTimeout(() => {
-          const rawPlot = document.getElementById("cluster-raw-plot");
-          const resultPlot = document.getElementById("cluster-result-plot");
-          const kdistPlotEl = document.getElementById("cluster-kdist-plot");
-          if (rawPlot) window.Plotly.Plots.resize(rawPlot);
-          if (resultPlot) window.Plotly.Plots.resize(resultPlot);
-          if (kdistPlotEl && kdistPlotEl.style.display !== "none") window.Plotly.Plots.resize(kdistPlotEl);
-        }, 100);
-      }
+      setTimeout(resizePlots, 100);
     });
     observer.observe(clusterTab, { attributes: true, attributeFilter: ["class"] });
   }
+  window.addEventListener("resize", resizePlots);
 
   // Initial run
   runClustering();
@@ -119,28 +122,30 @@ export function initClusterSandbox() {
       };
 
       const layout = {
-        title: { text: "Dataset Visualization", font: { color: "#FFFFFF", size: 24 } },
+        title: { text: "Dataset Visualization", font: { color: "#FFFFFF", size: 22 } },
         paper_bgcolor: "#000000",
         plot_bgcolor: "#000000",
         showlegend: false,
-        margin: { l: 60, r: 40, t: 60, b: 60 },
-        height: 520,
+        autosize: true,
+        margin: { l: 60, r: 60, t: 60, b: 60 },
         xaxis: {
-          title: { text: "Feature 1", font: { color: "#FFFFFF", size: 16 } },
+          title: { text: "Feature 1", font: { color: "#FFFFFF", size: 15 } },
           range: [-650, 650],
+          fixedrange: true,
           color: "#FFFFFF",
           showgrid: false,
           zeroline: false,
           tickfont: { color: "#FFFFFF" },
         },
         yaxis: {
-          title: { text: "Feature 2", font: { color: "#FFFFFF", size: 16 } },
+          title: { text: "Feature 2", font: { color: "#FFFFFF", size: 15 } },
           range: [-650, 650],
+          fixedrange: true,
+          scaleanchor: "x",
+          scaleratio: 1,
           color: "#FFFFFF",
           showgrid: false,
           zeroline: false,
-          scaleanchor: "x",
-          scaleratio: 1,
           tickfont: { color: "#FFFFFF" },
         },
       };
@@ -231,28 +236,30 @@ export function initClusterSandbox() {
     });
 
     const layout = {
-      title: { text: titleText, font: { color: "#FFFFFF", size: 24 } },
+      title: { text: titleText, font: { color: "#FFFFFF", size: 22 } },
       paper_bgcolor: "#000000",
       plot_bgcolor: "#000000",
       showlegend: false,
-      margin: { l: 60, r: 40, t: 60, b: 60 },
-      height: 520,
+      autosize: true,
+      margin: { l: 60, r: 60, t: 60, b: 60 },
       xaxis: {
-        title: { text: "Feature 1", font: { color: "#FFFFFF", size: 16 } },
+        title: { text: "Feature 1", font: { color: "#FFFFFF", size: 15 } },
         range: [-650, 650],
+        fixedrange: true,
         color: "#FFFFFF",
         showgrid: false,
         zeroline: false,
         tickfont: { color: "#FFFFFF" },
       },
       yaxis: {
-        title: { text: "Feature 2", font: { color: "#FFFFFF", size: 16 } },
+        title: { text: "Feature 2", font: { color: "#FFFFFF", size: 15 } },
         range: [-650, 650],
+        fixedrange: true,
+        scaleanchor: "x",
+        scaleratio: 1,
         color: "#FFFFFF",
         showgrid: false,
         zeroline: false,
-        scaleanchor: "x",
-        scaleratio: 1,
         tickfont: { color: "#FFFFFF" },
       },
     };
@@ -302,14 +309,14 @@ export function initClusterSandbox() {
       };
 
       const layout = {
-        title: { text: "K-Distance Graph", font: { color: "#FFFFFF", size: 24 } },
+        title: { text: "K-Distance Graph", font: { color: "#FFFFFF", size: 22 } },
         paper_bgcolor: "#000000",
         plot_bgcolor: "#000000",
         showlegend: false,
+        autosize: true,
         margin: { l: 60, r: 40, t: 60, b: 60 },
-        height: 440,
         xaxis: {
-          title: { text: "Data Points Sorted by Distance", font: { color: "#FFFFFF", size: 16 } },
+          title: { text: "Data Points Sorted by Distance", font: { color: "#FFFFFF", size: 15 } },
           range: [0, data.x.length],
           color: "#FFFFFF",
           showgrid: true,
@@ -319,7 +326,7 @@ export function initClusterSandbox() {
           tickfont: { color: "#FFFFFF" },
         },
         yaxis: {
-          title: { text: "Epsilon", font: { color: "#FFFFFF", size: 16 } },
+          title: { text: "Epsilon", font: { color: "#FFFFFF", size: 15 } },
           color: "#FFFFFF",
           showgrid: true,
           gridcolor: "gray",
