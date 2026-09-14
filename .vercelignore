@@ -8,7 +8,6 @@ __pycache__
 *.onnx
 *.log
 backend/models/
-legacy_streamlit/
 .env
 .env.local
 .env.*.local

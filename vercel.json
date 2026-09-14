@@ -5,7 +5,7 @@
   "cleanUrls": false,
   "functions": {
     "api/index.py": {
-      "excludeFiles": "{backend/models/**,legacy_streamlit/**,frontend/**,*.pt,*.ckpt,.github/**,docker-compose*.yml,Dockerfile,.env*}"
+      "excludeFiles": "{backend/models/**,frontend/**,*.pt,*.ckpt,.github/**,docker-compose*.yml,Dockerfile,.env*}"
     }
   },
   "rewrites": [

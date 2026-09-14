@@ -41,7 +41,6 @@ Thumbs.db
 
 # Logs and documentation
 *.log
-legacy_streamlit/
 
 # Docker files
 docker-compose.yml
