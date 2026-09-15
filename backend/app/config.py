@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     OLLAMA_API_KEY: str = os.getenv("OLLAMA_API_KEY", "")
     
+    # Hugging Face Model Hub
+    HF_TOKEN: str = os.getenv("HF_TOKEN", os.getenv("HUGGING_FACE_HUB_TOKEN", ""))
+    HF_MODEL_REPO_ID: str = os.getenv("HF_MODEL_REPO_ID", "ambideXtrous9/brand-logo-classifiers")
+    DOWNLOAD_MODELS_ON_STARTUP: bool = os.getenv("DOWNLOAD_MODELS_ON_STARTUP", "true").lower() in ("1", "true", "yes")
+
     # MCP & Vector DB
     PINECONE_API_KEY: str = os.getenv("PINECONE_API_KEY", "")
     PINECONE_INDEX_NAME: str = os.getenv("PINECONE_INDEX_NAME", "hpvdb-openai")

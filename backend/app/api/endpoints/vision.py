@@ -23,9 +23,23 @@ from backend.app.schemas.vision import (
 router = APIRouter(prefix="/vision", tags=["Vision AI"])
 
 from pathlib import Path
+from backend.app.core.hf_models import get_models_dir
+
 BACKEND_DIR = str(Path(__file__).resolve().parents[3])
 MODELS_DIR = os.path.join(BACKEND_DIR, "models")
-YOLO_WEIGHTS = os.path.join(MODELS_DIR, "LogoYolobest.pt")
+
+
+def get_checkpoint_path(filename: str) -> str:
+    """Resolves local checkpoint path checking models directory and defaults."""
+    effective_dir = get_models_dir()
+    primary = os.path.join(effective_dir, filename)
+    if os.path.exists(primary):
+        return primary
+    fallback = os.path.join(MODELS_DIR, filename)
+    if os.path.exists(fallback):
+        return fallback
+    return primary
+
 
 if MODELS_DIR not in sys.path:
     sys.path.insert(0, MODELS_DIR)
@@ -46,25 +60,25 @@ MODEL_SPECS = {
     "Xception": {
         "size_mb": 81.64,
         "params_m": 21.34,
-        "checkpoint": os.path.join(MODELS_DIR, "Xception.ckpt"),
+        "filename": "Xception.ckpt",
         "class_name": "XceptionNet",
     },
     "InceptionV3": {
         "size_mb": 85.30,
         "params_m": 22.32,
-        "checkpoint": os.path.join(MODELS_DIR, "InceptionV3.ckpt"),
+        "filename": "InceptionV3.ckpt",
         "class_name": "InceptionV3",
     },
     "MobileNetV2": {
         "size_mb": 9.91,
         "params_m": 2.56,
-        "checkpoint": os.path.join(MODELS_DIR, "MobileNetV2.ckpt"),
+        "filename": "MobileNetV2.ckpt",
         "class_name": "MobileNetV2",
     },
     "EfficientNet": {
         "size_mb": 16.75,
         "params_m": 4.35,
-        "checkpoint": os.path.join(MODELS_DIR, "EfficientNet.ckpt"),
+        "filename": "EfficientNet.ckpt",
         "class_name": "EfficientNet",
     }
 }
@@ -80,8 +94,9 @@ def get_cached_yolo_model():
         return _cached_yolo_model
     try:
         from ultralytics import YOLO
-        if os.path.exists(YOLO_WEIGHTS):
-            _cached_yolo_model = YOLO(YOLO_WEIGHTS)
+        yolo_path = get_checkpoint_path("LogoYolobest.pt")
+        if os.path.exists(yolo_path):
+            _cached_yolo_model = YOLO(yolo_path)
             return _cached_yolo_model
     except Exception as e:
         print(f"⚠️ YOLO model caching note: {e}")
@@ -128,7 +143,7 @@ def get_cached_model(model_name: str):
             return orig_create(*args, **kwargs)
         timm.create_model = fast_create
 
-        ckpt_path = spec["checkpoint"]
+        ckpt_path = spec.get("checkpoint") or get_checkpoint_path(spec["filename"])
         if not os.path.exists(ckpt_path):
             return None
 

@@ -37,7 +37,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️ Auth database initialization note: {e}")
 
-    # 3. Preload models & services before server starts accepting traffic
+    # 3. Synchronize Hugging Face model checkpoints & preload vision models
+    try:
+        from backend.app.core.hf_models import sync_hf_checkpoints
+        sync_hf_checkpoints()
+    except Exception as e:
+        print(f"⚠️ Hugging Face checkpoints sync note: {e}")
+
     try:
         from backend.app.api.endpoints.vision import preload_vision_models
         preload_vision_models()

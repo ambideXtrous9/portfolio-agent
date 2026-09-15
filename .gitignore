@@ -35,6 +35,12 @@ Thumbs.db
 *.sqlite-wal
 *.db
 
+# Model checkpoints (hosted dynamically on Hugging Face Hub)
+*.ckpt
+*.pt
+backend/models/*.ckpt
+backend/models/*.pt
+
 # Jupyter / Scratch files
 .ipynb_checkpoints/
 temp.ipynb
