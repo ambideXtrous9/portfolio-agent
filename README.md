@@ -35,13 +35,13 @@
 | **Production Web App** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=vercel" height="18" alt="Vercel" /></a> Vercel Global Edge CDN | [`portfolio-agent-ai.vercel.app`](https://portfolio-agent-ai.vercel.app) | 🟢 `Online` |
 | **API & OpenAPI Specs** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=fastapi" height="18" alt="FastAPI" /></a> FastAPI Serverless Gateway | [`/docs`](https://portfolio-agent-ai.vercel.app/docs) &bull; [`/redoc`](https://portfolio-agent-ai.vercel.app/redoc) | 🟢 `Public` |
 | **CI/CD Automation** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=githubactions" height="18" alt="GitHub Actions" /></a> GitHub Actions Pipeline | [Automated Build & Deploy](https://github.com/ambideXtrous9/portfolio-agent/actions) | 🟢 `Passing` |
-| **Telegram ChatOps Bot** | <a href="https://t.me/GCICD_bot"><img src="https://cdn.simpleicons.org/telegram/26A5E4" height="18" alt="Telegram" /></a> Telegram CI/CD Bot | [`@GCICD_bot`](https://t.me/GCICD_bot) &bull; `/redeploy`, `/status`, `/health` | 🟢 `Active` |
-| **Managed Database** | <a href="https://neon.tech"><img src="https://cdn.simpleicons.org/neon/00E599" height="18" alt="Neon" /></a> Neon Serverless Postgres | AWS `us-east-1` (`iad1`) &bull; Vercel Storage | 🟢 `Active` |
+| **Telegram ChatOps Bot** | <a href="https://t.me/GCICD_bot"><img src="frontend/assets/images/icons/tile_telegram.svg" height="18" width="18" alt="Telegram" /></a> Telegram CI/CD Bot | [`@GCICD_bot`](https://t.me/GCICD_bot) &bull; `/redeploy`, `/status`, `/health` | 🟢 `Active` |
+| **Managed Database** | <a href="https://neon.tech"><img src="frontend/assets/images/icons/tile_neon.svg" height="18" width="18" alt="Neon" /></a> Neon Serverless Postgres | AWS `us-east-1` (`iad1`) &bull; Vercel Storage | 🟢 `Active` |
 | **Model Context Protocol** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs,npm" height="18" alt="Node.js" /></a> MultiServerMCPClient | Stdio JSON-RPC &bull; Airbnb & Pinecone MCP Servers | 🟢 `Active` |
-| **Vector Database** | <a href="https://www.pinecone.io/"><img src="frontend/assets/images/icons/pinecone.svg" height="18" alt="Pinecone" /></a> Pinecone Vector DB | `hpvdb-openai` index &bull; 8,970 embeddings | 🟢 `Indexed` |
-| **Model Checkpoint Hub** | <a href="https://huggingface.co/ambideXtrous9/brand-logo-classifiers"><img src="https://cdn.simpleicons.org/huggingface/FFD21E" height="18" alt="Hugging Face" /></a> Hugging Face Hub | [`ambideXtrous9/brand-logo-classifiers`](https://huggingface.co/ambideXtrous9/brand-logo-classifiers) | 🟢 `Synced` |
-| **Voice Streaming Mesh** | <a href="https://livekit.io/"><img src="https://cdn.simpleicons.org/livekit/00A67E" height="18" alt="LiveKit" /></a> LiveKit Cloud | WebRTC Real-Time SFU Mesh | 🟢 `Connected` |
-| **Authentication Guard** | <a href="https://jwt.io/"><img src="https://cdn.simpleicons.org/jsonwebtokens/000000" height="18" alt="JWT" /></a> PyJWT + Argon2id | Bearer Token Gating & Neon Blacklist | 🔒 `Enforced` |
+| **Vector Database** | <a href="https://www.pinecone.io/"><img src="frontend/assets/images/icons/tile_pinecone.svg" height="18" width="18" alt="Pinecone" /></a> Pinecone Vector DB | `hpvdb-openai` index &bull; 8,970 embeddings | 🟢 `Indexed` |
+| **Model Checkpoint Hub** | <a href="https://huggingface.co/ambideXtrous9/brand-logo-classifiers"><img src="frontend/assets/images/icons/tile_huggingface.svg" height="18" width="18" alt="Hugging Face" /></a> Hugging Face Hub | [`ambideXtrous9/brand-logo-classifiers`](https://huggingface.co/ambideXtrous9/brand-logo-classifiers) | 🟢 `Synced` |
+| **Voice Streaming Mesh** | <a href="https://livekit.io/"><img src="frontend/assets/images/icons/tile_livekit.svg" height="18" width="18" alt="LiveKit" /></a> LiveKit Cloud | WebRTC Real-Time SFU Mesh | 🟢 `Connected` |
+| **Authentication Guard** | <a href="https://jwt.io/"><img src="frontend/assets/images/icons/tile_jwt.svg" height="18" width="18" alt="JWT" /></a> PyJWT + Argon2id | Bearer Token Gating & Neon Blacklist | 🔒 `Enforced` |
 
 </div>
 
@@ -54,13 +54,25 @@
     <img src="https://skillicons.dev/icons?i=vercel,fastapi,python,postgres,nodejs,githubactions,docker,aws,pytorch,git,ts,js,html,css&perline=14" alt="Complete Technology Architecture Stack" />
   </a>
 </p>
+<p align="center">
+  <a href="https://neon.tech"><img src="frontend/assets/images/icons/tile_neon.svg" height="46" width="46" alt="Neon" title="Neon Postgres" /></a>
+  <a href="https://huggingface.co/ambideXtrous9/brand-logo-classifiers"><img src="frontend/assets/images/icons/tile_huggingface.svg" height="46" width="46" alt="Hugging Face" title="Hugging Face Hub" /></a>
+  <a href="https://www.pinecone.io/"><img src="frontend/assets/images/icons/tile_pinecone.svg" height="46" width="46" alt="Pinecone" title="Pinecone Vector DB" /></a>
+  <a href="https://livekit.io/"><img src="frontend/assets/images/icons/tile_livekit.svg" height="46" width="46" alt="LiveKit" title="LiveKit Voice SFU" /></a>
+  <a href="https://webrtc.org"><img src="frontend/assets/images/icons/tile_webrtc.svg" height="46" width="46" alt="WebRTC" title="WebRTC Audio Mesh" /></a>
+  <a href="https://t.me/GCICD_bot"><img src="frontend/assets/images/icons/tile_telegram.svg" height="46" width="46" alt="Telegram" title="Telegram CI/CD Bot" /></a>
+  <a href="https://langchain-ai.github.io/langgraph/"><img src="frontend/assets/images/icons/tile_langgraph.svg" height="46" width="46" alt="LangGraph" title="LangGraph StateGraph" /></a>
+  <a href="https://langchain.com"><img src="frontend/assets/images/icons/tile_langchain.svg" height="46" width="46" alt="LangChain" title="LangChain Framework" /></a>
+  <a href="https://jwt.io/"><img src="frontend/assets/images/icons/tile_jwt.svg" height="46" width="46" alt="JWT" title="PyJWT + Argon2id" /></a>
+</p>
 
 <div align="center">
   <table style="border-collapse: collapse; border: none; width: 100%;">
     <tr>
       <td align="center" style="padding: 12px; border: 1px solid #30363d;">
         <b>Client & Edge Delivery</b><br/>
-        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=html,css,js,ts,vercel" height="30" alt="Frontend & Edge" /></a><br/>
+        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=html,css,js,ts,vercel" height="30" alt="Frontend & Edge" /></a>
+        <a href="https://jwt.io/"><img src="frontend/assets/images/icons/tile_jwt.svg" height="30" width="30" alt="JWT" /></a><br/>
         <sub>Vercel Edge CDN &bull; HTML5/ES6 SPA</sub>
       </td>
       <td align="center" style="padding: 12px; border: 1px solid #30363d;">
@@ -70,7 +82,8 @@
       </td>
       <td align="center" style="padding: 12px; border: 1px solid #30363d;">
         <b>Model Context Protocol (MCP)</b><br/>
-        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs,npm,bash" height="30" alt="MCP" /></a><br/>
+        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs,npm,bash" height="30" alt="MCP" /></a>
+        <a href="https://www.pinecone.io/"><img src="frontend/assets/images/icons/tile_pinecone.svg" height="30" width="30" alt="Pinecone" /></a><br/>
         <sub>MultiServer MCP &bull; Node.js Stdio Bridges</sub>
       </td>
     </tr>
@@ -78,19 +91,20 @@
       <td align="center" style="padding: 12px; border: 1px solid #30363d;">
         <b>Cloud Persistence Tier</b><br/>
         <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=postgres,aws" height="30" alt="PostgreSQL" /></a>
-        <a href="https://neon.tech"><img src="https://cdn.simpleicons.org/neon/00E599" height="30" alt="Neon" /></a><br/>
+        <a href="https://neon.tech"><img src="frontend/assets/images/icons/tile_neon.svg" height="30" width="30" alt="Neon" /></a>
+        <a href="https://langchain-ai.github.io/langgraph/"><img src="frontend/assets/images/icons/tile_langgraph.svg" height="30" width="30" alt="LangGraph" /></a><br/>
         <sub>Neon Serverless &bull; PgBouncer Pooler</sub>
       </td>
       <td align="center" style="padding: 12px; border: 1px solid #30363d;">
         <b>Deep Learning & Neural Vision</b><br/>
         <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=pytorch,tensorflow" height="30" alt="Machine Learning" /></a>
-        <a href="https://huggingface.co"><img src="https://cdn.simpleicons.org/huggingface/FFD21E" height="30" alt="Hugging Face" /></a><br/>
+        <a href="https://huggingface.co/ambideXtrous9/brand-logo-classifiers"><img src="frontend/assets/images/icons/tile_huggingface.svg" height="30" width="30" alt="Hugging Face" /></a><br/>
         <sub>PyTorch &bull; Hugging Face Hub Checkpoints</sub>
       </td>
       <td align="center" style="padding: 12px; border: 1px solid #30363d;">
         <b>CI/CD & Telegram ChatOps</b><br/>
         <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=githubactions,git,github" height="30" alt="CI/CD" /></a>
-        <a href="https://t.me/GCICD_bot"><img src="https://cdn.simpleicons.org/telegram/26A5E4" height="30" alt="Telegram" /></a><br/>
+        <a href="https://t.me/GCICD_bot"><img src="frontend/assets/images/icons/tile_telegram.svg" height="30" width="30" alt="Telegram" /></a><br/>
         <sub>GitHub Actions &bull; Telegram @GCICD_bot</sub>
       </td>
     </tr>
@@ -212,7 +226,7 @@ In this architecture, MCP serves as the unified tool-calling abstraction layer i
         Spawned via Node.js stdio: <code>npx -y @openbnb/mcp-server-airbnb --ignore-robots-txt</code>. Provides real-time vacation rental lookups, pricing discovery, and coordinate mapping via <code>get_airbnb_tools()</code> to the Tour Planner agent.
       </td>
       <td align="left" style="padding: 10px; border: 1px solid #30363d;">
-        <a href="https://www.pinecone.io"><img src="frontend/assets/images/icons/pinecone.svg" height="24" alt="Pinecone" /></a> <b>Pinecone MCP Server</b><br/>
+        <a href="https://www.pinecone.io"><img src="frontend/assets/images/icons/tile_pinecone.svg" height="24" width="24" alt="Pinecone" /></a> <b>Pinecone MCP Server</b><br/>
         Spawned via Node.js stdio: <code>npx -y @pinecone-database/mcp</code> with <code>PINECONE_API_KEY</code> injection. Exposes index introspection, vector records retrieval, and query tools via <code>get_pinecone_tools()</code>.
       </td>
     </tr>
@@ -510,31 +524,32 @@ The PostgreSQL database hosting has been completely decoupled from the applicati
 
 | Architectural Layer | Technologies & Icons | Implementation Role |
 | :--- | :--- | :--- |
-| **CI/CD & ChatOps** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=githubactions,git,github" height="28" alt="CI/CD" /></a> <a href="https://t.me/GCICD_bot"><img src="https://cdn.simpleicons.org/telegram/26A5E4" height="28" alt="Telegram" /></a> | Automated linting, test suite execution, dependency locking (`uv.lock`), Vercel edge deployment webhooks, and bidirectional Telegram ChatOps control (`@GCICD_bot`). |
+| **CI/CD & ChatOps** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=githubactions,git,github" height="28" alt="CI/CD" /></a> <a href="https://t.me/GCICD_bot"><img src="frontend/assets/images/icons/tile_telegram.svg" height="28" width="28" alt="Telegram" /></a> | Automated linting, test suite execution, dependency locking (`uv.lock`), Vercel edge deployment webhooks, and bidirectional Telegram ChatOps control (`@GCICD_bot`). |
 | **Cloud Edge & Hosting** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=vercel,aws,cloudflare" height="28" alt="Hosting" /></a> | Global edge CDN, zero-config TLS termination, serverless compute (AWS `iad1`), and Cloudflare tunneling. |
 | **Gateway & Application** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=fastapi,python,docker,linux" height="28" alt="Backend" /></a> | FastAPI 0.115 async runtime, lifespan startup hooks, SSE token streaming, and Docker Compose orchestration. |
 | **Model Context Protocol (MCP)** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs,npm,bash" height="28" alt="MCP" /></a> | `MultiServerMCPClient` orchestrating Node.js stdio servers (`@openbnb/mcp-server-airbnb`, `@pinecone-database/mcp`). |
-| **Database & Persistence** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=postgres" height="28" alt="PostgreSQL" /></a> <a href="https://neon.tech"><img src="https://cdn.simpleicons.org/neon/00E599" height="28" alt="Neon" /></a> | Standalone Lakebase Postgres with PgBouncer connection pooling (`psycopg_pool`), Argon2id auth, and LangGraph checkpoints. |
-| **Deep Learning & Models** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=pytorch,tensorflow" height="28" alt="ML" /></a> <a href="https://huggingface.co"><img src="https://cdn.simpleicons.org/huggingface/FFD21E" height="28" alt="Hugging Face" /></a> | Transfer Learning (Xception, InceptionV3, MobileNetV2, EfficientNet-B0), YOLOv8, and dynamic startup checkpoint download. |
+| **Database & Persistence** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=postgres" height="28" alt="PostgreSQL" /></a> <a href="https://neon.tech"><img src="frontend/assets/images/icons/tile_neon.svg" height="28" width="28" alt="Neon" /></a> <a href="https://langchain-ai.github.io/langgraph/"><img src="frontend/assets/images/icons/tile_langgraph.svg" height="28" width="28" alt="LangGraph" /></a> | Standalone Lakebase Postgres with PgBouncer connection pooling (`psycopg_pool`), Argon2id auth, and LangGraph checkpoints (`AsyncPostgresSaver`). |
+| **Auth & Security** | <a href="https://jwt.io/"><img src="frontend/assets/images/icons/tile_jwt.svg" height="28" width="28" alt="JWT" /></a> <a href="https://neon.tech"><img src="frontend/assets/images/icons/tile_neon.svg" height="28" width="28" alt="Neon Auth" /></a> | Cryptographic Argon2id password hashing, stateless JWT Bearer token generation, and Neon blacklist token invalidation table. |
+| **Deep Learning & Models** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=pytorch,tensorflow" height="28" alt="ML" /></a> <a href="https://huggingface.co/ambideXtrous9/brand-logo-classifiers"><img src="frontend/assets/images/icons/tile_huggingface.svg" height="28" width="28" alt="Hugging Face" /></a> | Transfer Learning (Xception, InceptionV3, MobileNetV2, EfficientNet-B0), YOLOv8, and dynamic startup checkpoint download. |
 | **Presentation Layer** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=html,css,js,ts" height="28" alt="Frontend" /></a> | Decoupled SPA, Obsidian/Streamlit design system, WebSockets, SSE event handlers, and responsive CSS variables. |
-| **Vector Search & RAG** | <a href="https://www.pinecone.io"><img src="frontend/assets/images/icons/pinecone.svg" height="28" alt="Pinecone DB" /></a> <a href="https://langchain.com"><img src="https://cdn.simpleicons.org/langchain/1C3C3C" height="28" alt="LangChain" /></a> | 8,970 vector chunks in `hpvdb-openai` index with Cross-Encoder Neural Reranking for lore retrieval. |
-| **Real-Time Voice Mesh** | <a href="https://livekit.io"><img src="https://cdn.simpleicons.org/livekit/00A67E" height="28" alt="LiveKit Cloud" /></a> <a href="https://webrtc.org"><img src="https://cdn.simpleicons.org/webrtc/333333" height="28" alt="WebRTC" /></a> | Full-duplex WebRTC audio streaming, Silero Voice Activity Detection (VAD), and Groq Whisper STT. |
+| **Vector Search & RAG** | <a href="https://www.pinecone.io"><img src="frontend/assets/images/icons/tile_pinecone.svg" height="28" width="28" alt="Pinecone DB" /></a> <a href="https://langchain.com"><img src="frontend/assets/images/icons/tile_langchain.svg" height="28" width="28" alt="LangChain" /></a> | 8,970 vector chunks in `hpvdb-openai` index with Cross-Encoder Neural Reranking for lore retrieval. |
+| **Real-Time Voice Mesh** | <a href="https://livekit.io"><img src="frontend/assets/images/icons/tile_livekit.svg" height="28" width="28" alt="LiveKit Cloud" /></a> <a href="https://webrtc.org"><img src="frontend/assets/images/icons/tile_webrtc.svg" height="28" width="28" alt="WebRTC" /></a> | Full-duplex WebRTC audio streaming, Silero Voice Activity Detection (VAD), and Groq Whisper STT. |
 
 ---
 
-## 🧩 Key AI Features & Capabilities
+## Key AI Features & Capabilities
 
-| Feature | Tech Stack | Description |
+| Feature | Tech Stack & Icons | Description |
 | :--- | :--- | :--- |
-| **🪄 Harry Potter Lore Scholar** | LangGraph, Pinecone (`hpvdb-openai`), Groq | RAG agent querying 8,970 vector chunks with comparative Indian Epics synthesis and dedicated session history. |
-| **🏡 MCP Tour Planner** | LangGraph, Airbnb MCP Server, Open-Meteo | Live Airbnb stay rate lookup and 3-day weather forecasts streamed token-by-token via Server-Sent Events (SSE). |
-| **🐘 Neon Checkpointing & Auth** | LangGraph `AsyncPostgresSaver`, Neon Postgres | Real-time thread state serialization, persistent multi-turn memory, and Argon2id session authentication. |
-| **🤗 HF Dynamic Checkpoints** | Hugging Face Hub, `huggingface_hub` | Dynamic lifespan startup synchronization of deep learning weights (.ckpt, .pt) keeping repo lightweight. |
-| **🛡️ JWT Authentication Guard** | FastAPI, PyJWT, Argon2id | Strict authentication gating on all AI agent endpoints; public access limited strictly to Home. |
-| **📈 Stock Screener & Valuation** | Pandas, Technical Analysis, Valuation Models | 20-DMA volume breakout scanner across Nifty 500/Microcap 250 with automated institutional research reports. |
-| **👁️ Vision AI & YOLO Detection** | PyTorch, YOLOv8, Timm | 27-brand corporate logo neural classification with real-time bounding-box coordinates overlay. |
-| **🐙 2D Clustering Sandbox** | Scikit-Learn, Plotly.js | Interactive 2D spatial canvas with real-time K-Means, DBSCAN, and Silhouette Coefficient evaluation. |
-| **🎙️ Voice AI Agent** | LiveKit WebRTC, Groq Whisper, Silero VAD | Low-latency full-duplex conversational voice agent with live audio waveform visualization. |
+| **Harry Potter Lore Scholar** | <img src="frontend/assets/images/icons/tile_pinecone.svg" height="20" width="20" alt="Pinecone" /> LangGraph, Pinecone (`hpvdb-openai`), Groq | RAG agent querying 8,970 vector chunks with comparative Indian Epics synthesis and dedicated session history. |
+| **MCP Tour Planner** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs" height="20" alt="Node" /></a> LangGraph, Airbnb MCP Server, Open-Meteo | Live Airbnb stay rate lookup and 3-day weather forecasts streamed token-by-token via Server-Sent Events (SSE). |
+| **Neon Checkpointing & Auth** | <img src="frontend/assets/images/icons/tile_neon.svg" height="20" width="20" alt="Neon" /> <img src="frontend/assets/images/icons/tile_langgraph.svg" height="20" width="20" alt="LangGraph" /> LangGraph `AsyncPostgresSaver`, Neon Postgres | Real-time thread state serialization, persistent multi-turn memory, and Argon2id session authentication. |
+| **HF Dynamic Checkpoints** | <img src="frontend/assets/images/icons/tile_huggingface.svg" height="20" width="20" alt="Hugging Face" /> Hugging Face Hub, `huggingface_hub` | Dynamic lifespan startup synchronization of deep learning weights (.ckpt, .pt) keeping repo lightweight. |
+| **JWT Authentication Guard** | <img src="frontend/assets/images/icons/tile_jwt.svg" height="20" width="20" alt="JWT" /> FastAPI, PyJWT, Argon2id | Strict authentication gating on all AI agent endpoints; public access limited strictly to Home. |
+| **Stock Screener & Valuation** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=python" height="20" alt="Python" /></a> Pandas, Technical Analysis, Valuation Models | 20-DMA volume breakout scanner across Nifty 500/Microcap 250 with automated institutional research reports. |
+| **Vision AI & YOLO Detection** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=pytorch" height="20" alt="PyTorch" /></a> PyTorch, YOLOv8, Timm | 27-brand corporate logo neural classification with real-time bounding-box coordinates overlay. |
+| **2D Clustering Sandbox** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=scikitlearn" height="20" alt="Scikit-Learn" /></a> Scikit-Learn, Plotly.js | Interactive 2D spatial canvas with real-time K-Means, DBSCAN, and Silhouette Coefficient evaluation. |
+| **Voice AI Agent** | <img src="frontend/assets/images/icons/tile_livekit.svg" height="20" width="20" alt="LiveKit" /> <img src="frontend/assets/images/icons/tile_webrtc.svg" height="20" width="20" alt="WebRTC" /> LiveKit WebRTC, Groq Whisper, Silero VAD | Low-latency full-duplex conversational voice agent with live audio waveform visualization. |
 
 ---
 
