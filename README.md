@@ -113,6 +113,10 @@
 
 ### 1. End-to-End Distributed System Topology
 
+<p align="center">
+  <img src="frontend/assets/images/end-to-end-distributed-system-architecture.png" alt="End-to-End Distributed System Architecture" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid #eaeaea;"/>
+</p>
+
 The platform implements an asynchronous, distributed micro-architecture decoupled into operational tiers: an edge-delivered SPA, a serverless FastAPI gateway, an automated Telegram ChatOps control loop, a Model Context Protocol (MCP) subsystem, LangGraph multi-agent execution graphs, a standalone **Neon Serverless PostgreSQL** database with dual schemas, and external AI/cloud registries:
 
 ```mermaid
