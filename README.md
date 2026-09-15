@@ -43,9 +43,17 @@
 
 ---
 
-## ⚡ System Architecture
+## ⚡ System Design & Architecture
 
-The platform employs a modular, decoupled cloud architecture engineered for high availability, zero cold-start state loss, automated CI/CD deployment, and low-latency inference:
+<p align="center">
+  <a href="https://skillicons.dev">
+    <img src="https://skillicons.dev/icons?i=githubactions,git,vercel,fastapi,python,postgres,docker,aws,pytorch,linux,html,css,js,ts&perline=14" alt="Complete Technology Stack" />
+  </a>
+</p>
+
+### 🏗️ 1. End-to-End Distributed Architecture
+
+The system is decoupled into an edge-delivered SPA, an asynchronous serverless FastAPI gateway, LangGraph StateGraph agent execution engines, and a dedicated **Neon Serverless PostgreSQL** cloud database with dual persistence (Argon2id Auth + LangGraph Checkpointing):
 
 ```mermaid
 flowchart LR
@@ -54,50 +62,199 @@ flowchart LR
     subgraph CICD ["🐙 CI/CD & Delivery"]
         direction TB
         Git["GitHub Repo\n(main branch)"]
-        GHA["GitHub Actions\n(Lint & Pytest)"]
+        GHA["GitHub Actions CI\n• Linting & Pytest\n• uv.lock Audit"]
         Git -->|"Push / PR"| GHA
     end
 
-    subgraph VercelEdge ["▲ Vercel Edge & Compute"]
+    subgraph VercelEdge ["▲ Vercel Cloud Platform"]
         direction TB
-        CDN["Vercel Global CDN\n(HTML5 / ES6+ SPA)"]
-        API["FastAPI Gateway\n(Python 3.12 / uv)"]
-        Auth["🛡️ JWT & Argon2id\nAuth Guard"]
-        CDN -.->|"API Calls"| API
-        API --> Auth
+        CDN["Global Edge CDN\n(HTML5 / ES6+ SPA)"]
+        API["FastAPI 0.115 Gateway\n(Python 3.12 Serverless)"]
+        AuthGuard["🛡️ Auth Guard\n(PyJWT + Argon2id)"]
+        Lifespan["FastAPI Lifespan\n(HF Checkpoint Sync)"]
+        CDN -.->|"HTTPS / JSON"| API
+        API --> AuthGuard
+        API -.-> Lifespan
     end
 
-    subgraph Agents ["🧠 LangGraph Multi-Agent Core"]
+    subgraph Agents ["🧠 LangGraph Agent Runtime"]
         direction TB
-        Harry["🪄 Harry Lore RAG\n(Pinecone + Epics)"]
+        StateEngine["LangGraph StateGraph\n(Multi-Turn Graph Runner)"]
+        Harry["🪄 Harry Lore RAG\n(Pinecone Vectors)"]
         Tour["🏡 Tour Planner\n(Airbnb MCP + Weather)"]
         Stock["📈 Stock Quant\n(Breakout Scanner)"]
         Vision["👁️ Vision Studio\n(27-Brand Neural)"]
         Voice["🎙️ Voice Agent\n(LiveKit WebRTC)"]
+        StateEngine --> Harry & Tour & Stock & Vision & Voice
     end
 
-    subgraph DataCloud ["💾 Cloud Services & Registries"]
+    subgraph PostgresCloud ["🐘 Neon Serverless Postgres (AWS iad1)"]
         direction TB
-        Neon[("🐘 Neon Postgres (AWS iad1)\n• AsyncPostgresSaver\n• Users & Token Blacklist")]
-        HF[("🤗 Hugging Face Hub\n• Brand Checkpoints (.ckpt/.pt)\n• Dynamic Lifespan Sync")]
-        Pinecone[("🌲 Pinecone Vector DB\n• hpvdb-openai (8.9k chunks)")]
-        LiveKit[("📡 LiveKit Cloud\n• WebRTC Audio Mesh")]
-        Groq[("⚡ Groq & LLMs\n• Llama-3.3-70B")]
+        NeonPooler["Neon PgBouncer Pooler\n(prepare_threshold=None)"]
+        subgraph AuthTables ["🔐 Auth & Security Storage"]
+            UsersTable[("users\n• UUID\n• Argon2id Hashes")]
+            BlacklistTable[("token_blacklist\n• Revoked JWTs")]
+            ResetsTable[("password_resets")]
+        end
+        subgraph CheckpointTables ["💾 StateSaver & History Storage"]
+            CKPTTable[("checkpoints & blobs\n(StateGraph Snapshots)")]
+            WritesTable[("checkpoint_writes\n(Pending Transitions)")]
+            ChatTable[("portfolio_chat_history\n(Turn Memory)")]
+        end
+        NeonPooler --> AuthTables
+        NeonPooler --> CheckpointTables
     end
 
-    %% Connections
+    subgraph ExternalServices ["🌐 External Cloud Registries & Mesh"]
+        direction TB
+        HFHub[("🤗 Hugging Face Hub\n(Brand Checkpoints)")]
+        Pinecone[("🌲 Pinecone Vector DB\n(hpvdb-openai)")]
+        LiveKitMesh[("📡 LiveKit Cloud\n(WebRTC Audio SFU)")]
+        GroqLLM[("⚡ Groq Inference\n(Llama-3.3-70B)")]
+    end
+
+    %% Key Interconnections
     GHA -->|"Automated Deploy"| VercelEdge
-    Auth --> Agents
-    Agents <==>|"State & History"| Neon
-    Harry <-->|"8.9k Vectors"| Pinecone
-    Agents <-->|"Inference"| Groq
-    Vision -.->|"Download Weights"| HF
-    Voice <-->|"WebRTC Stream"| LiveKit
+    AuthGuard <==>|"1. Verify Credentials & Blacklist"| AuthTables
+    AuthGuard -->|"2. Forward Authenticated Request"| StateEngine
+    StateEngine <==>|"3. AsyncPostgresSaver Checkpointing"| CheckpointTables
+    Harry <-->|"Vector Search"| Pinecone
+    StateEngine <-->|"Token Stream"| GroqLLM
+    Lifespan -.->|"Startup Sync"| HFHub
+    Voice <-->|"WebRTC Stream"| LiveKitMesh
 ```
 
 ---
 
-### 🐘 Standalone Cloud Database Architecture: Neon Serverless Postgres
+### 🔐 2. Authentication & JWT Security Lifecycle with PostgreSQL
+
+Every authenticated request undergoes strict verification against **Neon PostgreSQL**:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 👤 Client (Browser)
+    participant Edge as ▲ Vercel Gateway
+    participant Auth as 🛡️ Auth Middleware
+    participant NeonAuth as 🐘 Neon: users & blacklist
+    participant Agent as 🧠 LangGraph Agents
+
+    Note over User,NeonAuth: Registration & Login Flow
+    User->>Edge: POST /api/auth/signup (email, password)
+    Edge->>Auth: Hash password (Argon2id)
+    Auth->>NeonAuth: INSERT INTO users (id, email, hashed_password)
+    NeonAuth-->>Auth: User Created
+    Auth-->>User: Return Signed JWT Bearer Token
+
+    Note over User,Agent: Guarded AI Request Flow
+    User->>Edge: POST /api/harry/ask (Bearer Token)
+    Edge->>Auth: Decode & Verify Signature
+    Auth->>NeonAuth: SELECT 1 FROM token_blacklist WHERE token_hash = ?
+    alt Token is Blacklisted / Revoked
+        NeonAuth-->>Auth: Token Found on Blacklist
+        Auth-->>User: 401 Unauthorized (Token revoked)
+    else Token is Valid
+        NeonAuth-->>Auth: Token Not Blacklisted
+        Auth->>Agent: Dispatch Request with authenticated user_id
+        Agent-->>User: Stream Response
+    end
+
+    Note over User,NeonAuth: Logout & Revocation Flow
+    User->>Edge: POST /api/auth/logout (Bearer Token)
+    Edge->>Auth: Extract JWT jti & hash
+    Auth->>NeonAuth: INSERT INTO token_blacklist (token_hash, expires_at)
+    NeonAuth-->>Auth: Blacklisted
+    Auth-->>User: 200 OK (Session terminated)
+```
+
+---
+
+### 💾 3. LangGraph State Checkpointing Flow with `AsyncPostgresSaver`
+
+Conversational state and execution history persist across stateless Vercel Serverless invocations using **LangGraph's PostgreSQL Checkpointer**:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 👤 User
+    participant API as ⚡ FastAPI Runtime
+    participant Saver as 💾 AsyncPostgresSaver
+    participant NeonCKPT as 🐘 Neon: checkpoints & history
+    participant Graph as 🧠 StateGraph Nodes
+    participant Tool as 🔌 Tools (Pinecone / MCP)
+
+    User->>API: POST /api/{agent}/ask (thread_id, query)
+    API->>Saver: aget_tuple(config={"configurable": {"thread_id": id}})
+    Saver->>NeonCKPT: SELECT * FROM checkpoints WHERE thread_id = id ORDER BY step DESC LIMIT 1
+    NeonCKPT-->>Saver: Return serialized Checkpoint & Blobs
+    Saver-->>API: Rehydrated StateGraph Memory
+    
+    API->>Graph: Execute Agent Nodes (State, User Query)
+    Graph->>Tool: Execute Tool (Pinecone 8.9k chunks / MCP Airbnb)
+    Tool-->>Graph: Tool Results & Context
+    Graph->>API: State Delta (New Messages, Node Output)
+
+    par Asynchronous Checkpoint Commit
+        API->>Saver: aput(config, checkpoint, metadata)
+        Saver->>NeonCKPT: INSERT INTO checkpoints, checkpoint_blobs, checkpoint_writes
+        API->>NeonCKPT: INSERT INTO portfolio_chat_history (session_id, role, content)
+    and Real-Time Client Stream
+        API-->>User: Stream Server-Sent Events (SSE: data: {"token": "..."})
+    end
+```
+
+---
+
+### 🐙 4. CI/CD & Automated Delivery Pipeline (GitHub Actions → Vercel)
+
+```mermaid
+flowchart LR
+    subgraph Development ["💻 Local Development"]
+        Dev["Developer Commit"]
+        GitPush["git push origin main"]
+        Dev --> GitPush
+    end
+
+    subgraph GHA ["🐙 GitHub Actions Pipeline"]
+        direction TB
+        Checkout["actions/checkout@v4"]
+        PythonEnv["actions/setup-python@v5\n(Python 3.12)"]
+        UVLock["Verify uv.lock &\nDependencies"]
+        LintTest["Run Integration Tests\n(test_postgres_auth.py)"]
+        DeployTrigger["Deploy Webhook Trigger"]
+        Checkout --> PythonEnv --> UVLock --> LintTest --> DeployTrigger
+    end
+
+    subgraph VercelPipeline ["▲ Vercel Cloud Production"]
+        direction TB
+        Build["Build Serverless Lambdas\n(Python Bytecode Optimize)"]
+        EnvInject["Inject Neon & HF Secrets\n(DATABASE_URL, HF_TOKEN)"]
+        CDNPublish["Publish Global Edge CDN\n(portfolio-agent-ai.vercel.app)"]
+        Build --> EnvInject --> CDNPublish
+    end
+
+    GitPush --> Checkout
+    DeployTrigger --> Build
+```
+
+---
+
+### 🛠️ 5. Technology Stack & Component Mapping
+
+| Architectural Layer | Technologies & Skill-Icons | Implementation Role |
+| :--- | :--- | :--- |
+| **CI/CD & Delivery** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=githubactions,git,github" height="28" alt="CI/CD" /></a> | Automated linting, test suite execution, dependency locking (`uv.lock`), and Vercel edge deployment webhooks. |
+| **Cloud Edge & Hosting** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=vercel,aws,cloudflare" height="28" alt="Hosting" /></a> | Global edge CDN, zero-config TLS termination, serverless compute (AWS `iad1`), and Cloudflare tunneling. |
+| **Gateway & Application** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=fastapi,python,docker,linux" height="28" alt="Backend" /></a> | FastAPI 0.115 async runtime, lifespan startup hooks, SSE token streaming, and Docker Compose orchestration. |
+| **Database & Persistence** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=postgres" height="28" alt="PostgreSQL" /></a> &bull; **Neon Serverless** | Standalone Lakebase Postgres with PgBouncer connection pooling (`psycopg_pool`), Argon2id auth, and LangGraph checkpoints. |
+| **Deep Learning & Models** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=pytorch,tensorflow" height="28" alt="ML" /></a> &bull; **Hugging Face Hub** | Transfer Learning (Xception, InceptionV3, MobileNetV2, EfficientNet-B0), YOLOv8, and dynamic startup checkpoint download. |
+| **Presentation Layer** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=html,css,js,ts" height="28" alt="Frontend" /></a> | Decoupled SPA, Obsidian/Streamlit design system, WebSockets, SSE event handlers, and responsive CSS variables. |
+| **Vector Search & MCP** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs" height="28" alt="Tools" /></a> &bull; **Pinecone DB** | 8,970 vector chunks in `hpvdb-openai` index, Neural Cross-Encoder Reranker, and Node.js Model Context Protocol stdio tools. |
+| **Real-Time Voice Mesh** | **LiveKit Cloud** &bull; **WebRTC** | Full-duplex WebRTC audio streaming, Silero Voice Activity Detection (VAD), and Groq Whisper STT. |
+
+---
+
+### 🐘 6. Standalone Cloud Database Architecture: Neon Serverless Postgres
 
 The PostgreSQL database hosting has been completely decoupled from the application and is deployed as a **standalone managed cloud service on Neon Serverless Postgres**:
 
@@ -148,34 +305,7 @@ The PostgreSQL database hosting has been completely decoupled from the applicati
 
 ---
 
-## 🔄 End-to-End Request Dataflow
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as 👤 User
-    participant FE as 🖥️ Vercel Edge SPA
-    participant Auth as 🛡️ FastAPI Auth Guard
-    participant Agent as 🧠 LangGraph Engine
-    participant MCP as 🔌 MCP / Pinecone
-    participant DB as 🐘 Neon Serverless DB
-    participant LLM as ⚡ Groq Llama-3.3
-
-    User->>FE: Ask question / Request Agent Plan
-    FE->>Auth: POST /api/{agent}/ask (Bearer Token)
-    Auth->>DB: Validate Token & Revocation Blacklist
-    DB-->>Auth: Token Verified
-    Auth->>Agent: Invoke StateGraph(thread_id, state)
-    Agent->>DB: Load Prior Checkpoint (AsyncPostgresSaver)
-    Agent->>MCP: Retrieve Context (Vectors / MCP Tools)
-    Agent->>LLM: Stream Inference with Context
-    LLM-->>Agent: Token Stream Output
-    Agent->>DB: Persist Checkpoint & Append Chat Turn
-    Agent-->>FE: Stream SSE Response (data: {"token": "..."})
-    FE-->>User: Render Markdown Live in Workspace
-```
-
----
 
 ## 📡 Core API Specification
 
