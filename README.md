@@ -208,34 +208,17 @@ flowchart LR
 
 ---
 
-### 2. Model Context Protocol (MCP) Architecture & Subsystem
+### 2. Model Context Protocol (MCP) Subsystem
 
-The **Model Context Protocol (MCP)** is an open standard designed by Anthropic and adopted across industry frameworks that enables AI agents to securely interface with local and remote data sources, specialized tools, and external services via structured protocol exchanges.
+MCP acts as the standardized tool-calling abstraction layer in `backend/app/core/mcp.py`, replacing bespoke API integrations with decoupled stdio protocol bridges:
 
-In this architecture, MCP serves as the unified tool-calling abstraction layer in `backend/app/core/mcp.py`, eliminating bespoke API wrappers in favor of standard MCP servers:
+| Subsystem Component | Transport & Runtime | Capabilities & Tool Binding |
+| :--- | :--- | :--- |
+| <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs,npm" height="22" alt="Node.js" /></a> **MultiServerMCPClient** | In-process Async Client (`MultiServerMCPClient`) | Manages subprocess lifecycles, JSON-RPC 2.0 framing, and converts MCP schemas into native LangChain `BaseTool` instances. |
+| <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs" height="22" alt="Node.js" /></a> **Airbnb MCP Server** | Node.js stdio (`@openbnb/mcp-server-airbnb`) | Real-time vacation rental lookups, pricing discovery, and coordinate mapping via `get_airbnb_tools()`. |
+| <a href="https://www.pinecone.io"><img src="frontend/assets/images/icons/tile_pinecone.svg" height="22" width="22" alt="Pinecone" /></a> **Pinecone MCP Server** | Node.js stdio (`@pinecone-database/mcp`) | Vector index introspection, record fetching, and hybrid search via `get_pinecone_tools()`. |
 
-<div align="center">
-  <table style="border-collapse: collapse; border: none; width: 100%;">
-    <tr>
-      <td align="left" style="padding: 10px; border: 1px solid #30363d;">
-        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs,npm" height="24" alt="Node.js" /></a> <b>MultiServerMCPClient</b><br/>
-        Orchestrated via <code>langchain_mcp_adapters.client.MultiServerMCPClient</code> as an asynchronous singleton. Manages sub-process lifecycles, JSON-RPC 2.0 framing, error recovery, and tool schema conversion into native LangChain <code>BaseTool</code> instances.
-      </td>
-      <td align="left" style="padding: 10px; border: 1px solid #30363d;">
-        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs" height="24" alt="Node.js" /></a> <b>Airbnb MCP Server</b><br/>
-        Spawned via Node.js stdio: <code>npx -y @openbnb/mcp-server-airbnb --ignore-robots-txt</code>. Provides real-time vacation rental lookups, pricing discovery, and coordinate mapping via <code>get_airbnb_tools()</code> to the Tour Planner agent.
-      </td>
-      <td align="left" style="padding: 10px; border: 1px solid #30363d;">
-        <a href="https://www.pinecone.io"><img src="frontend/assets/images/icons/tile_pinecone.svg" height="24" width="24" alt="Pinecone" /></a> <b>Pinecone MCP Server</b><br/>
-        Spawned via Node.js stdio: <code>npx -y @pinecone-database/mcp</code> with <code>PINECONE_API_KEY</code> injection. Exposes index introspection, vector records retrieval, and query tools via <code>get_pinecone_tools()</code>.
-      </td>
-    </tr>
-  </table>
-</div>
-
-#### MCP Execution Sequence Diagram
-
-The following sequence illustrates how the Tour Planner agent dynamically binds MCP tools, executes tool calls through standard input/output (stdio) pipes, and streams the synthesized result to the client:
+#### MCP Tool Discovery & Execution Flow
 
 ```mermaid
 sequenceDiagram
@@ -275,13 +258,13 @@ sequenceDiagram
 
 ---
 
-### 3. Authentication & JWT Security Lifecycle with PostgreSQL
+### 3. Authentication & JWT Security Lifecycle (Neon Postgres)
 
-User authentication, identity verification, and token revocation are strictly enforced against **Neon PostgreSQL** via `backend/app/core/auth_db.py`:
+Identity verification and token invalidation are enforced at the API gateway via `backend/app/core/auth_db.py`:
 
-* **Password Hashing with Argon2id**: Passwords are never stored in plaintext. They are hashed using Argon2id (`$argon2id$v=19$m=65536,t=3,p=4`), the password hashing competition winner offering high resistance against GPU/ASIC brute-force attacks.
-* **Stateless Tokens with Stateful Revocation**: Tokens are signed with HMAC-SHA256 (`HS256`). When a user logs out, the SHA-256 hash of the token (`token_hash`) is immediately persisted into the `token_blacklist` table.
-* **Guarded Request Interceptor**: All AI agent execution endpoints require a valid `Authorization: Bearer <token>` header. The middleware decodes the token, checks signature validity and expiration, and performs an indexed query on `token_blacklist` to guarantee that revoked sessions cannot execute agents.
+* **Argon2id Password Hashing**: Passwords stored as `$argon2id$v=19$m=65536,t=3,p=4` hashes (memory-hard, ASIC/GPU brute-force proof).
+* **Stateless JWT + Stateful Revocation**: HS256-signed bearer tokens paired with immediate `token_blacklist` table writes on logout.
+* **Gateway Request Guard**: Middleware validates signatures, expiration, and queries `token_blacklist` before allowing agent execution.
 
 ```mermaid
 sequenceDiagram
@@ -330,14 +313,14 @@ sequenceDiagram
 
 ---
 
-### 4. LangGraph Multi-Agent State Checkpointing Flow
+### 4. LangGraph Multi-Agent State Checkpointing
 
-In a serverless environment like Vercel, compute lambdas are ephemeral and freeze or terminate between HTTP invocations. To ensure uninterrupted multi-turn conversations and long-running agent state, the runtime uses **LangGraph's `AsyncPostgresSaver`** integrated with **Neon Serverless PostgreSQL**:
+To sustain multi-turn conversational agents across ephemeral serverless invocations, graph state is serialized to Neon Postgres using `AsyncPostgresSaver`:
 
-1. **State Rehydration**: At the start of an agent turn, the engine queries the `checkpoints` table using `thread_id` to retrieve the latest graph state snapshot and blob history.
-2. **Channel Writes & Branching**: Intermediate graph transitions are tracked in `checkpoint_writes` and `checkpoint_blobs` with transactional guarantees.
-3. **Conversational Memory**: In parallel with graph state serialization, full chat messages are committed to `portfolio_chat_history`, maintaining a chronological log accessible by the user sidebar.
-4. **PgBouncer Optimization**: Connection parameters set `prepare_threshold=None` in `psycopg_pool`, preventing prepared statement caching issues with Neon's PgBouncer transaction pooler.
+* **State Rehydration**: Loads graph snapshots from `checkpoints` and `checkpoint_blobs` indexed by `thread_id`.
+* **Atomic Channel Writes**: Persists intermediate node transitions to `checkpoint_writes` with transactional rollback safety.
+* **Conversational Memory**: Commits message logs to `portfolio_chat_history` for sidebar UI rehydration.
+* **PgBouncer Pooling**: Configures `prepare_threshold=None` in `psycopg_pool` to avoid prepared statement collisions.
 
 ```mermaid
 sequenceDiagram
@@ -371,26 +354,13 @@ sequenceDiagram
 
 ---
 
-### 5. Telegram ChatOps & Real-Time CI/CD Control Loop
+### 5. Telegram ChatOps & CI/CD Control Loop
 
-The platform features an automated, bidirectional ChatOps integration between **Telegram (`@GCICD_bot`)**, the **FastAPI Gateway (`backend/app/api/endpoints/telegram.py`)**, and the **GitHub Actions CI/CD Pipeline (`backend/scripts/telegram_notify.py`)**:
+A bidirectional ChatOps control loop connecting Telegram (`@GCICD_bot`), FastAPI (`backend/app/api/endpoints/telegram.py`), and GitHub Actions (`backend/scripts/telegram_notify.py`):
 
-1. **Remote Pipeline Triggering via `/redeploy`**:
-   - Authorized developers can initiate zero-downtime production deployments directly from Telegram by sending `/redeploy` or `/deploy`.
-   - The FastAPI webhook verifies the command and invokes GitHub's REST API (`POST /repos/{repo}/actions/workflows/ci-cd.yaml/dispatches`) using `GITHUB_DISPATCH_TOKEN`.
-   - The caller's Telegram `chat_id` and username are automatically injected into `inputs.chat_id` and `inputs.trigger_source`.
-
-2. **Step-by-Step Pipeline Progress Alerts (`telegram_notify.py`)**:
-   As GitHub Actions executes each pipeline stage, it triggers `backend/scripts/telegram_notify.py` to stream rich HTML notifications to the developer:
-   - **`pipeline_start`**: Reports commit SHA, branch, actor, commit message, and live workflow tracking link.
-   - **`validation_pass` / `validation_fail`**: Reports status of Python syntax compilation, `vercel.json` schema validation, and frontend asset verification.
-   - **`deploy_start`**: Notifies that Vercel Serverless compilation and environment variable injection have begun.
-   - **`deploy_success` / `deploy_fail`**: Immediately provides the live production URL ([`portfolio-agent-ai.vercel.app`](https://portfolio-agent-ai.vercel.app)) and deployment elapsed time.
-
-3. **Production Telemetry & Health Probes**:
-   - `/status`: Returns live system telemetry, active models, vector database health, and primary URLs.
-   - `/health`: Actively probes FastAPI endpoints, Groq LPU API, Pinecone MCP connectivity, LiveKit Cloud SFU, and Telegram webhook status.
-   - `/info`: Displays repository architecture, commit metadata, and documentation references.
+* **Remote CI/CD Dispatch**: `/redeploy` or `/deploy` triggers GitHub Actions `workflow_dispatch` with caller metadata.
+* **Real-Time Step Notifications**: `telegram_notify.py` streams HTML alerts for `pipeline_start`, `validation_pass/fail`, `deploy_start`, and `deploy_success`.
+* **Live Operational Probes**: `/status`, `/health`, and `/info` probe API endpoints, Groq LPU, Pinecone MCP, and LiveKit Cloud SFU.
 
 #### Telegram ChatOps & CI/CD Execution Sequence Diagram
 
@@ -485,38 +455,18 @@ flowchart LR
 
 ---
 
-### 7. Standalone Cloud Database Architecture: Neon Serverless Postgres
+### 7. Standalone Cloud Database: Neon Serverless Postgres
 
-The PostgreSQL database hosting has been completely decoupled from the application container and is deployed as a **standalone managed cloud service on Neon Serverless Postgres**:
+PostgreSQL is completely decoupled from the application container and runs as a managed serverless instance on **Neon Cloud**:
 
-1. **Physical Location & Co-location**:
-   - The database resides on **Neon Cloud** in AWS region `us-east-1` (`iad1`), provisioned directly via Vercel Storage integration (`portfolio-db`).
-   - Co-locating the database with Vercel's primary serverless compute region ensures single-digit millisecond query latencies.
-
-2. **Decoupled Service vs. Bundled Container**:
-   - PostgreSQL is **not** hosted alongside the application container or bundled in serverless Lambdas.
-   - User credentials, session tokens, and LangGraph multi-turn conversation states persist permanently across redeployments, branch previews, and cold starts.
-   - Leverages Neon's autoscaling and instant scale-to-zero compute to optimize cloud resources.
-
-3. **Connection Pooling & PgBouncer Compatibility**:
-   - Interacts via `psycopg` (v3) and `psycopg_pool.AsyncConnectionPool` over encrypted TLS (`sslmode=require&channel_binding=require`).
-   - Configured with `prepare_threshold=None` in async connection parameters to ensure seamless operation with Neon's PgBouncer transaction pooler, avoiding prepared statement collisions.
-
-4. **Environment Variable Ingestion**:
-   - Automatically ingests standard Vercel environment variables:
-     - `DATABASE_URL` / `POSTGRES_URL`: Pooled connection string for transaction queries.
-     - `DATABASE_URL_UNPOOLED` / `POSTGRES_URL_NON_POOLING`: Direct connection for schema migrations and table initialization.
-     - `POSTGRES_HOST`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DATABASE`.
-
-5. **Dual Persistence Abstractions**:
-   - **Authentication Database (`auth_db_manager`)**:
-     - Manages `users` table with Argon2id password hashing (`$argon2id$...`).
-     - Manages `token_blacklist` for immediate cryptographic JWT invalidation on logout.
-     - Manages `password_reset_tokens` with automatic time-based expiry.
-   - **LangGraph Checkpoint & History Manager (`db_manager`)**:
-     - Drives `AsyncPostgresSaver` to save agent graph execution state (`checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, `checkpoint_migrations`).
-     - Maintains conversational memory via `portfolio_chat_history` matching the `PostgresChatMessageHistory` interface.
-   - **Resilient Fallback**: If running offline without database environment variables, the system automatically falls back to in-memory stores (`MemorySaver`) without crashing.
+| Architectural Tier | Configuration & Schema | Role & Capabilities |
+| :--- | :--- | :--- |
+| **Cloud Co-Location** | AWS `us-east-1` (`iad1`) via Vercel Storage | Low-latency co-location with serverless edge compute; persistent storage across redeployments. |
+| **Connection Pooling** | `psycopg_pool.AsyncConnectionPool` (`prepare_threshold=None`) | High-concurrency async pooling compatible with Neon PgBouncer transaction mode. |
+| **Auth Schema** | `users`, `token_blacklist`, `password_resets` | Argon2id credential storage, instant JWT invalidation, and session tracking. |
+| **Checkpoint Schema** | `checkpoints`, `checkpoint_blobs`, `checkpoint_writes` | Full graph serialization for LangGraph multi-turn session persistence. |
+| **Conversational Memory** | `portfolio_chat_history` | Chronological session history synced for user chat sidebars. |
+| **Resilience & Fallback** | Automatic fallback to `MemorySaver` | Seamless local development and zero-crash operation when offline. |
 
 ---
 
