@@ -8,7 +8,8 @@
   <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI"/></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.12%20%7C%203.13-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"/></a>
   <a href="https://langchain-ai.github.io/langgraph/"><img src="https://img.shields.io/badge/LangGraph-StateGraph%20v0.2+-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white" alt="LangGraph"/></a>
-  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16%20Checkpoints-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"/></a>
+  <a href="https://neon.tech/"><img src="https://img.shields.io/badge/Neon-Serverless%20Postgres-00E599?style=for-the-badge&logo=postgresql&logoColor=black" alt="Neon Postgres"/></a>
+  <a href="https://huggingface.co/ambideXtrous9/brand-logo-classifiers"><img src="https://img.shields.io/badge/HuggingFace-Model%20Hub-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black" alt="Hugging Face"/></a>
   <a href="https://www.pinecone.io/"><img src="https://img.shields.io/badge/Pinecone-8.9k%20Vectors-000000?style=for-the-badge&logo=pinecone&logoColor=white" alt="Pinecone"/></a>
   <a href="https://jwt.io/"><img src="https://img.shields.io/badge/JWT-Auth%20Guard-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white" alt="JWT"/></a>
   <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-MultiServer-7B1FA2?style=for-the-badge" alt="MCP"/></a>
@@ -17,7 +18,7 @@
 </p>
 
 <p align="center">
-  <b>A production-grade, decoupled Multi-Agent AI Platform featuring LangGraph StateGraphs, PostgreSQL state checkpointing, multi-server Model Context Protocol (MCP), Pinecone vector retrieval, JWT authentication, quantitative equity research, and real-time streaming interfaces.</b>
+  <b>A production-grade, decoupled Multi-Agent AI Platform featuring LangGraph StateGraphs, standalone Neon Serverless PostgreSQL persistence, dynamic Hugging Face Hub model checkpointing, multi-server Model Context Protocol (MCP), Pinecone vector retrieval, JWT authentication, and real-time streaming interfaces.</b>
 </p>
 
 ---
@@ -31,6 +32,8 @@
 | **Live Production Web App** | [`portfolio-agent-ai.vercel.app`](https://portfolio-agent-ai.vercel.app) | 🟢 `Online` |
 | **Interactive OpenAPI Docs** | [`/docs`](https://portfolio-agent-ai.vercel.app/docs) | 🟢 `Public` |
 | **Alternative API Specs** | [`/redoc`](https://portfolio-agent-ai.vercel.app/redoc) | 🟢 `Public` |
+| **Database Service** | [Neon Serverless Postgres](https://neon.tech/) (AWS `iad1`) | 🟢 `Managed Cloud` |
+| **Model Checkpoint Hub** | [`ambideXtrous9/brand-logo-classifiers`](https://huggingface.co/ambideXtrous9/brand-logo-classifiers) | 🤗 `Public Hub` |
 | **Authentication Guard** | Sign In / Register (All AI features protected) | 🔒 `Enforced` |
 
 </div>
@@ -39,7 +42,7 @@
 
 ## ⚡ Architecture Overview
 
-The system is decoupled into a presentation SPA, an asynchronous FastAPI gateway, LangGraph StateGraph agent execution engines, and a resilient PostgreSQL persistence layer:
+The platform is architected with a decoupled presentation SPA, an asynchronous FastAPI application gateway, LangGraph StateGraph agent execution engines, an external **Neon Serverless PostgreSQL** persistence service, and dynamic checkpoint streaming from **Hugging Face Hub**:
 
 ```mermaid
 flowchart TB
@@ -52,6 +55,7 @@ flowchart TB
     subgraph GatewayLayer ["🚪 Gateway & Security Layer (FastAPI 0.115+)"]
         AuthMiddleware["JWT Bearer & Query Token Auth Guard"]
         Router["Master API Router (/api - Auth Guarded)"]
+        Lifespan["FastAPI Lifespan Manager\n(HF Checkpoint Sync + Pool Warmup)"]
     end
 
     subgraph AgentLayer ["🧠 Multi-Agent Orchestration (LangGraph StateGraph)"]
@@ -61,15 +65,21 @@ flowchart TB
         VisionStudio["Vision AI Studio\n(27-Brand Neural Classifier + YOLO Detector)"]
     end
 
-    subgraph PersistenceLayer ["💾 Checkpointing & Data Layer (PostgreSQL 16)"]
-        PGPool["psycopg_pool Connection Pool"]
-        PGSaver["AsyncPostgresSaver (LangGraph State Checkpoints)"]
-        PGChat["PostgresChatMessageHistory (Session History)"]
-        PGAuth["User Credentials & Revoked Token Blacklist"]
+    subgraph PersistenceLayer ["💾 Standalone Data Layer (Neon Serverless Postgres)"]
+        direction TB
+        NeonCloud[("🐘 Neon Serverless Postgres (AWS iad1)\n• Dedicated Cloud DB Service (Decoupled)\n• Autoscaling & Scale-to-Zero\n• PgBouncer Transaction Pooler\n• Enforced TLS (sslmode=require)")]
+        subgraph InternalDB ["Application DB Adapters"]
+            PGPool["psycopg_pool (AsyncConnectionPool)\n(prepare_threshold=None)"]
+            PGSaver["AsyncPostgresSaver\n(LangGraph State Checkpoints)"]
+            PGChat["PostgresChatMessageHistory\n(Thread Chat History)"]
+            PGAuth["Auth DB Manager\n(Users, Argon2id Hashes, Token Blacklist)"]
+        end
+        InternalDB <==>|"Encrypted Pooled Connection\n(DATABASE_URL / POSTGRES_URL)"| NeonCloud
     end
 
-    subgraph ExternalServices ["🌐 External Integrations & Model Context Protocol"]
+    subgraph ExternalServices ["🌐 External Integrations & Model Registries"]
         PineconeDB[("Pinecone Vector DB\nIndex: hpvdb-openai")]
+        HFHub[("🤗 Hugging Face Hub\n(ambideXtrous9/brand-logo-classifiers)\nDynamic Startup Checkpoints Sync")]
         MCPAirbnb["Airbnb MCP Server (Node.js stdio)"]
         MeteoAPI["Open-Meteo Weather API"]
         LLMProvider["Groq / OpenRouter / OpenAI (Llama-3.3-70B)"]
@@ -79,7 +89,43 @@ flowchart TB
     GatewayLayer --> AgentLayer
     AgentLayer <--> PersistenceLayer
     AgentLayer <--> ExternalServices
+    Lifespan -.->|"Sync Checkpoints"| HFHub
 ```
+
+---
+
+### 🐘 Standalone Cloud Database Architecture: Neon Serverless Postgres
+
+The PostgreSQL database hosting has been completely decoupled from the application and is deployed as a **standalone managed cloud service on Neon Serverless Postgres**:
+
+1. **Physical Location & Co-location**:
+   - The database resides on **Neon Cloud** in AWS region `us-east-1` (`iad1`), provisioned directly via Vercel Storage integration (`portfolio-db`).
+   - Co-locating the database with Vercel's primary serverless compute region ensures single-digit millisecond query latencies.
+
+2. **Decoupled Service vs. Bundled Container**:
+   - PostgreSQL is **not** hosted alongside the application container or bundled in serverless Lambdas.
+   - User credentials, session tokens, and LangGraph multi-turn conversation states persist permanently across redeployments, branch previews, and cold starts.
+   - Leverages Neon's autoscaling and instant scale-to-zero compute to optimize cloud resources.
+
+3. **Connection Pooling & PgBouncer Compatibility**:
+   - Interacts via `psycopg` (v3) and `psycopg_pool.AsyncConnectionPool` over encrypted TLS (`sslmode=require&channel_binding=require`).
+   - Configured with `prepare_threshold=None` in async connection parameters to ensure seamless operation with Neon's PgBouncer transaction pooler, avoiding prepared statement collisions.
+
+4. **Environment Variable Ingestion**:
+   - Automatically ingests standard Vercel environment variables:
+     - `DATABASE_URL` / `POSTGRES_URL`: Pooled connection string for transaction queries.
+     - `DATABASE_URL_UNPOOLED` / `POSTGRES_URL_NON_POOLING`: Direct connection for schema migrations and table initialization.
+     - `POSTGRES_HOST`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DATABASE`.
+
+5. **Dual Persistence Abstractions**:
+   - **Authentication Database (`auth_db_manager`)**:
+     - Manages `users` table with Argon2id password hashing (`$argon2id$...`).
+     - Manages `token_blacklist` for immediate cryptographic JWT invalidation on logout.
+     - Manages `password_reset_tokens` with automatic time-based expiry.
+   - **LangGraph Checkpoint & History Manager (`db_manager`)**:
+     - Drives `AsyncPostgresSaver` to save agent graph execution state (`checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, `checkpoint_migrations`).
+     - Maintains conversational memory via `portfolio_chat_history` matching the `PostgresChatMessageHistory` interface.
+   - **Resilient Fallback**: If running offline without database environment variables, the system automatically falls back to in-memory stores (`MemorySaver`) without crashing.
 
 ---
 
@@ -108,7 +154,7 @@ sequenceDiagram
     participant Auth as 🛡️ FastAPI Auth Guard
     participant Agent as 🧠 LangGraph Agent
     participant MCP as 🔌 MCP / Pinecone
-    participant DB as 💾 PostgreSQL 16
+    participant DB as 🐘 Neon Serverless Postgres
     participant LLM as 🤖 Groq LLM
 
     User->>FE: Ask question / Request Agent Plan
@@ -166,7 +212,7 @@ docker compose up -d --build
 * **Frontend**: `http://localhost:3000`
 * **FastAPI Backend**: `http://localhost:8000`
 * **API Docs**: `http://localhost:8000/docs`
-* **PostgreSQL**: `localhost:5432`
+* **Database**: Standalone Neon Serverless Postgres (`DATABASE_URL` in `.env`)
 
 ---
 
