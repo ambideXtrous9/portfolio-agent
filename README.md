@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/ambideXtrous9/portfolio-agent/actions"><img src="https://img.shields.io/badge/GitHub%20Actions-CI%2FCD-2088FF?style=for-the-badge&logo=githubactions&logoColor=white" alt="GitHub Actions"/></a>
+  <a href="https://t.me/GCICD_bot"><img src="https://img.shields.io/badge/Telegram-CI%2FCD%20Bot-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Bot"/></a>
   <a href="https://vercel.com/"><img src="https://img.shields.io/badge/Vercel-Serverless%20Edge-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Vercel"/></a>
   <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI"/></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12"/></a>
@@ -20,7 +21,7 @@
 </p>
 
 <p align="center">
-  <b>A production-grade, decoupled Multi-Agent AI Platform featuring LangGraph StateGraphs, standalone Neon Serverless PostgreSQL persistence, dynamic Hugging Face Hub model checkpointing, multi-server Model Context Protocol (MCP), Pinecone vector retrieval, JWT authentication, and automated GitHub Actions CI/CD to Vercel Serverless.</b>
+  <b>A production-grade, decoupled Multi-Agent AI Platform featuring LangGraph StateGraphs, standalone Neon Serverless PostgreSQL persistence, dynamic Hugging Face Hub model checkpointing, multi-server Model Context Protocol (MCP), Pinecone vector retrieval, JWT authentication, bidirectional Telegram CI/CD ChatOps, and automated GitHub Actions to Vercel Serverless.</b>
 </p>
 
 ---
@@ -34,11 +35,13 @@
 | **Production Web App** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=vercel" height="18" alt="Vercel" /></a> Vercel Global Edge CDN | [`portfolio-agent-ai.vercel.app`](https://portfolio-agent-ai.vercel.app) | 🟢 `Online` |
 | **API & OpenAPI Specs** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=fastapi" height="18" alt="FastAPI" /></a> FastAPI Serverless Gateway | [`/docs`](https://portfolio-agent-ai.vercel.app/docs) &bull; [`/redoc`](https://portfolio-agent-ai.vercel.app/redoc) | 🟢 `Public` |
 | **CI/CD Automation** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=githubactions" height="18" alt="GitHub Actions" /></a> GitHub Actions Pipeline | [Automated Build & Deploy](https://github.com/ambideXtrous9/portfolio-agent/actions) | 🟢 `Passing` |
-| **Managed Database** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=postgres" height="18" alt="PostgreSQL" /></a> Neon Serverless Postgres | AWS `us-east-1` (`iad1`) &bull; Vercel Storage | 🟢 `Active` |
+| **Telegram ChatOps Bot** | <a href="https://t.me/GCICD_bot"><img src="https://cdn.simpleicons.org/telegram/26A5E4" height="18" alt="Telegram" /></a> Telegram CI/CD Bot | [`@GCICD_bot`](https://t.me/GCICD_bot) &bull; `/redeploy`, `/status`, `/health` | 🟢 `Active` |
+| **Managed Database** | <a href="https://neon.tech"><img src="https://cdn.simpleicons.org/neon/00E599" height="18" alt="Neon" /></a> Neon Serverless Postgres | AWS `us-east-1` (`iad1`) &bull; Vercel Storage | 🟢 `Active` |
 | **Model Context Protocol** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs,npm" height="18" alt="Node.js" /></a> MultiServerMCPClient | Stdio JSON-RPC &bull; Airbnb & Pinecone MCP Servers | 🟢 `Active` |
-| **Model Checkpoint Hub** | Hugging Face Hub | [`ambideXtrous9/brand-logo-classifiers`](https://huggingface.co/ambideXtrous9/brand-logo-classifiers) | 🟢 `Synced` |
-| **Voice Streaming Mesh** | LiveKit Cloud | WebRTC Real-Time SFU Mesh | 🟢 `Connected` |
-| **Authentication Guard** | PyJWT + Argon2id Security Guard | Bearer Token Gating & Neon Blacklist | 🔒 `Enforced` |
+| **Vector Database** | <a href="https://www.pinecone.io/"><img src="frontend/assets/images/icons/pinecone.svg" height="18" alt="Pinecone" /></a> Pinecone Vector DB | `hpvdb-openai` index &bull; 8,970 embeddings | 🟢 `Indexed` |
+| **Model Checkpoint Hub** | <a href="https://huggingface.co/ambideXtrous9/brand-logo-classifiers"><img src="https://cdn.simpleicons.org/huggingface/FFD21E" height="18" alt="Hugging Face" /></a> Hugging Face Hub | [`ambideXtrous9/brand-logo-classifiers`](https://huggingface.co/ambideXtrous9/brand-logo-classifiers) | 🟢 `Synced` |
+| **Voice Streaming Mesh** | <a href="https://livekit.io/"><img src="https://cdn.simpleicons.org/livekit/00A67E" height="18" alt="LiveKit" /></a> LiveKit Cloud | WebRTC Real-Time SFU Mesh | 🟢 `Connected` |
+| **Authentication Guard** | <a href="https://jwt.io/"><img src="https://cdn.simpleicons.org/jsonwebtokens/000000" height="18" alt="JWT" /></a> PyJWT + Argon2id | Bearer Token Gating & Neon Blacklist | 🔒 `Enforced` |
 
 </div>
 
@@ -74,18 +77,21 @@
     <tr>
       <td align="center" style="padding: 12px; border: 1px solid #30363d;">
         <b>Cloud Persistence Tier</b><br/>
-        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=postgres,aws" height="30" alt="PostgreSQL" /></a><br/>
+        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=postgres,aws" height="30" alt="PostgreSQL" /></a>
+        <a href="https://neon.tech"><img src="https://cdn.simpleicons.org/neon/00E599" height="30" alt="Neon" /></a><br/>
         <sub>Neon Serverless &bull; PgBouncer Pooler</sub>
       </td>
       <td align="center" style="padding: 12px; border: 1px solid #30363d;">
         <b>Deep Learning & Neural Vision</b><br/>
-        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=pytorch,tensorflow" height="30" alt="Machine Learning" /></a><br/>
+        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=pytorch,tensorflow" height="30" alt="Machine Learning" /></a>
+        <a href="https://huggingface.co"><img src="https://cdn.simpleicons.org/huggingface/FFD21E" height="30" alt="Hugging Face" /></a><br/>
         <sub>PyTorch &bull; Hugging Face Hub Checkpoints</sub>
       </td>
       <td align="center" style="padding: 12px; border: 1px solid #30363d;">
-        <b>DevOps & CI/CD Automation</b><br/>
-        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=githubactions,git,github" height="30" alt="CI/CD" /></a><br/>
-        <sub>GitHub Actions &bull; Automated Deployment</sub>
+        <b>CI/CD & Telegram ChatOps</b><br/>
+        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=githubactions,git,github" height="30" alt="CI/CD" /></a>
+        <a href="https://t.me/GCICD_bot"><img src="https://cdn.simpleicons.org/telegram/26A5E4" height="30" alt="Telegram" /></a><br/>
+        <sub>GitHub Actions &bull; Telegram @GCICD_bot</sub>
       </td>
     </tr>
   </table>
@@ -93,16 +99,23 @@
 
 ### 1. End-to-End Distributed System Topology
 
-The platform implements an asynchronous, distributed micro-architecture decoupled into six distinct operational tiers: an edge-delivered SPA, a serverless FastAPI gateway, a Model Context Protocol (MCP) subsystem, LangGraph multi-agent execution graphs, a standalone **Neon Serverless PostgreSQL** database with dual schemas, and external AI/cloud registries:
+The platform implements an asynchronous, distributed micro-architecture decoupled into operational tiers: an edge-delivered SPA, a serverless FastAPI gateway, an automated Telegram ChatOps control loop, a Model Context Protocol (MCP) subsystem, LangGraph multi-agent execution graphs, a standalone **Neon Serverless PostgreSQL** database with dual schemas, and external AI/cloud registries:
 
 ```mermaid
 flowchart LR
     %% End-to-End Distributed System Architecture (Zero Emojis)
 
+    subgraph Tier_ChatOps ["Telegram ChatOps & Remote CI/CD Control"]
+        direction TB
+        Dev_Client["DevOps Engineer / User\n(Telegram Client App)"]
+        Telegram_API["Telegram Bot Gateway\n(@GCICD_bot API)"]
+        Dev_Client <-->|"/redeploy, /status, /health"| Telegram_API
+    end
+
     subgraph Tier_CICD ["CI/CD Automation Pipeline"]
         direction TB
         Git_Repo["GitHub Source Repository\n(main branch)"]
-        GHA_Runner["GitHub Actions CI Runner\n• Linting & Formatting\n• Pytest Integration Suite\n• uv.lock Dependency Audit"]
+        GHA_Runner["GitHub Actions CI Runner\n• Linting & Syntax Validation\n• Pytest Integration Suite\n• uv.lock Dependency Audit"]
         Git_Repo -->|"git push / PR merge"| GHA_Runner
     end
 
@@ -110,9 +123,11 @@ flowchart LR
         direction TB
         Edge_CDN["Global Edge CDN\n(Decoupled HTML5/ES6 SPA)"]
         FastAPI_App["FastAPI 0.115 ASGI Engine\n(Python 3.12 Serverless)"]
+        Telegram_Handler["Telegram Webhook Route\n(/api/telegram/webhook)"]
         Auth_Guard["Auth & Token Guard\n(PyJWT + Argon2id Gating)"]
         Lifespan_Loader["FastAPI Lifespan Manager\n(HF Dynamic Checkpoint Sync)"]
         Edge_CDN -.->|"HTTPS / JSON"| FastAPI_App
+        FastAPI_App --> Telegram_Handler
         FastAPI_App --> Auth_Guard
         FastAPI_App -.-> Lifespan_Loader
     end
@@ -162,11 +177,14 @@ flowchart LR
         Cloud_Groq[("Groq LPU Inference\nLLaMA-3.3-70B-Versatile")]
     end
 
-    %% Distributed System Interconnections
+    %% Distributed System Interconnections & Telegram Control Loop
+    Telegram_API <==>|"1. Webhook Updates & Status Queries"| Telegram_Handler
+    Telegram_Handler -->|"2. Trigger workflow_dispatch API"| GHA_Runner
+    GHA_Runner -.->|"3. Real-Time Pipeline Progress Alerts (telegram_notify.py)"| Telegram_API
     GHA_Runner -->|"Automated Edge Deployment"| Tier_Vercel
-    Auth_Guard <==>|"1. Verify Credentials & Check Blacklist"| Schema_Auth
-    Auth_Guard -->|"2. Forward Authenticated Request"| StateGraph_Engine
-    StateGraph_Engine <==>|"3. AsyncPostgresSaver Checkpointing"| Schema_Checkpoints
+    Auth_Guard <==>|"Verify Credentials & Check Blacklist"| Schema_Auth
+    Auth_Guard -->|"Forward Authenticated Request"| StateGraph_Engine
+    StateGraph_Engine <==>|"AsyncPostgresSaver Checkpointing"| Schema_Checkpoints
     Agent_Tour <==>|"Dynamic Tool Binding & Execution"| MCP_Router
     Agent_Harry <-->|"Semantic Vector Retrieval"| Cloud_Pinecone
     StateGraph_Engine <-->|"LLM Token Streaming"| Cloud_Groq
@@ -194,7 +212,7 @@ In this architecture, MCP serves as the unified tool-calling abstraction layer i
         Spawned via Node.js stdio: <code>npx -y @openbnb/mcp-server-airbnb --ignore-robots-txt</code>. Provides real-time vacation rental lookups, pricing discovery, and coordinate mapping via <code>get_airbnb_tools()</code> to the Tour Planner agent.
       </td>
       <td align="left" style="padding: 10px; border: 1px solid #30363d;">
-        <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs" height="24" alt="Node.js" /></a> <b>Pinecone MCP Server</b><br/>
+        <a href="https://www.pinecone.io"><img src="frontend/assets/images/icons/pinecone.svg" height="24" alt="Pinecone" /></a> <b>Pinecone MCP Server</b><br/>
         Spawned via Node.js stdio: <code>npx -y @pinecone-database/mcp</code> with <code>PINECONE_API_KEY</code> injection. Exposes index introspection, vector records retrieval, and query tools via <code>get_pinecone_tools()</code>.
       </td>
     </tr>
@@ -339,14 +357,92 @@ sequenceDiagram
 
 ---
 
-### 5. Automated CI/CD & Delivery Pipeline (GitHub Actions → Vercel)
+### 5. Telegram ChatOps & Real-Time CI/CD Control Loop
 
-Every change committed to `main` undergoes automated testing and deployment:
+The platform features an automated, bidirectional ChatOps integration between **Telegram (`@GCICD_bot`)**, the **FastAPI Gateway (`backend/app/api/endpoints/telegram.py`)**, and the **GitHub Actions CI/CD Pipeline (`backend/scripts/telegram_notify.py`)**:
+
+1. **Remote Pipeline Triggering via `/redeploy`**:
+   - Authorized developers can initiate zero-downtime production deployments directly from Telegram by sending `/redeploy` or `/deploy`.
+   - The FastAPI webhook verifies the command and invokes GitHub's REST API (`POST /repos/{repo}/actions/workflows/ci-cd.yaml/dispatches`) using `GITHUB_DISPATCH_TOKEN`.
+   - The caller's Telegram `chat_id` and username are automatically injected into `inputs.chat_id` and `inputs.trigger_source`.
+
+2. **Step-by-Step Pipeline Progress Alerts (`telegram_notify.py`)**:
+   As GitHub Actions executes each pipeline stage, it triggers `backend/scripts/telegram_notify.py` to stream rich HTML notifications to the developer:
+   - **`pipeline_start`**: Reports commit SHA, branch, actor, commit message, and live workflow tracking link.
+   - **`validation_pass` / `validation_fail`**: Reports status of Python syntax compilation, `vercel.json` schema validation, and frontend asset verification.
+   - **`deploy_start`**: Notifies that Vercel Serverless compilation and environment variable injection have begun.
+   - **`deploy_success` / `deploy_fail`**: Immediately provides the live production URL ([`portfolio-agent-ai.vercel.app`](https://portfolio-agent-ai.vercel.app)) and deployment elapsed time.
+
+3. **Production Telemetry & Health Probes**:
+   - `/status`: Returns live system telemetry, active models, vector database health, and primary URLs.
+   - `/health`: Actively probes FastAPI endpoints, Groq LPU API, Pinecone MCP connectivity, LiveKit Cloud SFU, and Telegram webhook status.
+   - `/info`: Displays repository architecture, commit metadata, and documentation references.
+
+#### Telegram ChatOps & CI/CD Execution Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as DevOps Engineer (Telegram)
+    participant TG as Telegram Bot API (@GCICD_bot)
+    participant API as FastAPI Webhook (/api/telegram/webhook)
+    participant GHA as GitHub Actions Workflow Dispatch
+    participant Runner as CI/CD Runner (ci-cd.yaml)
+    participant Notify as Notification Helper (telegram_notify.py)
+    participant Vercel as Vercel Edge Serverless
+
+    Note over Admin,TG: 1. Remote Triggering via ChatOps
+    Admin->>TG: Send command: /redeploy
+    TG->>API: Webhook POST /api/telegram/webhook (chat_id, user_name, text)
+    API->>Admin: Background Task: "Initiating Production Redeployment..."
+    API->>GHA: POST /actions/workflows/ci-cd.yaml/dispatches (ref: main, chat_id)
+    GHA-->>API: 204 No Content (Workflow Queued)
+    API->>Admin: "GitHub Actions Workflow Dispatched! Tracking: actions/runs/..."
+
+    Note over Runner,TG: 2. Pipeline Execution & Real-Time Alerts
+    Runner->>Notify: run telegram_notify.py --event pipeline_start
+    Notify->>TG: POST sendMessage (Commit, Branch, Live Action URL)
+    TG-->>Admin: "CI/CD Pipeline Started"
+
+    Runner->>Runner: Execute Linting, uv.lock Audit & Pytest Suite
+    alt Tests Pass
+        Runner->>Notify: run telegram_notify.py --event validation_pass
+        Notify->>TG: POST sendMessage (Integrity Verified)
+        TG-->>Admin: "Code & Config Integrity Passed!"
+    else Tests Fail
+        Runner->>Notify: run telegram_notify.py --event validation_fail
+        Notify->>TG: POST sendMessage (Failure Details)
+        TG-->>Admin: "CI Validation Failed!"
+    end
+
+    Note over Runner,Vercel: 3. Deployment & Live Verification
+    Runner->>Notify: run telegram_notify.py --event deploy_start
+    Notify->>TG: POST sendMessage ("Deploying to Vercel...")
+    TG-->>Admin: "Deployment Started"
+
+    Runner->>Vercel: Build Serverless Lambdas & Publish Edge CDN
+    Vercel-->>Runner: 200 OK (Deployment URL Generated)
+    Runner->>Notify: run telegram_notify.py --event deploy_success --url "https://portfolio-agent-ai.vercel.app"
+    Notify->>TG: POST sendMessage (Live Production URL)
+    TG-->>Admin: "Deployment Succeeded! Live at: portfolio-agent-ai.vercel.app"
+```
+
+---
+
+### 6. Automated CI/CD & Delivery Pipeline (GitHub Actions → Vercel)
+
+Every change committed to `main` (or triggered via Telegram `/redeploy`) undergoes automated testing and deployment:
 
 ```mermaid
 flowchart LR
     subgraph DevWorkspace ["Developer Environment"]
         Dev["Local Commit & Push"]
+    end
+
+    subgraph TelegramChatOps ["Telegram Remote Trigger"]
+        AdminUser["DevOps Admin"]
+        TGBot["@GCICD_bot (/redeploy)"]
+        AdminUser -->|Command| TGBot
     end
 
     subgraph GitHubActions ["GitHub Actions CI Pipeline"]
@@ -355,8 +451,9 @@ flowchart LR
         SetupPython["actions/setup-python@v5\nPython 3.12"]
         VerifyDeps["Dependency Verification\nuv lock / pip check"]
         RunTests["Integration & Unit Tests\npytest backend/tests/"]
-        TriggerDeploy["Deploy Webhook Trigger"]
-        Checkout --> SetupPython --> VerifyDeps --> RunTests --> TriggerDeploy
+        TG_Alerts["Telegram Pipeline Alerts\n(telegram_notify.py)"]
+        DeployTrigger["Deploy Webhook Trigger"]
+        Checkout --> SetupPython --> VerifyDeps --> RunTests --> TG_Alerts --> DeployTrigger
     end
 
     subgraph VercelEdgeDeploy ["Vercel Production Deployment"]
@@ -368,12 +465,13 @@ flowchart LR
     end
 
     Dev -->|git push origin main| Checkout
-    TriggerDeploy -->|Webhook Trigger| BuildLambda
+    TGBot -->|workflow_dispatch| Checkout
+    DeployTrigger -->|Webhook Trigger| BuildLambda
 ```
 
 ---
 
-### 6. Standalone Cloud Database Architecture: Neon Serverless Postgres
+### 7. Standalone Cloud Database Architecture: Neon Serverless Postgres
 
 The PostgreSQL database hosting has been completely decoupled from the application container and is deployed as a **standalone managed cloud service on Neon Serverless Postgres**:
 
@@ -408,19 +506,19 @@ The PostgreSQL database hosting has been completely decoupled from the applicati
 
 ---
 
-### 7. Technology Stack & Architectural Component Mapping
+### 8. Technology Stack & Architectural Component Mapping
 
-| Architectural Layer | Technologies & Skill-Icons | Implementation Role |
+| Architectural Layer | Technologies & Icons | Implementation Role |
 | :--- | :--- | :--- |
-| **CI/CD & Delivery** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=githubactions,git,github" height="28" alt="CI/CD" /></a> | Automated linting, test suite execution, dependency locking (`uv.lock`), and Vercel edge deployment webhooks. |
+| **CI/CD & ChatOps** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=githubactions,git,github" height="28" alt="CI/CD" /></a> <a href="https://t.me/GCICD_bot"><img src="https://cdn.simpleicons.org/telegram/26A5E4" height="28" alt="Telegram" /></a> | Automated linting, test suite execution, dependency locking (`uv.lock`), Vercel edge deployment webhooks, and bidirectional Telegram ChatOps control (`@GCICD_bot`). |
 | **Cloud Edge & Hosting** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=vercel,aws,cloudflare" height="28" alt="Hosting" /></a> | Global edge CDN, zero-config TLS termination, serverless compute (AWS `iad1`), and Cloudflare tunneling. |
 | **Gateway & Application** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=fastapi,python,docker,linux" height="28" alt="Backend" /></a> | FastAPI 0.115 async runtime, lifespan startup hooks, SSE token streaming, and Docker Compose orchestration. |
 | **Model Context Protocol (MCP)** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs,npm,bash" height="28" alt="MCP" /></a> | `MultiServerMCPClient` orchestrating Node.js stdio servers (`@openbnb/mcp-server-airbnb`, `@pinecone-database/mcp`). |
-| **Database & Persistence** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=postgres" height="28" alt="PostgreSQL" /></a> &bull; **Neon Serverless** | Standalone Lakebase Postgres with PgBouncer connection pooling (`psycopg_pool`), Argon2id auth, and LangGraph checkpoints. |
-| **Deep Learning & Models** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=pytorch,tensorflow" height="28" alt="ML" /></a> &bull; **Hugging Face Hub** | Transfer Learning (Xception, InceptionV3, MobileNetV2, EfficientNet-B0), YOLOv8, and dynamic startup checkpoint download. |
+| **Database & Persistence** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=postgres" height="28" alt="PostgreSQL" /></a> <a href="https://neon.tech"><img src="https://cdn.simpleicons.org/neon/00E599" height="28" alt="Neon" /></a> | Standalone Lakebase Postgres with PgBouncer connection pooling (`psycopg_pool`), Argon2id auth, and LangGraph checkpoints. |
+| **Deep Learning & Models** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=pytorch,tensorflow" height="28" alt="ML" /></a> <a href="https://huggingface.co"><img src="https://cdn.simpleicons.org/huggingface/FFD21E" height="28" alt="Hugging Face" /></a> | Transfer Learning (Xception, InceptionV3, MobileNetV2, EfficientNet-B0), YOLOv8, and dynamic startup checkpoint download. |
 | **Presentation Layer** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=html,css,js,ts" height="28" alt="Frontend" /></a> | Decoupled SPA, Obsidian/Streamlit design system, WebSockets, SSE event handlers, and responsive CSS variables. |
-| **Vector Search & RAG** | **Pinecone DB** &bull; **Neural Reranker** | 8,970 vector chunks in `hpvdb-openai` index with Cross-Encoder Neural Reranking for lore retrieval. |
-| **Real-Time Voice Mesh** | **LiveKit Cloud** &bull; **WebRTC** | Full-duplex WebRTC audio streaming, Silero Voice Activity Detection (VAD), and Groq Whisper STT. |
+| **Vector Search & RAG** | <a href="https://www.pinecone.io"><img src="frontend/assets/images/icons/pinecone.svg" height="28" alt="Pinecone DB" /></a> <a href="https://langchain.com"><img src="https://cdn.simpleicons.org/langchain/1C3C3C" height="28" alt="LangChain" /></a> | 8,970 vector chunks in `hpvdb-openai` index with Cross-Encoder Neural Reranking for lore retrieval. |
+| **Real-Time Voice Mesh** | <a href="https://livekit.io"><img src="https://cdn.simpleicons.org/livekit/00A67E" height="28" alt="LiveKit Cloud" /></a> <a href="https://webrtc.org"><img src="https://cdn.simpleicons.org/webrtc/333333" height="28" alt="WebRTC" /></a> | Full-duplex WebRTC audio streaming, Silero Voice Activity Detection (VAD), and Groq Whisper STT. |
 
 ---
 
