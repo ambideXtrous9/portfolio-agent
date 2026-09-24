@@ -51,13 +51,13 @@ class Settings(BaseSettings):
     AUTH_DATABASE_URL: str = os.getenv("AUTH_DATABASE_URL", "")
     DB_POOL_MIN_SIZE: int = int(os.getenv("DB_POOL_MIN_SIZE", "0"))
     DB_POOL_MAX_SIZE: int = int(os.getenv("DB_POOL_MAX_SIZE", "10"))
-    DB_POOL_TIMEOUT: float = float(os.getenv("DB_POOL_TIMEOUT", "20.0"))
+    DB_POOL_TIMEOUT: float = float(os.getenv("DB_POOL_TIMEOUT", "4.0"))
     TABLE_NAME: str = os.getenv("TABLE_NAME", "portfolio_chat_history")
 
     # Security & Authentication (Argon2 / JWT)
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "portfolio-super-secret-jwt-key-2026-production")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
     RESET_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("RESET_TOKEN_EXPIRE_MINUTES", "15"))
 
     # CORS

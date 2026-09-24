@@ -11,6 +11,7 @@ import {
   getAuthToken,
   setAuthToken,
   clearAuthToken,
+  clearAuthUser,
   getAuthUser,
   setAuthUser,
   apiLogin,
@@ -21,7 +22,7 @@ import {
   apiResetPassword,
   apiGetChatHistory,
   apiClearChatHistory,
-} from "./api.js?v=3.8";
+} from "./api.js?v=3.9";
 import { initTourAgent } from "./tour.js?v=3.6";
 import { initHarryScholar } from "./harry.js?v=3.6";
 import { initStockScreener } from "./stock.js?v=3.6";
@@ -60,41 +61,123 @@ document.addEventListener("DOMContentLoaded", () => {
   const tabViews = document.querySelectorAll(".st-tab-view");
   const authContainer = document.querySelector(".st-sidebar-auth");
 
+  // 1-Hour Inactivity Timeout Threshold (3,600,000 milliseconds)
+  const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000;
+
+  function recordUserActivity() {
+    if (!getAuthToken()) return;
+    try {
+      localStorage.setItem("portfolio_last_activity", Date.now().toString());
+    } catch (_) {}
+  }
+
+  // Throttle user interaction tracking (max once every 15s)
+  let lastRecordedActivity = 0;
+  function handleUserInteraction() {
+    const now = Date.now();
+    if (now - lastRecordedActivity > 15000) {
+      lastRecordedActivity = now;
+      recordUserActivity();
+    }
+  }
+
+  ["click", "keydown", "mousemove", "scroll", "touchstart"].forEach((evt) => {
+    window.addEventListener(evt, handleUserInteraction, { passive: true });
+  });
+
   // Authentication State
   let token = getAuthToken();
   let currentUser = getAuthUser();
-  let isLoggedIn = Boolean(token);
+  let isLoggedIn = false;
   let redirectAfterLogin = null;
 
-  // Validate existing session token on load
+  const lastActivityStr = localStorage.getItem("portfolio_last_activity");
+  const lastActivity = lastActivityStr ? parseInt(lastActivityStr, 10) : 0;
+  const now = Date.now();
+
+  // Validate existing session token on load with 1-hour inactivity enforcement
   if (token) {
-    apiGetMe()
-      .then((user) => {
-        currentUser = user;
-        setAuthUser(user);
-        isLoggedIn = true;
-        updateAuthUI();
-      })
-      .catch(() => {
-        clearAuthToken();
-        clearAuthUser();
-        token = null;
-        currentUser = null;
-        isLoggedIn = false;
-        updateAuthUI();
-        // If loaded on a protected view without valid token, return to home
-        navigateToTab("tab-home", "boom");
-      });
+    if (!lastActivity || (now - lastActivity > INACTIVITY_TIMEOUT_MS)) {
+      console.warn("⏱️ Stored session expired due to > 1 hour of inactivity. Clearing credentials.");
+      clearAuthToken();
+      clearAuthUser();
+      try { localStorage.removeItem("portfolio_last_activity"); } catch (_) {}
+      token = null;
+      currentUser = null;
+      isLoggedIn = false;
+      showToast("Session expired due to 1 hour of inactivity. Please sign in again.", "info");
+      updateAuthUI();
+    } else {
+      isLoggedIn = true;
+      recordUserActivity();
+      updateAuthUI();
+
+      apiGetMe()
+        .then((user) => {
+          currentUser = user;
+          setAuthUser(user);
+          isLoggedIn = true;
+          updateAuthUI();
+        })
+        .catch(() => {
+          clearAuthToken();
+          clearAuthUser();
+          try { localStorage.removeItem("portfolio_last_activity"); } catch (_) {}
+          token = null;
+          currentUser = null;
+          isLoggedIn = false;
+          updateAuthUI();
+          // If loaded on a protected view without valid token, return to home
+          navigateToTab("tab-home", "boom");
+        });
+    }
   } else {
     isLoggedIn = false;
     currentUser = null;
     updateAuthUI();
   }
 
+  // Inactivity watchdog: periodically checks if session has been idle for > 1 hour
+  setInterval(() => {
+    const activeToken = getAuthToken();
+    if (!activeToken) return;
+    const actStr = localStorage.getItem("portfolio_last_activity");
+    const act = actStr ? parseInt(actStr, 10) : 0;
+    if (!act || (Date.now() - act > INACTIVITY_TIMEOUT_MS)) {
+      console.warn("⏱️ Inactivity watchdog: idle > 1 hour. Triggering auto-logout.");
+      handleLogout(null, "Session expired due to 1 hour of inactivity.");
+    }
+  }, 30000);
+
+  // Auto-logout if user re-focuses tab after being inactive for > 1 hour
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      const activeToken = getAuthToken();
+      if (!activeToken) return;
+      const actStr = localStorage.getItem("portfolio_last_activity");
+      const act = actStr ? parseInt(actStr, 10) : 0;
+      if (!act || (Date.now() - act > INACTIVITY_TIMEOUT_MS)) {
+        console.warn("⏱️ Tab visibility check: idle > 1 hour. Triggering auto-logout.");
+        handleLogout(null, "Session expired due to 1 hour of inactivity.");
+      } else {
+        recordUserActivity();
+      }
+    }
+  });
+
+  // Listen for broadcast logout events across tabs/windows
+  window.addEventListener("portfolio:auth-logout", () => {
+    token = null;
+    currentUser = null;
+    isLoggedIn = false;
+    updateAuthUI();
+  });
+
   // Listen for unauthorized 401 events: prompt user to sign in
   window.addEventListener("portfolio:unauthorized", (e) => {
     clearAuthToken();
     clearAuthUser();
+    try { localStorage.removeItem("portfolio_last_activity"); } catch (_) {}
     token = null;
     currentUser = null;
     isLoggedIn = false;
@@ -105,8 +188,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const feature = e?.detail?.feature || "this AI feature";
     showToast(`Authentication required. Please sign in to access ${feature}.`, "error");
   });
-
-  updateAuthUI();
 
   // Navigation click handler
   navButtons.forEach((btn) => {
@@ -302,6 +383,7 @@ document.addEventListener("DOMContentLoaded", () => {
         token = res.access_token;
         currentUser = res.user;
         isLoggedIn = true;
+        recordUserActivity();
         updateAuthUI();
         closeAllModals();
         showToast(`Welcome back, ${currentUser.full_name || currentUser.email}!`, "success");
@@ -340,6 +422,7 @@ document.addEventListener("DOMContentLoaded", () => {
         token = res.access_token;
         currentUser = res.user;
         isLoggedIn = true;
+        recordUserActivity();
         updateAuthUI();
         closeAllModals();
         showToast("Account created and signed in! Welcome!", "success");
@@ -598,10 +681,15 @@ document.addEventListener("DOMContentLoaded", () => {
             <span>${escapeHtml(userLabel)}</span>
             <span class="st-role-badge ${isAdmin ? 'st-role-admin' : 'st-role-user'}">${escapeHtml(role)}</span>
           </div>
-          <button class="st-session-btn" id="top-btn-logout" title="Sign Out">Sign Out</button>
+          <button class="st-session-btn" id="top-btn-logout" type="button" title="Sign Out">Sign Out</button>
         `;
-        document.getElementById("top-btn-logout")?.addEventListener("click", handleLogout);
-        document.getElementById("top-user-pill-btn")?.addEventListener("click", () => {
+        document.getElementById("top-btn-logout")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          handleLogout(e);
+        });
+        document.getElementById("top-user-pill-btn")?.addEventListener("click", (e) => {
+          e.stopPropagation();
           openModal("auth-modal");
           setAuthModalView("login");
         });
@@ -619,11 +707,18 @@ document.addEventListener("DOMContentLoaded", () => {
               </div>
               <span class="st-role-badge ${isAdmin ? 'st-role-admin' : 'st-role-user'}">${escapeHtml(role)}</span>
             </div>
-            <button class="st-auth-btn" id="btn-logout" style="width: 100%; justify-content: center; font-size: 0.82rem; margin-top: 4px;">Log Out</button>
+            <button class="st-auth-btn" id="btn-logout" type="button" style="width: 100%; justify-content: center; font-size: 0.82rem; margin-top: 4px;">Log Out</button>
           </div>
         `;
-        document.getElementById("btn-logout")?.addEventListener("click", handleLogout);
-        document.getElementById("sidebar-user-card-btn")?.addEventListener("click", () => {
+        document.getElementById("btn-logout")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          handleLogout(e);
+        });
+        document.getElementById("sidebar-user-card-btn")?.addEventListener("click", (e) => {
+          if (e.target && (e.target.id === "btn-logout" || e.target.closest("#btn-logout"))) {
+            return;
+          }
           openModal("auth-modal");
           setAuthModalView("login");
         });
@@ -641,7 +736,12 @@ document.addEventListener("DOMContentLoaded", () => {
         userRoleEl.textContent = role.toUpperCase();
         userRoleEl.className = `st-role-badge ${isAdmin ? 'st-role-admin' : 'st-role-user'}`;
       }
-      document.getElementById("btn-profile-logout")?.addEventListener("click", handleLogout);
+      document.getElementById("btn-profile-logout")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        closeModal("auth-modal");
+        handleLogout(e);
+      });
       document.getElementById("btn-go-agents")?.addEventListener("click", () => {
         navigateToTab("tab-harry", "harry");
       });
@@ -686,13 +786,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  async function handleLogout() {
-    await apiLogout();
-    isLoggedIn = false;
+  async function handleLogout(e, reason = "Logged out.") {
+    if (e) {
+      if (typeof e.preventDefault === "function") e.preventDefault();
+      if (typeof e.stopPropagation === "function") e.stopPropagation();
+    }
+    // 1. Immediately wipe local auth state
+    clearAuthToken();
+    clearAuthUser();
+    try {
+      localStorage.removeItem("portfolio_last_activity");
+    } catch (_) {}
+    token = null;
     currentUser = null;
+    isLoggedIn = false;
+    closeAllModals();
     updateAuthUI();
-    showToast("Logged out. JWT token has been revoked.", "info");
+    showToast(reason, "info");
     navigateToTab("tab-home", "boom");
+
+    // 2. Revoke backend JWT token in background
+    try {
+      await apiLogout();
+    } catch (_) {}
   }
 
   // Handle in-page tab-login form submission
@@ -713,6 +829,7 @@ document.addEventListener("DOMContentLoaded", () => {
         token = res.access_token;
         currentUser = res.user;
         isLoggedIn = true;
+        recordUserActivity();
         updateAuthUI();
         showToast(`Welcome back, ${res.user.full_name || res.user.email}!`, "success");
         setTimeout(() => {
@@ -752,6 +869,7 @@ document.addEventListener("DOMContentLoaded", () => {
         token = res.access_token;
         currentUser = res.user;
         isLoggedIn = true;
+        recordUserActivity();
         updateAuthUI();
         showToast(`Account registered and authenticated! Welcome!`, "success");
         setTimeout(() => {

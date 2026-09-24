@@ -33,6 +33,50 @@ export function initStockScreener() {
     });
   });
 
+  // Wire Subtab 0: Multibagger Screener
+  const btnMultiScan = document.getElementById("btn-run-multibagger");
+  const multiResults = document.getElementById("multibagger-results");
+  if (btnMultiScan) {
+    btnMultiScan.addEventListener("click", async () => {
+      const universe = document.querySelector("input[name='stock-universe']:checked")?.value || "ALL";
+      const chkBull = document.getElementById("chk-multi-bull");
+      const chkVol = document.getElementById("chk-multi-vol");
+      const includeBullish = !!(chkBull && chkBull.checked);
+      const includeVolume = !!(chkVol && chkVol.checked);
+
+      btnMultiScan.disabled = true;
+      btnMultiScan.innerHTML = `<span class="st-spinner"></span> Scanning ${universe === "ALL" ? "500 + 250" : universe}...`;
+
+      let filterDesc = "Multibagger (≥4 Green Criteria)";
+      if (includeBullish && includeVolume) filterDesc += " + Bullish Engulfing + Volume Breakout";
+      else if (includeBullish) filterDesc += " + Bullish Engulfing";
+      else if (includeVolume) filterDesc += " + Volume Breakout";
+
+      multiResults.innerHTML = `<div class="st-caption"><span class="st-spinner"></span> Scanning ${universe === "ALL" ? "both NIFTY 500 + MICROCAP 250 universe (750 stocks)" : universe} for candidates matching <strong>${filterDesc}</strong>...</div>`;
+
+      try {
+        const res = await fetchAPI("/stock/scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            universe: universe,
+            mode: "multibagger",
+            min_multibagger_green: 4,
+            include_bullish_engulfing: includeBullish,
+            include_volume_breakout: includeVolume,
+            limit: 50,
+          }),
+        });
+        renderScanResults(multiResults, res, "multi");
+      } catch (err) {
+        multiResults.innerHTML = `<div style="color: #D32F2F;">⚠️ Scan error: ${err.message}</div>`;
+      } finally {
+        btnMultiScan.disabled = false;
+        btnMultiScan.innerHTML = "Run Multibagger Scan";
+      }
+    });
+  }
+
   // Wire Subtab 1: Volume Breakout
   const btnVolScan = document.getElementById("btn-run-stock-scan");
   const volResults = document.getElementById("stock-results-container");
@@ -151,7 +195,19 @@ export function initStockScreener() {
                 return `
                 <tr class="stock-clickable-row" data-symbol="${sym}" title="Click to analyze ${sym}">
                   <td style="font-weight: 600; color: var(--st-text-muted);">${idx + 1}</td>
-                  ${columns.map((col) => `<td>${row[col] !== undefined && row[col] !== null ? row[col] : "N/A"}</td>`).join("")}
+                  ${columns.map((col) => {
+                    let cellVal = row[col] !== undefined && row[col] !== null ? row[col] : "N/A";
+                    if (col === "Score" && typeof cellVal === "string" && cellVal.includes("Green")) {
+                      return `<td><span style="background: #E8F5E9; color: #2E7D32; font-weight: 700; padding: 3px 8px; border-radius: 6px; font-size: 0.84rem; border: 1px solid #C8E6C9; white-space: nowrap;">${cellVal}</span></td>`;
+                    } else if (col === "Signals" && typeof cellVal === "string") {
+                      return `<td><span style="font-weight: 600; color: var(--terracotta-700); font-size: 0.84rem; white-space: nowrap;">${cellVal}</span></td>`;
+                    } else if (col === "Green Parameters" && typeof cellVal === "string") {
+                      return `<td style="font-size: 0.82rem; color: #555; max-width: 320px; line-height: 1.4;">${cellVal}</td>`;
+                    } else if (col === "Symbol") {
+                      return `<td><strong style="color: var(--terracotta-600); font-family: var(--st-font-mono);">${cellVal}</strong></td>`;
+                    }
+                    return `<td>${cellVal}</td>`;
+                  }).join("")}
                 </tr>
               `;
               }).join("")}
@@ -165,7 +221,8 @@ export function initStockScreener() {
     const countDisplay = matchCount > stocks.length
       ? `Top ${stocks.length} of ${matchCount} Matches Found`
       : `${stocks.length} Stocks Found`;
-    const scannedTxt = res.total_scanned ? ` (Scanned all ${res.total_scanned} stocks in ${(res.universe || 'NIFTY500').toUpperCase()})` : '';
+    const universeLabel = (res.universe === 'all' || res.universe === 'ALL') ? 'NIFTY 500 + MICROCAP 250 (500 + 250)' : (res.universe || 'NIFTY500').toUpperCase();
+    const scannedTxt = res.total_scanned ? ` (Scanned all ${res.total_scanned} stocks in ${universeLabel})` : '';
 
     container.innerHTML = `
       <div style="background-color: var(--sage-50); color: var(--sage-700); border: 1px solid var(--sage-200); border-radius: var(--st-radius-lg); padding: 0.85rem 1.25rem; margin-bottom: 1rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">

@@ -22,33 +22,33 @@ async def lifespan(app: FastAPI):
     print(f"🔧 Model: {settings.DEFAULT_MODEL}")
     print(f"🌲 Pinecone Index: {settings.PINECONE_INDEX_NAME}")
 
-    # 1. Initialize PostgreSQL Connection Pool, Chat History & LangGraph Checkpointer
+    # 1. Initialize PostgreSQL Connection Pools in parallel
     try:
-        await db_manager.initialize()
+        await asyncio.gather(
+            auth_db_manager.initialize(),
+            db_manager.initialize(),
+            return_exceptions=True,
+        )
         app.state.db_pool = db_manager.pool
         app.state.checkpointer = db_manager.checkpointer
+        app.state.auth_db_pool = auth_db_manager.pool
     except Exception as e:
         print(f"⚠️ Database initialization note: {e}")
 
-    # 2. Initialize PostgreSQL Authentication Database & Tables
-    try:
-        await auth_db_manager.initialize()
-        app.state.auth_db_pool = auth_db_manager.pool
-    except Exception as e:
-        print(f"⚠️ Auth database initialization note: {e}")
+    # 2. Synchronize Hugging Face model checkpoints & preload vision models
+    # On serverless cold starts, don't let optional external downloads block startup
+    if not os.getenv("VERCEL"):
+        try:
+            from backend.app.core.hf_models import sync_hf_checkpoints
+            sync_hf_checkpoints()
+        except Exception as e:
+            print(f"⚠️ Hugging Face checkpoints sync note: {e}")
 
-    # 3. Synchronize Hugging Face model checkpoints & preload vision models
-    try:
-        from backend.app.core.hf_models import sync_hf_checkpoints
-        sync_hf_checkpoints()
-    except Exception as e:
-        print(f"⚠️ Hugging Face checkpoints sync note: {e}")
-
-    try:
-        from backend.app.api.endpoints.vision import preload_vision_models
-        preload_vision_models()
-    except Exception as e:
-        print(f"⚠️ Vision models preloading note: {e}")
+        try:
+            from backend.app.api.endpoints.vision import preload_vision_models
+            preload_vision_models()
+        except Exception as e:
+            print(f"⚠️ Vision models preloading note: {e}")
 
     try:
         from backend.app.core.mcp import get_mcp_client
@@ -88,17 +88,28 @@ app.add_middleware(
 
 @app.middleware("http")
 async def ensure_db_initialized(request: Request, call_next):
-    """Ensures database connection is initialized on serverless cold starts and retried on demand."""
-    if not auth_db_manager._initialized or (auth_db_manager._is_in_memory and settings.effective_auth_db_uri):
+    """Ensures database connection is initialized on serverless cold starts without blocking unrelated routes."""
+    path = request.url.path
+
+    # Fast path: bypass DB checks for static files and pre-flight CORS
+    if request.method == "OPTIONS" or path.startswith(("/assets", "/css", "/js", "/favicon.ico")):
+        return await call_next(request)
+
+    # Initialize auth_db on demand if needed
+    if not auth_db_manager._initialized:
         try:
             await auth_db_manager.initialize()
         except Exception:
             pass
-    if not db_manager._initialized or (db_manager._is_in_memory and settings.effective_db_uri):
-        try:
-            await db_manager.initialize()
-        except Exception:
-            pass
+
+    # Only initialize main db_manager (chat checkpointer) for agent/chat routes
+    if any(k in path for k in ("/chat", "/tour", "/harry")):
+        if not db_manager._initialized:
+            try:
+                await db_manager.initialize()
+            except Exception:
+                pass
+
     return await call_next(request)
 
 

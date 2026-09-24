@@ -34,6 +34,9 @@ class AuthDatabaseManager:
         self._in_memory_reset_tokens: Dict[str, Dict[str, Any]] = {}
         self._is_in_memory: bool = True
         self._initialized: bool = False
+        self._tables_created: bool = False
+        self._last_connect_attempt: float = 0.0
+        self._connect_cooldown: float = 30.0
         self.last_error: Optional[str] = None
         self.psycopg_available: bool = PSYCOPG_AVAILABLE
 
@@ -41,6 +44,13 @@ class AuthDatabaseManager:
         """Initializes PostgreSQL connection pool and creates auth tables."""
         if self._initialized and not force_retry and not self._is_in_memory:
             return
+
+        import time
+        now = time.time()
+        if not force_retry and (now - self._last_connect_attempt < self._connect_cooldown):
+            # Enforce cooldown on retries if connection recently failed to avoid freezing requests
+            return
+        self._last_connect_attempt = now
 
         auth_uri = settings.effective_auth_db_uri
 
@@ -85,7 +95,7 @@ class AuthDatabaseManager:
             )
             await self.pool.open(wait=True, timeout=settings.DB_POOL_TIMEOUT)
 
-            # Create Schema Tables
+            # Create Schema Tables in a single batch
             await self._create_tables()
 
             self._is_in_memory = False
@@ -106,24 +116,19 @@ class AuthDatabaseManager:
                     pass
                 self.pool = None
             self._is_in_memory = True
-            # Keep _initialized False when DB is configured so future requests can retry connecting
+            # Keep _initialized False when DB is configured so future requests can retry connecting after cooldown
             self._initialized = False
 
     async def _create_tables(self) -> None:
-        """Creates auth tables: users, token_blacklist, password_reset_tokens."""
-        if not self.pool:
+        """Creates auth tables: users, token_blacklist, password_reset_tokens in a single round-trip."""
+        if not self.pool or self._tables_created:
             return
 
         async with self.pool.connection() as conn:
             async with conn.cursor() as cur:
-                # Ensure pgcrypto extension exists for gen_random_uuid on older PG versions
-                try:
-                    await cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
-                except Exception:
-                    pass
-
-                # 1. Users Table
                 await cur.execute("""
+                    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
                     CREATE TABLE IF NOT EXISTS users (
                         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                         email VARCHAR(255) UNIQUE NOT NULL,
@@ -136,10 +141,7 @@ class AuthDatabaseManager:
                         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     );
                     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-                """)
 
-                # 2. Token Blacklist Table
-                await cur.execute("""
                     CREATE TABLE IF NOT EXISTS token_blacklist (
                         id SERIAL PRIMARY KEY,
                         token_jti VARCHAR(255) UNIQUE NOT NULL,
@@ -148,10 +150,7 @@ class AuthDatabaseManager:
                         revoked_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     );
                     CREATE INDEX IF NOT EXISTS idx_token_blacklist_jti ON token_blacklist(token_jti);
-                """)
 
-                # 3. Password Reset Tokens Table
-                await cur.execute("""
                     CREATE TABLE IF NOT EXISTS password_reset_tokens (
                         id SERIAL PRIMARY KEY,
                         user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -162,6 +161,7 @@ class AuthDatabaseManager:
                     );
                     CREATE INDEX IF NOT EXISTS idx_reset_token_hash ON password_reset_tokens(token_hash);
                 """)
+                self._tables_created = True
 
     async def close(self) -> None:
         """Closes the connection pool on application shutdown."""

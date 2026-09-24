@@ -92,10 +92,14 @@ def get_market_data(universe_name: str, symbols: List[str]):
 
 
 def load_universe_df(universe: str) -> pd.DataFrame:
-    path = MICROCAP_CSV if universe.lower() == "microcap250" else NIFTY_CSV
+    u = universe.lower().strip()
+    if u in ("all", "combined", "both", "all_750", "nifty500_microcap250"):
+        return load_all_companies_df()
+    path = MICROCAP_CSV if u == "microcap250" else NIFTY_CSV
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail=f"Universe file {path} not found")
     df = pd.read_csv(path)
+    df = df[~df["Symbol"].astype(str).str.upper().str.startswith("DUMMY")].copy()
     df["YFSYMBOL"] = df["Symbol"].astype(str) + ".NS"
     return df
 
@@ -104,10 +108,12 @@ def load_all_companies_df() -> pd.DataFrame:
     dfs = []
     if os.path.exists(NIFTY_CSV):
         nifty = pd.read_csv(NIFTY_CSV)
+        nifty = nifty[~nifty["Symbol"].astype(str).str.upper().str.startswith("DUMMY")].copy()
         nifty["YFSYMBOL"] = nifty["Symbol"].astype(str) + ".NS"
         dfs.append(nifty)
     if os.path.exists(MICROCAP_CSV):
         micro = pd.read_csv(MICROCAP_CSV)
+        micro = micro[~micro["Symbol"].astype(str).str.upper().str.startswith("DUMMY")].copy()
         micro["YFSYMBOL"] = micro["Symbol"].astype(str) + ".NS"
         dfs.append(micro)
     if not dfs:
@@ -162,8 +168,156 @@ async def scan_stocks(
     total_scanned = len(candidate_symbols)
     limit = request.limit if (request.limit and request.limit > 0) else 25
 
+    # 0. MULTIBAGGER SCREENER (Qualifies >= min_green criteria across 500+250, with optional Bullish Engulfing / Volume Breakout)
+    if mode == "multibagger":
+        columns = ["Symbol", "Company Name", "Score", "Green Parameters", "Current Price", "P/E", "Debt/Equity", "ROE", "Signals"]
+        results = []
+        cache = get_fundamentals_cache()
+        min_green = request.min_multibagger_green if request.min_multibagger_green else 4
+
+        qualifying_symbols = []
+        stock_meta = {}
+
+        for sym in candidate_symbols:
+            item = cache.get(sym)
+            if not item:
+                continue
+
+            rev_g = item.get("revenue_growth")
+            earn_g = item.get("earnings_growth")
+            ebitda = item.get("ebitda_margin")
+            net_m = item.get("net_margin")
+            pe = item.get("pe")
+            peg = item.get("peg_ratio")
+            de = item.get("debt_to_equity")
+            roe = item.get("roe")
+            cr = item.get("current_ratio")
+
+            checks = {
+                "Revenue Growth": rev_g is not None and rev_g >= 0.20,
+                "Earnings Growth": earn_g is not None and earn_g >= 0.25,
+                "EBITDA Margin": ebitda is not None and ebitda >= 0.15,
+                "Net Margin": net_m is not None and net_m >= 0.12,
+                "P/E (TTM)": pe is not None and 0 < pe <= 25,
+                "PEG Ratio": peg is not None and 0 < peg <= 1.0,
+                "Debt/Equity": de is not None and de <= 0.5,
+                "ROE": roe is not None and roe >= 0.15,
+                "Current Ratio": cr is not None and cr >= 1.5,
+            }
+            green_greens = [k for k, v in checks.items() if v]
+            green_count = len(green_greens)
+
+            if green_count >= min_green:
+                qualifying_symbols.append(sym)
+                stock_meta[sym] = {
+                    "item": item,
+                    "green_count": green_count,
+                    "green_greens": green_greens,
+                    "pe": pe,
+                    "de": de,
+                    "roe": roe,
+                    "ebitda": ebitda,
+                    "net_m": net_m,
+                    "current_price": item.get("current_price"),
+                }
+
+        # Check technical triggers if requested
+        need_market_data = request.include_bullish_engulfing or request.include_volume_breakout
+        market_data = None
+        if need_market_data and qualifying_symbols:
+            try:
+                market_data = get_market_data(f"multi_{request.universe}", qualifying_symbols)
+            except Exception as e:
+                print(f"Market download error for multibagger: {e}")
+
+        for sym in qualifying_symbols:
+            meta = stock_meta[sym]
+            item = meta["item"]
+            is_bull = False
+            is_vol_break = False
+            tech_price = None
+
+            if market_data is not None:
+                try:
+                    stock_df = market_data[sym] if len(qualifying_symbols) > 1 else market_data
+                    if stock_df is not None and not stock_df.empty and len(stock_df) >= 5:
+                        closes = stock_df["Close"].dropna()
+                        opens = stock_df["Open"].dropna()
+                        volumes = stock_df["Volume"].dropna()
+                        if len(closes) >= 4 and len(opens) >= 4 and len(volumes) >= 4:
+                            tech_price = round(float(closes.iloc[-1]), 2)
+                            avg_vol = float(volumes.tail(20).mean()) if len(volumes) >= 20 else float(volumes.mean())
+
+                            # Check last 2 sessions for candlestick / volume trigger
+                            for idx in (-1, -2):
+                                prev_c = float(closes.iloc[idx - 1])
+                                prev_o = float(opens.iloc[idx - 1])
+                                curr_c = float(closes.iloc[idx])
+                                curr_o = float(opens.iloc[idx])
+                                curr_vol = float(volumes.iloc[idx])
+                                vr = round(curr_vol / avg_vol, 2) if avg_vol > 0 else 1.0
+
+                                # Bullish Engulfing pattern
+                                if (curr_c > curr_o and prev_c < prev_o and
+                                    curr_o <= prev_c * 1.005 and curr_c >= prev_o * 0.995 and
+                                    abs(curr_c - curr_o) >= abs(prev_c - prev_o) * 0.9 and vr >= 1.0):
+                                    is_bull = True
+
+                                # Volume breakout
+                                high_20 = float(stock_df["High"].tail(20).max())
+                                if (curr_c >= high_20 * 0.98 and vr >= 1.3) or (vr >= 1.3 and (curr_c - prev_c) > 0):
+                                    is_vol_break = True
+                except Exception:
+                    pass
+
+            if request.include_bullish_engulfing and not is_bull:
+                continue
+            if request.include_volume_breakout and not is_vol_break:
+                continue
+
+            signals = []
+            if is_bull:
+                signals.append("Bullish Engulfing 🕯️")
+            if is_vol_break:
+                signals.append("Volume Breakout 🚀")
+            if not signals:
+                signals.append("Multibagger 💎")
+            signal_str = " + ".join(signals)
+
+            curr_price = tech_price or meta["current_price"]
+            price_display = f"₹{curr_price:,.2f}" if curr_price else "N/A"
+            roe_display = f"{meta['roe'] * 100:.1f}%" if meta["roe"] is not None else "N/A"
+            de_display = f"{meta['de']:.2f}" if meta["de"] is not None else "N/A"
+            pe_display = f"{meta['pe']:.1f}" if meta["pe"] is not None else "N/A"
+
+            results.append({
+                "Symbol": sym,
+                "Company Name": symbol_to_name.get(sym, sym),
+                "Score": f"{meta['green_count']}/9 Green 🟢",
+                "Green Parameters": ", ".join(meta["green_greens"]),
+                "Current Price": price_display,
+                "P/E": pe_display,
+                "Debt/Equity": de_display,
+                "ROE": roe_display,
+                "Signals": signal_str,
+                "_raw_score": meta["green_count"],
+                "_raw_roe": meta["roe"] or 0,
+                "_raw_pe": meta["pe"] or 9999,
+                "_raw_mcap": item.get("market_cap") or 0,
+            })
+
+        results.sort(key=lambda x: (x.get("_raw_score", 0), x.get("_raw_roe", 0), -x.get("_raw_pe", 9999)), reverse=True)
+        return StockScanResponse(
+            universe=request.universe,
+            mode="multibagger",
+            total_scanned=total_scanned,
+            matches_found=len(results),
+            columns=columns,
+            stocks=results[:limit]
+        )
+
     # 1. VOLUME BREAKOUT
-    if mode == "volume_breakout":
+    elif mode == "volume_breakout":
         results = []
         columns = ["Symbol", "Company Name", "Current Price", "Change %", "Volume", "Avg Volume", "Vol Ratio", "RSI", "Signal"]
         try:
@@ -577,7 +731,7 @@ def compute_financial_status(values: List[float], is_public: bool = False) -> St
 @router.get("/analysis/{symbol}", response_model=StockAnalysisResponse)
 async def get_stock_analysis(
     symbol: str,
-    current_user: UserResponse = Depends(get_current_active_user),
+    current_user: Optional[UserResponse] = Depends(get_optional_user),
 ):
     """Provides full company overview, candlestick data, shareholding, news, and metrics."""
     import yfinance as yf
@@ -610,7 +764,13 @@ async def get_stock_analysis(
     about = (fundainfo.get("About") if fundainfo and fundainfo.get("About") else None) or info.get("longBusinessSummary") or "Leading publicly traded company on the National Stock Exchange of India."
 
     pe_str = f"{info.get('trailingPE', 0):.2f}" if info.get("trailingPE") else (fundainfo.get("PE", "N/A") if fundainfo else "N/A")
-    roe_str = f"{info.get('returnOnEquity', 0) * 100:.2f}%" if info.get("returnOnEquity") else (f"{fundainfo.get('ROE')}%" if fundainfo and fundainfo.get("ROE") else "N/A")
+    roe_num = info.get("returnOnEquity")
+    if roe_num is None and fundainfo and fundainfo.get("ROE"):
+        try:
+            roe_num = float(str(fundainfo["ROE"]).replace("%", "").strip()) / 100.0
+        except Exception:
+            roe_num = None
+    roe_str = f"{roe_num * 100:.2f}%" if roe_num is not None else "N/A"
     roce_str = f"{fundainfo.get('ROCE')}%" if fundainfo and fundainfo.get("ROCE") else "N/A"
 
     day_low = info.get("dayLow", 0)
@@ -815,8 +975,8 @@ async def get_stock_analysis(
             parameter="Return on Equity (ROE)",
             your_value=roe_str,
             target=">= 20%",
-            verdict="✅ Strong" if (info.get("returnOnEquity", 0) or 0) >= 0.15 else "⚠️ Needs Improvement",
-            verdict_type="positive" if (info.get("returnOnEquity", 0) or 0) >= 0.15 else "warning",
+            verdict="✅ Strong" if (roe_num is not None and roe_num >= 0.15) else "⚠️ Needs Improvement",
+            verdict_type="positive" if (roe_num is not None and roe_num >= 0.15) else "warning",
             why_it_matters="Capital allocation efficiency and shareholder returns"
         ),
         MultibaggerTableRow(

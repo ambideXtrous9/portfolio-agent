@@ -69,6 +69,13 @@ export function clearAuthToken() {
   try {
     localStorage.removeItem("portfolio_auth_token");
     localStorage.removeItem("portfolio_auth_user");
+    localStorage.removeItem("portfolio_last_activity");
+  } catch (_) {}
+}
+
+export function clearAuthUser() {
+  try {
+    localStorage.removeItem("portfolio_auth_user");
   } catch (_) {}
 }
 
@@ -182,12 +189,19 @@ export async function fetchAPI(endpoint, options = {}) {
       if (response.status === 401) {
         clearAuthToken();
         clearAuthUser();
+        try { localStorage.removeItem("portfolio_last_activity"); } catch (_) {}
         window.dispatchEvent(new CustomEvent("portfolio:unauthorized", { detail: { endpoint } }));
       }
 
       throw new Error(`API Error (${response.status}): ${errDetail}`);
     }
-    return await response.json();
+    const resData = await response.json();
+    if (token) {
+      try {
+        localStorage.setItem("portfolio_last_activity", Date.now().toString());
+      } catch (_) {}
+    }
+    return resData;
   } catch (error) {
     console.error(`Fetch failed for ${url}:`, error);
     throw error;
@@ -449,6 +463,9 @@ export async function apiSignup(email, fullName, password) {
   if (data.access_token) {
     setAuthToken(data.access_token);
     setAuthUser(data.user);
+    try {
+      localStorage.setItem("portfolio_last_activity", Date.now().toString());
+    } catch (_) {}
   }
   return data;
 }
@@ -462,15 +479,34 @@ export async function apiLogin(email, password) {
   if (data.access_token) {
     setAuthToken(data.access_token);
     setAuthUser(data.user);
+    try {
+      localStorage.setItem("portfolio_last_activity", Date.now().toString());
+    } catch (_) {}
   }
   return data;
 }
 
 export async function apiLogout() {
-  try {
-    await fetchAPI("/auth/logout", { method: "POST" });
-  } catch (_) {}
+  // 1. Immediately wipe local state synchronously
   clearAuthToken();
+  clearAuthUser();
+  try {
+    localStorage.removeItem("portfolio_last_activity");
+  } catch (_) {}
+
+  // 2. Broadcast logout event to active components
+  try {
+    window.dispatchEvent(new CustomEvent("portfolio:auth-logout"));
+  } catch (_) {}
+
+  // 3. Fire-and-forget backend revocation without blocking UI
+  try {
+    const base = getAPIBase();
+    fetch(`${base}/auth/logout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    }).catch(() => {});
+  } catch (_) {}
 }
 
 export async function apiGetMe() {

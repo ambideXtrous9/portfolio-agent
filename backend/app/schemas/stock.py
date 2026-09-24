@@ -5,10 +5,13 @@ from pydantic import BaseModel, Field
 
 
 class StockScanRequest(BaseModel):
-    universe: str = Field(default="nifty500", description="'nifty500' or 'microcap250'")
-    mode: str = Field(default="volume_breakout", description="Scan mode: 'volume_breakout', 'highest_eps', 'low_debt', 'bullish_engulfing', 'profit_jump'")
-    min_volume_ratio: float = Field(default=1.5, description="Volume relative to 20-day average")
-    limit: int = Field(default=25, description="Max results to return")
+    universe: str = Field(default="nifty500", description="'nifty500', 'microcap250', or 'all'")
+    mode: str = Field(default="volume_breakout", description="Scan mode: 'multibagger', 'volume_breakout', 'highest_eps', 'low_debt', 'bullish_engulfing', 'profit_jump'")
+    min_volume_ratio: float = Field(default=1.4, description="Volume relative to 20-day average")
+    limit: int = Field(default=50, description="Max results to return")
+    min_multibagger_green: int = Field(default=4, description="Minimum green criteria for multibagger qualification (default 4)")
+    include_bullish_engulfing: bool = Field(default=False, description="Filter: must also satisfy Bullish Engulfing")
+    include_volume_breakout: bool = Field(default=False, description="Filter: must also satisfy Volume Breakout")
 
 
 class StockItem(BaseModel):

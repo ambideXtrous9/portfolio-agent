@@ -55,6 +55,9 @@ class DatabaseManager:
         self._is_in_memory: bool = True
         self._in_memory_chat_history: Dict[str, List[BaseMessage]] = {}
         self._initialized: bool = False
+        self._tables_created: bool = False
+        self._last_connect_attempt: float = 0.0
+        self._connect_cooldown: float = 30.0
         self.last_error: Optional[str] = None
         self.psycopg_available: bool = POSTGRES_AVAILABLE
 
@@ -62,6 +65,14 @@ class DatabaseManager:
         """Initializes the AsyncConnectionPool, creates chat history tables, and sets up AsyncPostgresSaver."""
         if self._initialized and not force_retry and not self._is_in_memory:
             return
+
+        import time
+        now = time.time()
+        if not force_retry and (now - self._last_connect_attempt < self._connect_cooldown):
+            # Enforce cooldown on retries if connection recently failed
+            return
+        self._last_connect_attempt = now
+
         db_uri = settings.effective_db_uri
 
         if not db_uri:
@@ -103,15 +114,18 @@ class DatabaseManager:
             )
             await self.pool.open(wait=True, timeout=settings.DB_POOL_TIMEOUT)
 
-            # 1. Initialize PostgresChatMessageHistory table
-            async with self.pool.connection() as conn:
-                logger.info(f"Ensuring chat history table '{settings.TABLE_NAME}' exists...")
-                await PostgresChatMessageHistory.acreate_tables(conn, settings.TABLE_NAME)
+            # 1. Initialize PostgresChatMessageHistory table (only once)
+            if not self._tables_created:
+                async with self.pool.connection() as conn:
+                    logger.info(f"Ensuring chat history table '{settings.TABLE_NAME}' exists...")
+                    await PostgresChatMessageHistory.acreate_tables(conn, settings.TABLE_NAME)
 
             # 2. Initialize AsyncPostgresSaver checkpointer for LangGraph
             logger.info("Setting up LangGraph AsyncPostgresSaver checkpointer...")
             self.checkpointer = AsyncPostgresSaver(self.pool)
-            await self.checkpointer.setup()
+            if not self._tables_created:
+                await self.checkpointer.setup()
+                self._tables_created = True
 
             self._is_in_memory = False
             self.last_error = None
