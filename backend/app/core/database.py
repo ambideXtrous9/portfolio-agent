@@ -46,6 +46,42 @@ class InMemoryChatHistory:
             del self._store[self.session_id]
 
 
+class PooledPostgresChatMessageHistory:
+    """Leak-free, connection-pooled adapter for PostgresChatMessageHistory."""
+
+    def __init__(self, table_name: str, session_id: str, pool: Any):
+        self.table_name = table_name
+        self.session_id = session_id
+        self.pool = pool
+
+    async def aget_messages(self) -> List[BaseMessage]:
+        async with self.pool.connection() as conn:
+            history = PostgresChatMessageHistory(
+                self.table_name,
+                self.session_id,
+                async_connection=conn,
+            )
+            return await history.aget_messages()
+
+    async def aadd_messages(self, messages: List[BaseMessage]) -> None:
+        async with self.pool.connection() as conn:
+            history = PostgresChatMessageHistory(
+                self.table_name,
+                self.session_id,
+                async_connection=conn,
+            )
+            await history.aadd_messages(messages)
+
+    async def aclear(self) -> None:
+        async with self.pool.connection() as conn:
+            history = PostgresChatMessageHistory(
+                self.table_name,
+                self.session_id,
+                async_connection=conn,
+            )
+            await history.aclear()
+
+
 class DatabaseManager:
     """Manages PostgreSQL connection pool, chat message history, and LangGraph checkpointer."""
 
@@ -179,11 +215,16 @@ class DatabaseManager:
         """Returns a chat message history instance (Postgres or In-Memory fallback)."""
         norm_id = self.normalize_session_id(session_id)
         if not self._is_in_memory and self.pool and PostgresChatMessageHistory:
-            connection = conn or await self.pool.getconn()
-            return PostgresChatMessageHistory(
+            if conn is not None:
+                return PostgresChatMessageHistory(
+                    settings.TABLE_NAME,
+                    norm_id,
+                    async_connection=conn,
+                )
+            return PooledPostgresChatMessageHistory(
                 settings.TABLE_NAME,
                 norm_id,
-                async_connection=connection,
+                self.pool,
             )
         return InMemoryChatHistory(norm_id, self._in_memory_chat_history)
 

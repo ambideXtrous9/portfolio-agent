@@ -14,5 +14,6 @@ class HarryAskResponse(BaseModel):
     research: Optional[str] = None
     mythology: Optional[str] = None
     article: str
+    answer: Optional[str] = None
     critique: Optional[str] = None
     execution_time_seconds: float

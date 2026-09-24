@@ -436,9 +436,12 @@ async def classify_all_models(
         card = run_single_inference(name, image, detected_brand=detected_brand, detected_conf=detected_conf)
         model_cards.append(card)
 
+    fastest_model = min(model_cards, key=lambda m: m.inference_time_seconds).model_name if model_cards else None
+
     return MultiModelComparisonResponse(
         models=model_cards,
-        uploaded_image_base64=img_b64
+        uploaded_image_base64=img_b64,
+        fastest_model=fastest_model
     )
 
 
@@ -454,6 +457,8 @@ async def classify_brand_image(
         model_name=eff.model_name,
         top_prediction=eff.predicted_class,
         confidence=eff.accuracy,
+        model_used=eff.model_name,
+        image_size=[224, 224],
         predictions=[
             PredictionItem(label=m.predicted_class, confidence=m.accuracy, percentage=f"{m.accuracy*100:.1f}%")
             for m in res.models

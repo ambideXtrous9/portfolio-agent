@@ -1233,6 +1233,7 @@ async def generate_stock_report(
         company_name=analysis.company_name,
         thinking_part=thinking_part,
         report_markdown=report_clean,
+        summary=report_clean,
         technicals=analysis.technical_indicators,
         fundamentals=analysis.valuation
     )

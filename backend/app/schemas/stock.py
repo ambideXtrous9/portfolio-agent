@@ -126,5 +126,6 @@ class StockReportResponse(BaseModel):
     company_name: Optional[str] = None
     thinking_part: Optional[str] = None
     report_markdown: str
+    summary: Optional[str] = None
     technicals: Dict[str, Any]
     fundamentals: Dict[str, Any]

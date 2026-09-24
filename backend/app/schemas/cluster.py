@@ -11,10 +11,12 @@ class Point(BaseModel):
 
 
 class ClusterRequest(BaseModel):
-    algorithm: str = Field(default="kmeans", description="'kmeans' or 'dbscan'")
-    n_clusters: int = Field(default=3, ge=1, le=10)
-    eps: float = Field(default=25.0, ge=1.0, le=100.0)
-    min_samples: int = Field(default=5, ge=1, le=50)
+    algorithm: Optional[str] = Field(default="kmeans", description="'kmeans' or 'dbscan'")
+    n_clusters: Optional[int] = Field(default=3, ge=1, le=20)
+    eps: Optional[float] = Field(default=25.0, ge=0.01, le=500.0)
+    min_samples: Optional[int] = Field(default=5, ge=1, le=100)
+    points: Optional[List[List[float]]] = None
+    k: Optional[int] = None
 
 
 class ClusterResponse(BaseModel):
@@ -23,3 +25,6 @@ class ClusterResponse(BaseModel):
     num_noise: int
     points: List[Point]
     silhouette_score: Optional[float] = None
+    centroids: Optional[List[List[float]]] = None
+    labels: Optional[List[int]] = None
+    inertia: Optional[float] = None

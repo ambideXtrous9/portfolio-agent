@@ -59,6 +59,15 @@ format_instructions = classifier_parser.get_format_instructions()
 
 def AgentClassifyNode(topic: str) -> Dict[str, str]:
     """Classifies topic into 'harry', 'generic', or 'exit' with conversational reply."""
+    t_clean = topic.strip().lower()
+    if t_clean in ["exit", "quit", "bye", "goodbye"]:
+        return {"classification": "exit", "reply": "exit"}
+    if t_clean in ["hi", "hello", "hey", "good morning", "good evening", "greetings"]:
+        return {
+            "classification": "generic",
+            "reply": "Hello! I am your Harry Potter Lore & Indian Mythology Scholar. Ask me anything about Hogwarts, magical artifacts, or connections to ancient epics!"
+        }
+
     llm_classifier = get_llm(temperature=0.0)
     prompt = (
         """You are an expert in Harry Potter Universe.
@@ -286,6 +295,9 @@ async def ask_harry_agent(
     current_user: UserResponse = Depends(get_current_active_user),
 ):
     """Runs the exact LangGraph Multi-Agent pipeline with PostgreSQL checkpointer and auth guard."""
+    if not request.query or not request.query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty or whitespace.")
+
     start_time = time.time()
     thread_id = str(uuid.uuid4())
     config = {
@@ -320,6 +332,7 @@ async def ask_harry_agent(
         research=final_state.get("research"),
         mythology=final_state.get("mythology"),
         article=final_text,
+        answer=final_text,
         critique=final_state.get("critique"),
         execution_time_seconds=elapsed
     )

@@ -293,39 +293,17 @@
           <!-- Subtab 0: Multibagger Screener -->
           <div class="stock-subtab-content active" id="subtab-multibagger">
             <h3>💎 Multibagger Screener</h3>
-            <p class="st-caption">Filters companies qualifying at least 4 green Multibagger fundamental metrics across both NIFTY 500 + MICROCAP 250 (750 stocks), with optional Bullish Engulfing and Volume Breakout technical overlays.</p>
             
             <div style="background: #FDFBF7; border: 1px solid var(--st-border-input); border-radius: var(--st-radius-lg); padding: 1.1rem 1.25rem; margin: 1.25rem 0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-              <div style="font-weight: 700; color: var(--terracotta-700); margin-bottom: 0.65rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <span>🎯 Core Filter:</span>
-                <span class="badge" style="background: var(--sage-50); color: var(--sage-700); border: 1px solid var(--sage-200); padding: 2px 10px; border-radius: 9999px; font-weight: 600; font-size: 0.85rem;">
-                  ✅ Multibagger (≥ 4 Green Criteria)
-                </span>
-                <span style="font-size: 0.82rem; color: var(--st-text-muted); font-weight: 400;">(Scans both 500 + 250 universes)</span>
-              </div>
-              
-              <div style="font-size: 0.88rem; color: var(--st-text-muted); margin-bottom: 0.85rem; line-height: 1.5;">
-                Evaluates 9 key institutional metrics: Revenue Growth, Earnings Growth, EBITDA Margin, Net Margin, P/E (TTM), PEG Ratio, Debt/Equity, ROE, and Current Ratio.
-              </div>
-
-              <!-- Technical Overlay Checkboxes -->
-              <div style="border-top: 1px dashed var(--st-border-input); padding-top: 0.85rem; margin-top: 0.5rem;">
-                <div style="font-weight: 600; font-size: 0.9rem; color: var(--st-text-main); margin-bottom: 0.5rem;">
-                  Optional Technical Overlays (User Selected):
-                </div>
-                <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center;">
-                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.92rem; font-weight: 500;">
-                    <input type="checkbox" id="chk-multi-bull" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--terracotta-600);">
-                    <span>📈 <strong>Bullish Engulfing Pattern</strong></span>
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.92rem; font-weight: 500;">
-                    <input type="checkbox" id="chk-multi-vol" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--terracotta-600);">
-                    <span>🚀 <strong>Volume Breakout</strong></span>
-                  </label>
-                </div>
-                <div class="st-caption" style="margin-top: 0.4rem; font-size: 0.8rem;">
-                  Initially filters Multibagger only. If ticked, the scan requires the stock to qualify for Multibagger <em>and</em> that technical setup.
-                </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.92rem; font-weight: 500;">
+                  <input type="checkbox" id="chk-multi-bull" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--terracotta-600);">
+                  <span>📈 <strong>Bullish Engulfing Pattern</strong></span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.92rem; font-weight: 500;">
+                  <input type="checkbox" id="chk-multi-vol" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--terracotta-600);">
+                  <span>🚀 <strong>Volume Breakout</strong></span>
+                </label>
               </div>
 
               <div style="margin-top: 1.25rem; display: flex; align-items: center; gap: 1rem;">
@@ -333,9 +311,7 @@
               </div>
             </div>
 
-            <div id="multibagger-results" style="margin-top: 1.5rem;">
-              <div class="st-caption">Click 'Run Multibagger Scan' to scan stocks across NIFTY 500 + MICROCAP 250.</div>
-            </div>
+            <div id="multibagger-results" style="margin-top: 1.5rem;"></div>
           </div>
 
           <!-- Subtab 1: Volume Breakout -->
@@ -1283,6 +1259,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Client Application Scripts -->
-  <script type="module" src="js/app.js?v=4.1"></script>
+  <script type="module" src="js/app.js?v=4.2"></script>
 </body>
 </html>

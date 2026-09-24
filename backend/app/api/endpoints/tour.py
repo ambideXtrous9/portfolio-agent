@@ -373,6 +373,9 @@ async def generate_tour_plan(
     current_user: UserResponse = Depends(get_current_active_user),
 ):
     """Executes the multi-agent travel graph with PostgreSQL checkpointer and auth guard."""
+    if not request.query or not request.query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty or whitespace.")
+
     start_time = time.time()
     query = request.query
     location, checkin, checkout, duration = parse_trip_query(query)
@@ -408,6 +411,7 @@ async def generate_tour_plan(
         checkin=checkin,
         checkout=checkout,
         itinerary_markdown=summary_md,
+        itinerary=summary_md,
         weather_summary=f"Forecast processed for {location}",
         airbnb_status="Connected via MultiServerMCPClient",
         execution_time_seconds=elapsed

@@ -17,6 +17,8 @@ class TourPlanResponse(BaseModel):
     checkin: str
     checkout: str
     itinerary_markdown: str
+    itinerary: Optional[str] = None
+    accommodations: List[Dict[str, Any]] = Field(default_factory=list)
     weather_summary: Optional[str] = None
     airbnb_status: str
     execution_time_seconds: float

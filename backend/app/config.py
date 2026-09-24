@@ -50,8 +50,8 @@ class Settings(BaseSettings):
     POSTGRES_URL: str = os.getenv("POSTGRES_URL", "")
     AUTH_DATABASE_URL: str = os.getenv("AUTH_DATABASE_URL", "")
     DB_POOL_MIN_SIZE: int = int(os.getenv("DB_POOL_MIN_SIZE", "0"))
-    DB_POOL_MAX_SIZE: int = int(os.getenv("DB_POOL_MAX_SIZE", "10"))
-    DB_POOL_TIMEOUT: float = float(os.getenv("DB_POOL_TIMEOUT", "4.0"))
+    DB_POOL_MAX_SIZE: int = int(os.getenv("DB_POOL_MAX_SIZE", "20"))
+    DB_POOL_TIMEOUT: float = float(os.getenv("DB_POOL_TIMEOUT", "10.0"))
     TABLE_NAME: str = os.getenv("TABLE_NAME", "portfolio_chat_history")
 
     # Security & Authentication (Argon2 / JWT)

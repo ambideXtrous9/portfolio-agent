@@ -15,6 +15,8 @@ class ClassificationResponse(BaseModel):
     top_prediction: str
     confidence: float
     predictions: List[PredictionItem]
+    model_used: Optional[str] = None
+    image_size: Optional[List[int]] = None
 
 
 class ModelEvaluationCard(BaseModel):
@@ -31,6 +33,7 @@ class ModelEvaluationCard(BaseModel):
 class MultiModelComparisonResponse(BaseModel):
     models: List[ModelEvaluationCard]
     uploaded_image_base64: Optional[str] = None
+    fastest_model: Optional[str] = None
 
 
 class BoundingBox(BaseModel):

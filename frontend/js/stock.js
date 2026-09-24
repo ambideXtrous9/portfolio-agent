@@ -225,9 +225,8 @@ export function initStockScreener() {
     const scannedTxt = res.total_scanned ? ` (Scanned all ${res.total_scanned} stocks in ${universeLabel})` : '';
 
     container.innerHTML = `
-      <div style="background-color: var(--sage-50); color: var(--sage-700); border: 1px solid var(--sage-200); border-radius: var(--st-radius-lg); padding: 0.85rem 1.25rem; margin-bottom: 1rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-        <span>✅ Scan Complete: ${countDisplay}${scannedTxt}</span>
-        <span style="font-size: 0.88rem; font-weight: 500; opacity: 0.9;">💡 Ranked best to worst • Click any stock to view full analysis</span>
+      <div style="background-color: var(--sage-50); color: var(--sage-700); border: 1px solid var(--sage-200); border-radius: var(--st-radius-lg); padding: 0.75rem 1.25rem; margin-bottom: 1rem; font-weight: 600;">
+        <span>✅ ${countDisplay}</span>
       </div>
 
       ${dataDisplayHtml}
