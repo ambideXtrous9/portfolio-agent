@@ -2,6 +2,7 @@
  * Vision Modules: 4-Model Image Classifier & YOLO Logo Detection
  * Matches exact Streamlit functionality and side-by-side comparison UI.
  */
+import { escapeHtml } from "./markdown.js";
 
 import { getAPIBase, getAuthToken } from "./api.js";
 
@@ -181,7 +182,7 @@ export function initImageClassifier() {
 
       const timeVal = (m.inference_time_seconds !== undefined && m.inference_time_seconds !== null)
         ? m.inference_time_seconds
-        : (m.inference_time !== undefined && m.inference_time !== null ? m.inference_time : 0.0385);
+        : (m.inference_time !== undefined && m.inference_time !== null ? m.inference_time : 0);
 
       if (sizeEl) sizeEl.textContent = `${m.size_mb.toFixed(2)} MB`;
       if (paramsEl) paramsEl.textContent = `${m.parameters_m.toFixed(2)} M`;
@@ -191,34 +192,28 @@ export function initImageClassifier() {
       }
       if (accEl) accEl.textContent = m.accuracy.toFixed(2);
       if (timeEl) {
-        timeEl.textContent = `${Number(timeVal).toFixed(4)} seconds`;
+        timeEl.textContent = m.status === "unavailable"
+          ? "— (model unavailable)"
+          : `${Number(timeVal).toFixed(4)} seconds`;
       }
     });
   }
 
   function renderModelCardError(errMsg) {
-    const fallbackBenchmarks = {
-      xception: { size: "81.64 MB", params: "21.34 M", cls: "None", acc: "0.00", time: "0.1368 seconds" },
-      inception: { size: "85.30 MB", params: "22.32 M", cls: "None", acc: "0.00", time: "0.1045 seconds" },
-      mobilenet: { size: "9.91 MB", params: "2.56 M", cls: "None", acc: "0.00", time: "0.0273 seconds" },
-      efficientnet: { size: "16.75 MB", params: "4.35 M", cls: "None", acc: "0.00", time: "0.0385 seconds" }
-    };
+    // Honest failure: mark every model as unavailable instead of showing
+    // fabricated benchmark numbers that were never measured.
+    const unavailable = { cls: "None", acc: "—", time: "— (unavailable)" };
 
-    Object.entries(fallbackBenchmarks).forEach(([key, val]) => {
-      const sizeEl = document.getElementById(`size-${key}`);
-      const paramsEl = document.getElementById(`params-${key}`);
-      const classEl = document.getElementById(`class-${key}`);
+    ["xception", "inception", "mobilenet", "efficientnet"].forEach((key) => {      const classEl = document.getElementById(`class-${key}`);
       const accEl = document.getElementById(`acc-${key}`);
       const timeEl = document.getElementById(`time-${key}`);
 
-      if (sizeEl) sizeEl.textContent = val.size;
-      if (paramsEl) paramsEl.textContent = val.params;
       if (classEl) {
-        classEl.textContent = val.cls;
+        classEl.textContent = unavailable.cls;
         classEl.style.color = "var(--st-text-color)";
       }
-      if (accEl) accEl.textContent = val.acc;
-      if (timeEl) timeEl.textContent = val.time;
+      if (accEl) accEl.textContent = unavailable.acc;
+      if (timeEl) timeEl.textContent = unavailable.time;
     });
   }
 }
@@ -319,7 +314,7 @@ export function initYoloLogo() {
             <strong>🎯 Detected Logos (${data.total_detections}):</strong>
             <ul style="margin: 0.5rem 0 0 1.25rem;">
               ${data.detections.map(d => `
-                <li><strong>${d.label}</strong> (Confidence: ${(d.confidence * 100).toFixed(1)}%)</li>
+                <li><strong>${escapeHtml(d.label)}</strong> (Confidence: ${(d.confidence * 100).toFixed(1)}%)</li>
               `).join("")}
             </ul>
           </div>
@@ -329,7 +324,7 @@ export function initYoloLogo() {
       }
     } catch (err) {
       console.error("YOLO error:", err);
-      boxesSummary.innerHTML = `<div style="color: #D32F2F; font-size: 0.9rem; padding: 0.75rem; background: #FFEBEE; border: 1px solid #FFCDD2; border-radius: var(--st-radius);">⚠️ YOLO detection error: ${err.message}</div>`;
+      boxesSummary.innerHTML = `<div style="color: #D32F2F; font-size: 0.9rem; padding: 0.75rem; background: #FFEBEE; border: 1px solid #FFCDD2; border-radius: var(--st-radius);">⚠️ YOLO detection error: ${escapeHtml(err.message)}</div>`;
     }
   }
 }

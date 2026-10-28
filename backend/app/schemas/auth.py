@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -10,7 +11,7 @@ class UserSignupRequest(BaseModel):
 
     email: str = Field(..., description="User's unique email address")
     full_name: str = Field(..., min_length=2, max_length=150, description="Full name of the user")
-    password: str = Field(..., min_length=3, max_length=128, description="User password (min 3 characters)")
+    password: str = Field(..., min_length=8, max_length=128, description="User password (min 8 characters)")
 
 
 class UserLoginRequest(BaseModel):
@@ -37,7 +38,7 @@ class TokenResponse(BaseModel):
 
     access_token: str = Field(..., description="Signed JWT Bearer Access Token")
     token_type: str = Field(default="bearer", description="Token type (bearer)")
-    expires_in_minutes: int = Field(default=1440, description="Token validity window in minutes")
+    expires_in_minutes: int = Field(default=60, description="Token validity window in minutes")
     user: UserResponse = Field(..., description="Authenticated user profile")
 
 
@@ -51,7 +52,7 @@ class ResetPasswordRequest(BaseModel):
     """Payload to reset user password using a verified token."""
 
     token: str = Field(..., description="Password reset verification token")
-    new_password: str = Field(..., min_length=3, max_length=128, description="New user password")
+    new_password: str = Field(..., min_length=8, max_length=128, description="New user password (min 8 characters)")
 
 
 class MessageResponse(BaseModel):

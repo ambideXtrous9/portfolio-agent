@@ -2,6 +2,7 @@
 
 import os
 from typing import List
+
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
@@ -34,14 +35,17 @@ class Settings(BaseSettings):
     LANGFUSE_SECRET_KEY: str = os.getenv("LANGFUSE_SECRET_KEY", "")
     LANGFUSE_HOST: str = os.getenv("LANGFUSE_HOST", "https://us.cloud.langfuse.com")
     
-    # LiveKit Voice Agent
-    LIVEKIT_URL: str = os.getenv("LIVEKIT_URL", "wss://my-voice-agent-6wug4ta7.livekit.cloud")
+    # LiveKit Voice Agent (URL must come from environment; no personal cloud URL baked in)
+    LIVEKIT_URL: str = os.getenv("LIVEKIT_URL", "")
     LIVEKIT_API_KEY: str = os.getenv("LIVEKIT_API_KEY", "")
     LIVEKIT_API_SECRET: str = os.getenv("LIVEKIT_API_SECRET", "")
-    
+
     # Telegram Bot & CI/CD Automation
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
+    # Secret Telegram sends back on every webhook request (X-Telegram-Bot-Api-Secret-Token).
+    # REQUIRED for webhook commands & /notify; set via setWebhook(secret_token=...) during setup.
+    TELEGRAM_WEBHOOK_SECRET: str = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
     GITHUB_DISPATCH_TOKEN: str = os.getenv("GITHUB_DISPATCH_TOKEN", "")
     GITHUB_REPO: str = os.getenv("GITHUB_REPO", "ambideXtrous9/portfolio-agent")
     
@@ -49,19 +53,35 @@ class Settings(BaseSettings):
     DATABASE_URL: str = os.getenv("DATABASE_URL", os.getenv("POSTGRES_URL", ""))
     POSTGRES_URL: str = os.getenv("POSTGRES_URL", "")
     AUTH_DATABASE_URL: str = os.getenv("AUTH_DATABASE_URL", "")
-    DB_POOL_MIN_SIZE: int = int(os.getenv("DB_POOL_MIN_SIZE", "0"))
+    DB_POOL_MIN_SIZE: int = int(os.getenv("DB_POOL_MIN_SIZE", "2"))
     DB_POOL_MAX_SIZE: int = int(os.getenv("DB_POOL_MAX_SIZE", "20"))
     DB_POOL_TIMEOUT: float = float(os.getenv("DB_POOL_TIMEOUT", "10.0"))
     TABLE_NAME: str = os.getenv("TABLE_NAME", "portfolio_chat_history")
 
     # Security & Authentication (Argon2 / JWT)
-    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "portfolio-super-secret-jwt-key-2026-production")
+    # NOTE: JWT_SECRET_KEY intentionally has NO insecure default.
+    # When unset, an ephemeral per-process secret is generated at startup (see below)
+    # with a loud warning so no two deployments share a public constant.
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
     RESET_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("RESET_TOKEN_EXPIRE_MINUTES", "15"))
 
-    # CORS
-    CORS_ORIGINS: List[str] = ["*"]
+    # CORS — explicit allowlist (comma-separated env override) + optional regex
+    # for Vercel preview deployments instead of the dangerous "*" wildcard.
+    CORS_ORIGINS: List[str] = [
+        o.strip()
+        for o in os.getenv(
+            "PORTFOLIO_CORS_ORIGINS",
+            "http://localhost:3000,http://localhost:8000,"
+            "http://127.0.0.1:3000,http://127.0.0.1:8000,"
+            "https://portfolio-agent-ai.vercel.app,"
+            "https://sushovan-ai-portfolio.vercel.app,"
+            "https://ambidextrous-portfolio.vercel.app",
+        ).split(",")
+        if o.strip()
+    ]
+    CORS_ORIGIN_REGEX: str = os.getenv("PORTFOLIO_CORS_ORIGIN_REGEX", r"https://portfolio-agent.*\.vercel\.app")
 
     def _resolve_uri(self, *preferred_keys: str) -> str:
         """Discovers and normalizes PostgreSQL URI across all common cloud/Vercel conventions."""
@@ -161,4 +181,17 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# ── JWT secret safety net ─────────────────────────────────────────────────────
+# No hardcoded fallback is shipped. If the operator forgets the env var, an
+# ephemeral random secret is generated per process so tokens are never signed
+# with a public constant. Tokens will not survive restarts until the var is set.
+if not settings.JWT_SECRET_KEY:
+    import secrets as _secrets
+
+    settings.JWT_SECRET_KEY = _secrets.token_urlsafe(64)
+    print(
+        "⚠️  JWT_SECRET_KEY is not set — generated an EPHEMERAL per-process secret. "
+        "Sessions will be invalidated on restart. Set JWT_SECRET_KEY in your environment for persistence."
+    )
 

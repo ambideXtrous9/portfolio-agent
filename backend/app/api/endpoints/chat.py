@@ -2,8 +2,9 @@
 
 import logging
 import uuid
-from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from backend.app.api.deps import get_current_active_user
@@ -53,8 +54,24 @@ async def get_thread_history(
 ):
     """Retrieves all conversation messages stored in PostgreSQL for the given thread_id."""
     norm_id = _normalize_thread_id(thread_id)
+
+    # IDOR protection: the thread must belong to the requesting user
+    owner = await db_manager.get_thread_owner(norm_id)
+    if owner is not None and owner != current_user.id:
+        # 404 (not 403) to avoid revealing the existence of other users' threads
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found.")
+
     history = await db_manager.get_chat_history(norm_id)
     messages = await history.aget_messages()
+
+    if owner is None and not messages:
+        # Unknown, empty thread: treat as non-existent (prevents ownerless probing)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found.")
+
+    if owner is None and messages:
+        # Legacy migration: pre-ownership threads are claimed by their first
+        # reader (previously they were world-readable; first-claim wins).
+        await db_manager.claim_chat_thread(norm_id, current_user.id)
 
     serialized = []
     for msg in messages:
@@ -91,7 +108,14 @@ async def delete_thread_history(
 ):
     """Deletes all messages for the thread_id from the PostgreSQL database."""
     norm_id = _normalize_thread_id(thread_id)
+
+    # IDOR protection: only the owner may delete
+    owner = await db_manager.get_thread_owner(norm_id)
+    if owner is None or owner != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found.")
+
     deleted = await db_manager.delete_chat_session(norm_id)
+    await db_manager.delete_thread_ownership(norm_id)
     return DeleteThreadResponse(
         thread_id=thread_id,
         deleted=deleted,

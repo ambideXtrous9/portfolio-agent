@@ -2,6 +2,7 @@
 
 import logging
 from typing import Callable, Optional
+
 from fastapi import Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordBearer
 
@@ -33,7 +34,7 @@ async def validate_token_and_get_user(token: str) -> UserResponse:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
     # 1. Check if token was blacklisted (logged out)
     token_jti = payload.get("jti")
@@ -71,22 +72,27 @@ async def validate_token_and_get_user(token: str) -> UserResponse:
     )
 
 
+def _extract_raw_token(request: Request, token: Optional[str], query_token: Optional[str]) -> Optional[str]:
+    """Resolves the JWT from (1) OAuth2 header, (2) query param, (3) httpOnly cookie."""
+    raw_token = token or query_token
+    if raw_token:
+        return raw_token
+    auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        return auth_header.split(" ", 1)[1].strip()
+    return request.cookies.get("access_token")
+
+
 async def get_current_user(
     request: Request,
     token: Optional[str] = Depends(oauth2_scheme),
     query_token: Optional[str] = Query(None, alias="token", description="JWT token for SSE/WS access"),
 ) -> UserResponse:
     """
-    Decodes JWT Bearer token from header or query parameter,
+    Decodes JWT Bearer token from header, query parameter, or httpOnly cookie,
     verifies revocation, and fetches user profile.
     """
-    raw_token = token or query_token
-    if not raw_token:
-        # Check Authorization header manually as fallback
-        auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            raw_token = auth_header.split(" ", 1)[1].strip()
-
+    raw_token = _extract_raw_token(request, token, query_token)
     if not raw_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -115,12 +121,7 @@ async def get_optional_user(
     query_token: Optional[str] = Query(None, alias="token"),
 ) -> Optional[UserResponse]:
     """Optional user dependency that returns None if no token or invalid token."""
-    raw_token = token or query_token
-    if not raw_token:
-        auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            raw_token = auth_header.split(" ", 1)[1].strip()
-
+    raw_token = _extract_raw_token(request, token, query_token)
     if not raw_token:
         return None
 

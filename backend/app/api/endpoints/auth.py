@@ -3,11 +3,14 @@
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
 from backend.app.api.deps import get_current_active_user, oauth2_scheme
-from backend.app.core.auth_database import auth_db_manager
 from backend.app.config import settings
+from backend.app.core.auth_database import auth_db_manager
+from backend.app.core.notify import send_telegram_msg
+from backend.app.core.ratelimit import rate_limit
 from backend.app.core.security import (
     create_access_token,
     create_reset_token,
@@ -20,7 +23,6 @@ from backend.app.schemas.auth import (
     MessageResponse,
     ResetPasswordRequest,
     TokenResponse,
-    UserLoginRequest,
     UserResponse,
     UserSignupRequest,
 )
@@ -28,6 +30,50 @@ from backend.app.schemas.auth import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication & Access"])
+
+# Uniform authentication-failure message: prevents user enumeration
+AUTH_FAILURE_DETAIL = "Incorrect email or password."
+AUTH_FAILURE_HEADERS = {"WWW-Authenticate": "Bearer"}
+
+COOKIE_NAME = "access_token"
+
+
+def _set_auth_cookie(response: Response, token: str) -> None:
+    """Stores the JWT in an httpOnly cookie so the token is not exposed to JS."""
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=str(response.headers.get("x-forwarded-proto", "")).lower() == "https" or os_is_https(),
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+
+
+def os_is_https() -> bool:
+    """Detects HTTPS termination for cookie Secure flag (Vercel/proxy aware)."""
+    import os as _os
+
+    proto = _os.getenv("X_FORWARDED_PROTO", "")
+    vercel = _os.getenv("VERCEL", "")
+    return proto == "https" or bool(vercel)
+
+
+def _clear_auth_cookie(response: Response) -> None:
+    response.delete_cookie(key=COOKIE_NAME, path="/")
+
+
+def _build_user_response(user_dict: dict) -> UserResponse:
+    return UserResponse(
+        id=str(user_dict["id"]),
+        email=user_dict["email"],
+        full_name=user_dict.get("full_name"),
+        is_active=user_dict.get("is_active", True),
+        is_superuser=user_dict.get("is_superuser", False),
+        role=user_dict.get("role", "user"),
+        created_at=user_dict.get("created_at"),
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -40,12 +86,12 @@ router = APIRouter(prefix="/auth", tags=["Authentication & Access"])
     summary="Register a new user account",
     description="Registers a new user in PostgreSQL and immediately returns an authenticated JWT Bearer session.",
 )
-async def signup_endpoint(request: UserSignupRequest):
+async def signup_endpoint(request: UserSignupRequest, response: Response):
     """Registers a new user and issues an access token."""
     existing_user = await auth_db_manager.get_user_by_email(request.email)
     if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="A user with this email address already exists. Please log in instead.",
         )
 
@@ -64,7 +110,7 @@ async def signup_endpoint(request: UserSignupRequest):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Unable to register user: {db_err}",
-        )
+        ) from db_err
 
     # Issue initial JWT Access Token
     token_payload = {
@@ -77,22 +123,14 @@ async def signup_endpoint(request: UserSignupRequest):
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
-    user_response = UserResponse(
-        id=str(user_dict["id"]),
-        email=user_dict["email"],
-        full_name=user_dict.get("full_name"),
-        is_active=user_dict.get("is_active", True),
-        is_superuser=user_dict.get("is_superuser", False),
-        role=user_dict.get("role", "user"),
-        created_at=user_dict.get("created_at"),
-    )
+    _set_auth_cookie(response, access_token)
 
     logger.info(f"User registered successfully: {request.email} (ID: {user_dict['id']})")
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
         expires_in_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
-        user=user_response,
+        user=_build_user_response(user_dict),
     )
 
 
@@ -105,8 +143,11 @@ async def signup_endpoint(request: UserSignupRequest):
     summary="Authenticate user and issue JWT Bearer token",
     description="Authenticates credentials and returns a signed JWT Bearer token. Supports JSON or form-urlencoded.",
 )
-async def login_endpoint(request: Request):
+async def login_endpoint(request: Request, response: Response):
     """Authenticates credentials from JSON payload or form body."""
+    # Brute-force protection: per-IP sliding window
+    rate_limit(request, "auth-login", max_attempts=10, window_seconds=300.0)
+
     email = None
     password = None
 
@@ -133,18 +174,12 @@ async def login_endpoint(request: Request):
         )
 
     user_dict = await auth_db_manager.get_user_by_email(email)
-    if not user_dict:
+    if not user_dict or not verify_password(password, user_dict["hashed_password"]):
+        # Uniform failure message: identical for unknown users and wrong passwords
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username/email or password. Account not found; please sign up.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    if not verify_password(password, user_dict["hashed_password"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username/email or password.",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail=AUTH_FAILURE_DETAIL,
+            headers=AUTH_FAILURE_HEADERS,
         )
 
     if not user_dict.get("is_active", True):
@@ -164,22 +199,14 @@ async def login_endpoint(request: Request):
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
-    user_response = UserResponse(
-        id=str(user_dict["id"]),
-        email=user_dict["email"],
-        full_name=user_dict.get("full_name"),
-        is_active=user_dict.get("is_active", True),
-        is_superuser=user_dict.get("is_superuser", False),
-        role=user_dict.get("role", "user"),
-        created_at=user_dict.get("created_at"),
-    )
+    _set_auth_cookie(response, access_token)
 
     logger.info(f"User authenticated successfully: {email}")
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
         expires_in_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
-        user=user_response,
+        user=_build_user_response(user_dict),
     )
 
 
@@ -209,6 +236,7 @@ async def get_me_endpoint(
     description="Revokes the current JWT Bearer token and adds it to the token blacklist.",
 )
 async def logout_endpoint(
+    response: Response,
     request: Request,
     token: Optional[str] = Depends(oauth2_scheme),
     current_user: UserResponse = Depends(get_current_active_user),
@@ -219,6 +247,7 @@ async def logout_endpoint(
         auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
         if auth_header and auth_header.startswith("Bearer "):
             raw_token = auth_header.split(" ", 1)[1].strip()
+    raw_token = raw_token or request.cookies.get(COOKIE_NAME)
 
     if raw_token:
         try:
@@ -236,6 +265,7 @@ async def logout_endpoint(
         except Exception as e:
             logger.warning(f"Logout token decoding note: {e}")
 
+    _clear_auth_cookie(response)
     logger.info(f"User logged out successfully: {current_user.email}")
     return MessageResponse(
         message="Successfully logged out. Your token has been revoked.",
@@ -246,21 +276,33 @@ async def logout_endpoint(
 # ──────────────────────────────────────────────────────────────────────────────
 # 5. Forgot Password (Initiate Reset Request)
 # ──────────────────────────────────────────────────────────────────────────────
+RESET_REQUEST_NEUTRAL_MESSAGE = (
+    "If this email address is registered, password reset instructions have been sent to the registered delivery channel."
+)
+
+
 @router.post(
     "/forgot-password",
     summary="Request a password reset token",
-    description="Generates a 15-minute time-limited password reset token.",
+    description=(
+        "Generates a 15-minute time-limited password reset token and delivers it "
+        "over the registered channel (Telegram) — it is never returned in the API response."
+    ),
 )
-async def forgot_password_endpoint(request: ForgotPasswordRequest):
-    """Generates password reset token if user exists."""
+async def forgot_password_endpoint(
+    request: ForgotPasswordRequest,
+    request_http: Request,
+    background_tasks: BackgroundTasks,
+):
+    """Generates and delivers a password reset token without leaking it in the response."""
+    # Anti-brute-force / anti-spam: 5 requests / 5 minutes per IP
+    rate_limit(request_http, "auth-forgot", max_attempts=5, window_seconds=300.0)
+
     user_dict = await auth_db_manager.get_user_by_email(request.email)
 
     if not user_dict:
-        # Prevent account enumeration attack
-        return {
-            "message": "If this email address is registered, password reset instructions have been generated.",
-            "status": "success",
-        }
+        # Prevent account enumeration: identical response for unknown emails
+        return {"message": RESET_REQUEST_NEUTRAL_MESSAGE, "status": "success"}
 
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
     reset_token = create_reset_token(
@@ -275,13 +317,29 @@ async def forgot_password_endpoint(request: ForgotPasswordRequest):
         expires_at=expires_at,
     )
 
-    logger.info(f"Password reset token issued for: {request.email}")
-    return {
-        "message": "Password reset token generated successfully. Use this token with /api/auth/reset-password.",
-        "status": "success",
-        "reset_token": reset_token,
-        "expires_in_minutes": settings.RESET_TOKEN_EXPIRE_MINUTES,
-    }
+    # Deliver the token over the registered channel — NEVER in the HTTP response
+    if settings.TELEGRAM_CHAT_ID and settings.TELEGRAM_BOT_TOKEN:
+        owner_chat_id = settings.TELEGRAM_CHAT_ID.split(",")[0].strip()
+        background_tasks.add_task(
+            send_telegram_msg,
+            owner_chat_id,
+            f"🔐 <b>Password reset requested</b> for <code>{request.email}</code>\n\n"
+            f"<b>Reset token (valid {settings.RESET_TOKEN_EXPIRE_MINUTES} min):</b>\n"
+            f"<code>{reset_token}</code>\n\n"
+            f"<i>POST it to /api/auth/reset-password together with the new password. "
+            f"If this wasn't you, ignore this message.</i>",
+            "HTML",
+        )
+        logger.info(f"Password reset token issued for: {request.email} (delivered via Telegram)")
+    else:
+        # No delivery channel configured: log server-side only. The token is
+        # stored and remains consumable, but no reset link is sent to anyone.
+        logger.warning(
+            "Password reset token issued for %s but no Telegram delivery channel is configured; "
+            "token stored server-side only.", request.email,
+        )
+
+    return {"message": RESET_REQUEST_NEUTRAL_MESSAGE, "status": "success"}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -293,8 +351,10 @@ async def forgot_password_endpoint(request: ForgotPasswordRequest):
     summary="Reset password with token",
     description="Validates the reset token and updates the user's password using Argon2id.",
 )
-async def reset_password_endpoint(request: ResetPasswordRequest):
+async def reset_password_endpoint(request: ResetPasswordRequest, request_http: Request):
     """Verifies reset token and updates user password."""
+    rate_limit(request_http, "auth-reset", max_attempts=5, window_seconds=300.0)
+
     try:
         payload = decode_token(request.token)
         if payload.get("token_type") != "reset_password":
@@ -306,7 +366,7 @@ async def reset_password_endpoint(request: ResetPasswordRequest):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid or expired reset token: {str(e)}",
-        )
+        ) from e
 
     user_id = await auth_db_manager.verify_and_consume_reset_token(request.token)
     if not user_id:

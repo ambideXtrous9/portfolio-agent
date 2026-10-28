@@ -1,6 +1,7 @@
 """Vision AI Pydantic Schemas."""
 
-from typing import Optional, List, Dict, Any
+from typing import List, Optional
+
 from pydantic import BaseModel
 
 
@@ -27,6 +28,8 @@ class ModelEvaluationCard(BaseModel):
     accuracy: float
     inference_time_seconds: float
     inference_time: Optional[float] = None
+    status: Optional[str] = None
+    detail: Optional[str] = None
 
 
 

@@ -1,8 +1,14 @@
 """Portfolio and Profile API endpoints."""
 
+import time
+
 import httpx
 from fastapi import APIRouter
-from backend.app.schemas.portfolio import ProfileResponse, GitHubStatsResponse, SkillCategory
+
+from backend.app.schemas.portfolio import GitHubStatsResponse, ProfileResponse, SkillCategory
+
+_github_stats_cache: dict = {}
+_GITHUB_CACHE_TTL = 300  # 5 minutes
 
 router = APIRouter(prefix="/portfolio", tags=["Portfolio"])
 
@@ -73,8 +79,13 @@ async def get_profile():
 
 @router.get("/github", response_model=GitHubStatsResponse)
 async def get_github_stats():
-    """Fetches real-time GitHub stats for the user profile."""
+    """Fetches real-time GitHub stats for the user profile (5-min TTL cache)."""
     username = "ambideXtrous9"
+
+    cached = _github_stats_cache.get("data")
+    if cached is not None and (time.time() - cached["time"] < _GITHUB_CACHE_TTL):
+        return cached["data"]
+
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.get(
@@ -83,7 +94,7 @@ async def get_github_stats():
             )
             if resp.status_code == 200:
                 data = resp.json()
-                return GitHubStatsResponse(
+                stats = GitHubStatsResponse(
                     username=data.get("login", username),
                     name=data.get("name") or "Sushovan Saha",
                     public_repos=data.get("public_repos", 0),
@@ -93,16 +104,20 @@ async def get_github_stats():
                     html_url=data.get("html_url"),
                     bio=data.get("bio")
                 )
+                _github_stats_cache["data"] = {"time": time.time(), "data": stats}
+                return stats
+            else:
+                print(f"GitHub API returned HTTP {resp.status_code}")
     except Exception as e:
         print(f"GitHub API note: {e}")
-        
-    # Fallback response
+
+    # Honest failure: report zeros and the profile URL rather than fabricated stats.
     return GitHubStatsResponse(
         username=username,
         name="Sushovan Saha",
-        public_repos=28,
-        followers=15,
-        following=20,
+        public_repos=0,
+        followers=0,
+        following=0,
         html_url=f"https://github.com/{username}",
-        bio="AI Engineer & ML Researcher"
+        bio=None
     )

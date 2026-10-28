@@ -227,13 +227,19 @@ export function streamAgent(agentType, query, { sessionId, onStatus, onToolCall,
     return { abort: () => {} };
   }
 
-  const tokenParam = `&token=${encodeURIComponent(token)}`;
   const sessionParam = sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : "";
-  const sseEndpoint = agentType === "tour" 
-    ? `${base}/tour/stream?query=${encodeURIComponent(query)}${sessionParam}${tokenParam}`
-    : `${base}/harry/ask/stream?query=${encodeURIComponent(query)}${sessionParam}${tokenParam}`;
+  const ssePath = agentType === "tour" ? "/tour/stream" : "/harry/ask/stream";
+  const sseUrl = new URL(`${base}${ssePath}`, window.location.href);
 
-  console.log(`📡 [streamAgent] Starting SSE stream for ${agentType}: ${sseEndpoint}`);
+  // Same-origin (or same-site localhost): rely on the httpOnly auth cookie
+  // instead of putting the JWT in the URL (avoids token leakage into logs/history).
+  const sameOrigin = sseUrl.origin === window.location.origin ||
+    (window.location.hostname === "localhost" && sseUrl.hostname === "localhost") ||
+    (window.location.hostname === "127.0.0.1" && sseUrl.hostname === "127.0.0.1");
+  const tokenParam = sameOrigin ? "" : `&token=${encodeURIComponent(token)}`;
+  const sseEndpoint = `${sseUrl.href}?query=${encodeURIComponent(query)}${sessionParam}${tokenParam}`;
+
+  console.log(`📡 [streamAgent] Starting SSE stream for ${agentType}${sameOrigin ? " (cookie auth)" : ""}`);
 
   let es = null;
   let receivedDone = false;
@@ -297,7 +303,7 @@ export function streamAgent(agentType, query, { sessionId, onStatus, onToolCall,
   };
 
   try {
-    es = new EventSource(sseEndpoint);
+    es = new EventSource(sseEndpoint, { withCredentials: true });
   } catch (err) {
     console.warn(`[streamAgent] EventSource constructor failed:`, err);
     runRestFallback("init_failed");

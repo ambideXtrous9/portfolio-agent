@@ -3,6 +3,7 @@
  * Integrates WebRTC real-time voice streaming with LiveKit, Groq LangGraph agent,
  * Web Audio reactive waveform analysis, and 60fps organic visualizer canvas.
  */
+import { escapeHtml } from "./markdown.js";
 
 import { fetchAPI } from "./api.js";
 
@@ -133,10 +134,10 @@ export function initVoiceAgent() {
     const senderClass = sender.toLowerCase() === 'you' ? 'user' : (sender.toLowerCase() === 'system' ? 'system' : 'agent');
     row.innerHTML = `
       <div class="st-voice-msg-header">
-        <span class="st-voice-msg-sender ${senderClass}">${sender}</span>
+        <span class="st-voice-msg-sender ${senderClass}">${escapeHtml(sender)}</span>
         <span class="st-voice-msg-time">${timeStr}</span>
       </div>
-      <div class="st-voice-msg-text">${text}</div>
+      <div class="st-voice-msg-text">${escapeHtml(text)}</div>
     `;
     transcriptList.appendChild(row);
     if (transcriptDrawer) {

@@ -1,11 +1,87 @@
+# Semgrep security rules — CI-enforced (semgrep scan --config .semgrep.yml --error)
 rules:
-  - id: trailofbits.python.pickles-in-pytorch.pickles-in-pytorch
-    severity: INFO
-    message: "Ignoring torch.load in classifier.py - safe usage with validation"
-    metadata:
-      confidence: LOW
-      ignored_reason: "Controlled usage with input validation"
+  # torch.load without weights_only=True is a pickle-deserialization RCE vector
+  - id: torch-load-without-weights-only
     languages: [python]
+    severity: ERROR
+    message: >
+      torch.load() defaults to pickle deserialization (weights_only=False in
+      torch>=2.6, True in later versions but still unversioned-safe). Always
+      pass weights_only=True when loading model checkpoints.
+    patterns:
+      - pattern: torch.load($PATH, ...)
+      - pattern-not: torch.load($PATH, ..., weights_only=True, ...)
     paths:
-      exclude:
-        - "ImageClassifier/classifier.py"
+      include:
+        - backend/
+        - api/
+    exclude:
+        - backend/tests/**
+
+  # pickle.loads on untrusted data enables arbitrary code execution
+  - id: pickle-loads
+    languages: [python]
+    severity: ERROR
+    message: pickle.loads() can execute arbitrary code on untrusted input.
+    pattern-either:
+      - pattern: pickle.loads(...)
+      - pattern: pickle.load(...)
+    paths:
+      include:
+        - backend/
+        - api/
+    exclude:
+      - backend/tests/**
+
+  # eval() on dynamic strings
+  - id: python-eval
+    languages: [python]
+    severity: ERROR
+    message: eval() executes arbitrary code; use a safe parser instead.
+    pattern: eval(...)
+    paths:
+      include:
+        - backend/
+        - api/
+    exclude:
+      - backend/tests/**
+
+  # subprocess with shell=True
+  - id: subprocess-shell-true
+    languages: [python]
+    severity: ERROR
+    message: subprocess with shell=True is vulnerable to shell injection.
+    pattern-either:
+      - pattern: subprocess.run(..., shell=True, ...)
+      - pattern: subprocess.call(..., shell=True, ...)
+      - pattern: subprocess.Popen(..., shell=True, ...)
+      - pattern: subprocess.check_output(..., shell=True, ...)
+    paths:
+      include:
+        - backend/
+        - api/
+    exclude:
+      - backend/tests/**
+
+  # Hardcoded credentials (excludes test fixtures)
+  - id: hardcoded-secret-assignment
+    languages: [python]
+    severity: WARNING
+    message: Possible hardcoded credential — load secrets from the environment.
+    patterns:
+      - pattern-either:
+          - pattern: $SECRET = "..."
+          - pattern: $SECRET = '...'
+      - metavariable-regex:
+          metavariable: $SECRET
+          regex: (?i)(?!.*header).*(_secret|_password|_passwd|_api_key|_apikey|_token|secret_|password_|passwd_|api_key_|apikey_|token_).*
+      - pattern-not-inside: |
+          def $FUNC(...):
+              ...
+    paths:
+      include:
+        - backend/
+        - api/
+    exclude:
+      - backend/tests/**
+      - "**/schemas/**"

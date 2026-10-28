@@ -1,7 +1,9 @@
 """System Health and MCP Diagnostic API endpoints."""
 
 import shutil
+
 from fastapi import APIRouter
+
 from backend.app.config import settings
 
 router = APIRouter(prefix="/system", tags=["System"])
@@ -10,8 +12,8 @@ router = APIRouter(prefix="/system", tags=["System"])
 @router.get("/health")
 async def health_check():
     """Returns application status, active LLM model, MCP readiness, and database checkpointer info."""
-    from backend.app.core.database import db_manager
     from backend.app.core.auth_database import auth_db_manager
+    from backend.app.core.database import db_manager
 
     npx_available = shutil.which("npx") is not None
     pinecone_configured = bool(settings.PINECONE_API_KEY)

@@ -2,36 +2,36 @@
 Provides complete fidelity to the original Streamlit screener architecture.
 """
 
+import json
 import os
 import re
-import math
-import json
 import time
-import requests
-import pandas as pd
-import numpy as np
-from bs4 import BeautifulSoup
-from typing import List, Dict, Any, Optional
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Query, Depends
-from langchain_core.messages import SystemMessage, HumanMessage
+from typing import Any, Dict, List, Optional
 
-from backend.app.core.llm import get_llm
+import numpy as np
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+from fastapi import APIRouter, Depends, HTTPException, Query
+from langchain_core.messages import HumanMessage, SystemMessage
+
 from backend.app.api.deps import get_current_active_user, get_optional_user
+from backend.app.core.llm import get_llm
 from backend.app.schemas.auth import UserResponse
 from backend.app.schemas.stock import (
-    StockScanRequest,
-    StockScanResponse,
-    StockCompanyItem,
-    StockAnalysisResponse,
     CandlestickData,
-    StatusBadge,
+    CompanyOfficer,
     FinancialStatus,
+    MultibaggerTableRow,
+    StatusBadge,
+    StockAnalysisResponse,
+    StockCompanyItem,
     StockNewsItem,
     StockReportRequest,
     StockReportResponse,
-    MultibaggerTableRow,
-    CompanyOfficer,
+    StockScanRequest,
+    StockScanResponse,
 )
 
 router = APIRouter(prefix="/stock", tags=["Stock Screener"])
@@ -66,23 +66,33 @@ def get_fundamentals_cache() -> Dict[str, Any]:
 _market_data_cache: Dict[str, Dict[str, Any]] = {}
 _MARKET_CACHE_TTL = 900  # 15 minutes TTL for market OHLCV downloads
 
+_analysis_cache: Dict[str, Dict[str, Any]] = {}
+_ANALYSIS_CACHE_TTL = 900  # 15 minutes TTL for full company analysis
 
-def get_market_data(universe_name: str, symbols: List[str]):
+
+async def get_market_data(universe_name: str, symbols: List[str]):
     u_key = universe_name.lower().strip()
     now = time.time()
     cached = _market_data_cache.get(u_key)
     if cached and (now - cached["time"] < _MARKET_CACHE_TTL) and cached.get("data") is not None:
         return cached["data"]
 
+    import asyncio
+
     import yfinance as yf
     try:
-        data = yf.download(
-            symbols,
-            period="1mo",
-            interval="1d",
-            group_by="ticker",
-            threads=True,
-            progress=False,
+        # yfinance is sync-only: run it in a worker thread so the event loop is not blocked
+        data = await asyncio.wait_for(
+            asyncio.to_thread(
+                yf.download,
+                symbols,
+                period="1mo",
+                interval="1d",
+                group_by="ticker",
+                threads=True,
+                progress=False,
+            ),
+            timeout=120.0,
         )
         _market_data_cache[u_key] = {"time": now, "data": data}
         return data
@@ -91,30 +101,44 @@ def get_market_data(universe_name: str, symbols: List[str]):
         return None
 
 
+def _read_universe_csv(path: str, cache: dict) -> Optional[pd.DataFrame]:
+    """Reads a universe CSV with mtime-based caching (avoids per-request disk I/O)."""
+    if not os.path.exists(path):
+        return None
+    mtime = os.path.getmtime(path)
+    cached = cache.get("mtime")
+    if cached == mtime and cache.get("df") is not None:
+        return cache["df"]
+    df = pd.read_csv(path)
+    df = df[~df["Symbol"].astype(str).str.upper().str.startswith("DUMMY")].copy()
+    df["YFSYMBOL"] = df["Symbol"].astype(str) + ".NS"
+    cache["df"] = df
+    cache["mtime"] = mtime
+    return df
+
+
+_nifty_cache: Dict[str, Any] = {}
+_microcap_cache: Dict[str, Any] = {}
+
+
 def load_universe_df(universe: str) -> pd.DataFrame:
     u = universe.lower().strip()
     if u in ("all", "combined", "both", "all_750", "nifty500_microcap250"):
         return load_all_companies_df()
     path = MICROCAP_CSV if u == "microcap250" else NIFTY_CSV
-    if not os.path.exists(path):
+    df = _read_universe_csv(path, _microcap_cache if u == "microcap250" else _nifty_cache)
+    if df is None:
         raise HTTPException(status_code=404, detail=f"Universe file {path} not found")
-    df = pd.read_csv(path)
-    df = df[~df["Symbol"].astype(str).str.upper().str.startswith("DUMMY")].copy()
-    df["YFSYMBOL"] = df["Symbol"].astype(str) + ".NS"
     return df
 
 
 def load_all_companies_df() -> pd.DataFrame:
     dfs = []
-    if os.path.exists(NIFTY_CSV):
-        nifty = pd.read_csv(NIFTY_CSV)
-        nifty = nifty[~nifty["Symbol"].astype(str).str.upper().str.startswith("DUMMY")].copy()
-        nifty["YFSYMBOL"] = nifty["Symbol"].astype(str) + ".NS"
+    nifty = _read_universe_csv(NIFTY_CSV, _nifty_cache)
+    if nifty is not None:
         dfs.append(nifty)
-    if os.path.exists(MICROCAP_CSV):
-        micro = pd.read_csv(MICROCAP_CSV)
-        micro = micro[~micro["Symbol"].astype(str).str.upper().str.startswith("DUMMY")].copy()
-        micro["YFSYMBOL"] = micro["Symbol"].astype(str) + ".NS"
+    micro = _read_universe_csv(MICROCAP_CSV, _microcap_cache)
+    if micro is not None:
         dfs.append(micro)
     if not dfs:
         raise HTTPException(status_code=404, detail="No stock universe files found")
@@ -164,7 +188,7 @@ async def scan_stocks(
     df = load_universe_df(request.universe)
     mode = request.mode.lower().strip()
     candidate_symbols = df["YFSYMBOL"].tolist()
-    symbol_to_name = dict(zip(df["YFSYMBOL"], df["Company Name"]))
+    symbol_to_name = dict(zip(df["YFSYMBOL"], df["Company Name"], strict=False))
     total_scanned = len(candidate_symbols)
     limit = request.limit if (request.limit and request.limit > 0) else 25
 
@@ -226,7 +250,7 @@ async def scan_stocks(
         market_data = None
         if need_market_data and qualifying_symbols:
             try:
-                market_data = get_market_data(f"multi_{request.universe}", qualifying_symbols)
+                market_data = await get_market_data(f"multi_{request.universe}", qualifying_symbols)
             except Exception as e:
                 print(f"Market download error for multibagger: {e}")
 
@@ -321,7 +345,7 @@ async def scan_stocks(
         results = []
         columns = ["Symbol", "Company Name", "Current Price", "Change %", "Volume", "Avg Volume", "Vol Ratio", "RSI", "Signal"]
         try:
-            data = get_market_data(request.universe, candidate_symbols)
+            data = await get_market_data(request.universe, candidate_symbols)
             if data is not None:
                 for sym in candidate_symbols:
                     try:
@@ -451,7 +475,7 @@ async def scan_stocks(
         columns = ["Symbol", "Company Name", "Close", "Volume Ratio", "Avg Volume", "Today Volume", "Body Size"]
         results = []
         try:
-            data = get_market_data(request.universe, candidate_symbols)
+            data = await get_market_data(request.universe, candidate_symbols)
             if data is not None:
                 for sym in candidate_symbols:
                     try:
@@ -734,6 +758,8 @@ async def get_stock_analysis(
     current_user: Optional[UserResponse] = Depends(get_optional_user),
 ):
     """Provides full company overview, candlestick data, shareholding, news, and metrics."""
+    import asyncio
+
     import yfinance as yf
 
     sym = symbol.strip().upper()
@@ -741,12 +767,17 @@ async def get_stock_analysis(
         sym = f"{sym}.NS"
     clean_sym = sym.replace(".NS", "")
 
-    # 1. Scrape screener.in or prepare fallback
-    fundainfo, shareholdnres = scrape_screener_in(clean_sym)
+    # Serve from 15-minute cache when available
+    cached = _analysis_cache.get(sym)
+    if cached and (time.time() - cached["time"] < _ANALYSIS_CACHE_TTL):
+        return cached["data"]
 
-    # 2. Fetch yfinance data
+    # 1. Scrape screener.in or prepare fallback (network I/O -> worker thread)
+    fundainfo, shareholdnres = await asyncio.to_thread(scrape_screener_in, clean_sym)
+
+    # 2. Fetch yfinance data (network I/O -> worker thread)
     tick = yf.Ticker(sym)
-    info = tick.info or {}
+    info = await asyncio.to_thread(lambda: tick.info or {})
 
     company_name = (
         (fundainfo.get("Company Name") if fundainfo else None)
@@ -784,8 +815,8 @@ async def get_stock_analysis(
     vol_str = f"{info.get('volume', 0):,}" if info.get("volume") else "N/A"
     avg_vol_str = f"{info.get('averageVolume', 0):,}" if info.get("averageVolume") else "N/A"
 
-    # 3. 1Y Candlestick History
-    hist = tick.history(period="1y", interval="1d")
+    # 3. 1Y Candlestick History (network I/O -> worker thread)
+    hist = await asyncio.to_thread(tick.history, period="1y", interval="1d")
     candlestick_data = CandlestickData(dates=[], open=[], high=[], low=[], close=[], volume=[])
     if not hist.empty:
         hist = hist.reset_index()
@@ -812,38 +843,25 @@ async def get_stock_analysis(
             "FII": shareholdnres.get("FII", []),
             "Public": shareholdnres.get("Public", []),
         }
-    else:
-        # Fallback from yfinance financial statements
+    elif fundainfo is None:
+        # Only fall back to yfinance statements when screener.in was unreachable;
+        # series stay empty when no real data exists (no fabricated numbers).
         try:
-            q_inc = tick.quarterly_income_stmt
-            if q_inc is not None and not q_inc.empty and "Net Income" in q_inc.index:
-                q_vals = [round(float(x) / 1e7, 1) for x in q_inc.loc["Net Income"].iloc[::-1].tolist()]
-            else:
-                q_vals = [420.5, 480.2, 510.8, 595.4]
-
-            y_inc = tick.income_stmt
-            if y_inc is not None and not y_inc.empty and "Net Income" in y_inc.index:
-                y_vals = [round(float(x) / 1e7, 1) for x in y_inc.loc["Net Income"].iloc[::-1].tolist()]
-            else:
-                y_vals = [1420.0, 1680.5, 1950.2, 2340.8]
-
-            series_dict = {
-                "Quarter": q_vals,
-                "Yearly": y_vals,
-                "Promoters": [54.2, 54.2, 54.5, 54.8],
-                "DII": [18.2, 18.5, 19.1, 19.4],
-                "FII": [15.4, 15.1, 14.8, 15.2],
-                "Public": [12.2, 12.2, 11.6, 10.6]
-            }
+            q_inc = await asyncio.to_thread(lambda: tick.quarterly_income_stmt)
+            y_inc = await asyncio.to_thread(lambda: tick.income_stmt)
+            q_vals = (
+                [round(float(x) / 1e7, 1) for x in q_inc.loc["Net Income"].iloc[::-1].tolist()]
+                if q_inc is not None and not q_inc.empty and "Net Income" in q_inc.index
+                else []
+            )
+            y_vals = (
+                [round(float(x) / 1e7, 1) for x in y_inc.loc["Net Income"].iloc[::-1].tolist()]
+                if y_inc is not None and not y_inc.empty and "Net Income" in y_inc.index
+                else []
+            )
+            series_dict = {"Quarter": q_vals, "Yearly": y_vals}
         except Exception:
-            series_dict = {
-                "Quarter": [120.0, 150.0, 180.0],
-                "Yearly": [500.0, 620.0, 780.0],
-                "Promoters": [50.0, 50.5],
-                "DII": [20.0, 21.0],
-                "FII": [15.0, 15.5],
-                "Public": [15.0, 13.0]
-            }
+            series_dict = {}
 
     # Status badges
     financial_status = FinancialStatus(
@@ -1011,7 +1029,7 @@ async def get_stock_analysis(
             if not q:
                 continue
             try:
-                gnews_data = gn.get_news(q) or []
+                gnews_data = await asyncio.to_thread(gn.get_news, q) or []
                 for n in gnews_data:
                     title = (n.get("title") or "").strip()
                     url = n.get("url") or f"https://www.google.com/search?q={requests.utils.quote(q)}"
@@ -1044,7 +1062,7 @@ async def get_stock_analysis(
                 if len(news_items) >= 10:
                     break
                 rss_url = f"https://news.google.com/rss/search?q={requests.utils.quote(q)}&hl=en-IN&gl=IN&ceid=IN:en"
-                rss_resp = requests.get(rss_url, headers=req_headers, timeout=5)
+                rss_resp = await asyncio.to_thread(requests.get, rss_url, headers=req_headers, timeout=5)
                 if rss_resp.status_code == 200:
                     rss_soup = BeautifulSoup(rss_resp.content, "xml")
                     for item in rss_soup.find_all("item")[:10]:
@@ -1061,29 +1079,13 @@ async def get_stock_analysis(
         except Exception as e:
             print(f"News RSS note: {e}")
 
-    # Attempt 3: Comprehensive Contextual Market News (ensures 8 to 10 articles)
-    if len(news_items) < 8:
-        additional_market_news = [
-            StockNewsItem(title=f"{company_name} reports quarterly revenue surge amid strong domestic demand", url=f"https://www.google.com/search?q={clean_sym}+stock", publisher="Economic Times"),
-            StockNewsItem(title=f"Institutional investors raise stake in {clean_sym} following strategic expansion", url=f"https://www.google.com/search?q={clean_sym}+institutional+stake", publisher="LiveMint"),
-            StockNewsItem(title=f"Technical breakout analysis: {clean_sym} testing major multi-month resistance", url=f"https://www.google.com/search?q={clean_sym}+chart+breakout", publisher="MoneyControl"),
-            StockNewsItem(title=f"{company_name} management commentary: Margin expansion and order book pipeline", url=f"https://www.google.com/search?q={clean_sym}+quarterly+results", publisher="Business Standard"),
-            StockNewsItem(title=f"Brokerage ratings update: Price target revised upward on {clean_sym}", url=f"https://www.google.com/search?q={clean_sym}+brokerage+target", publisher="CNBC-TV18"),
-            StockNewsItem(title=f"Industry outlook: Positive tailwinds expected to benefit {company_name}", url=f"https://www.google.com/search?q={clean_sym}+industry+outlook", publisher="Financial Express"),
-            StockNewsItem(title=f"{company_name} FY27 capex plan details: Capacity addition and market share growth", url=f"https://www.google.com/search?q={clean_sym}+capex+plan", publisher="NDTV Profit"),
-            StockNewsItem(title=f"Mutual Funds increase allocation in {clean_sym} over the last quarter", url=f"https://www.google.com/search?q={clean_sym}+mutual+fund+holding", publisher="ET Markets"),
-            StockNewsItem(title=f"{company_name} corporate governance and dividend distribution update", url=f"https://www.google.com/search?q={clean_sym}+dividend", publisher="Mint"),
-            StockNewsItem(title=f"Comprehensive valuation check: How {clean_sym} compares to sectoral peers", url=f"https://www.google.com/search?q={clean_sym}+valuation", publisher="Bloomberg Quint"),
-        ]
-        for item in additional_market_news:
-            if item.title.lower() not in seen_titles:
-                seen_titles.add(item.title.lower())
-                news_items.append(item)
-            if len(news_items) >= 10:
-                break
-
-    return StockAnalysisResponse(
+    response = StockAnalysisResponse(
         symbol=sym,
+        data_quality={
+            "screener_in_ok": fundainfo is not None,
+            "shareholding_available": bool(series_dict),
+            "news_available": len(news_items) > 0,
+        },
         company_name=company_name,
         current_price=f"₹{curr_p:,.2f}" if curr_p else "N/A",
         market_cap=mcap_str,
@@ -1112,6 +1114,8 @@ async def get_stock_analysis(
         financial_status=financial_status,
         news=news_items
     )
+    _analysis_cache[sym] = {"time": time.time(), "data": response}
+    return response
 
 
 # ─────────────────────────────────────────────────────────────────────────────

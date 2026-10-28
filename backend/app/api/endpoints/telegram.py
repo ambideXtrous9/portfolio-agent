@@ -1,17 +1,29 @@
-"""Telegram CI/CD Bot Webhook and Notification Endpoint."""
+"""Telegram CI/CD Bot Webhook and Notification Endpoint.
+
+Security model:
+- Every mutating endpoint requires the ``X-Telegram-Bot-Api-Secret-Token``
+  header (the secret is registered with Telegram during /setup-webhook and
+  echoed by Telegram on every webhook delivery).
+- Commands with production impact (``/redeploy``) are restricted to the
+  chat ids listed in ``TELEGRAM_CHAT_ID`` (comma-separated allowlist).
+"""
 
 import logging
+import os
+from typing import Any, Dict, List, Optional
+
 import httpx
-from fastapi import APIRouter, Request, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
 
 from backend.app.config import settings
+from backend.app.core.notify import send_telegram_msg
 
 logger = logging.getLogger("telegram_bot")
 router = APIRouter(prefix="/telegram", tags=["Telegram CI/CD Bot"])
 
 TELEGRAM_API_BASE = "https://api.telegram.org/bot"
+SECRET_HEADER = "X-Telegram-Bot-Api-Secret-Token"
 
 
 class NotificationRequest(BaseModel):
@@ -20,31 +32,24 @@ class NotificationRequest(BaseModel):
     parse_mode: Optional[str] = "HTML"
 
 
-async def send_telegram_msg(chat_id: str | int, text: str, parse_mode: str = "HTML") -> bool:
-    """Dispatches a message to a Telegram user or channel."""
-    token = settings.TELEGRAM_BOT_TOKEN
-    if not token or not chat_id:
-        logger.warning("Telegram Bot Token or Chat ID not configured.")
-        return False
+def _allowed_chat_ids() -> List[str]:
+    """Parses the comma-separated chat-id allowlist from settings."""
+    return [c.strip() for c in (settings.TELEGRAM_CHAT_ID or "").split(",") if c.strip()]
 
-    url = f"{TELEGRAM_API_BASE}{token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": parse_mode,
-        "disable_web_page_preview": True,
-    }
 
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(url, json=payload)
-            if resp.status_code == 200:
-                return True
-            logger.error(f"Telegram API error {resp.status_code}: {resp.text}")
-            return False
-    except Exception as exc:
-        logger.error(f"Failed sending Telegram message: {exc}")
-        return False
+def require_webhook_secret(request: Request) -> None:
+    """Rejects requests that do not carry the correct Telegram secret token."""
+    expected = settings.TELEGRAM_WEBHOOK_SECRET
+    if not expected:
+        raise HTTPException(
+            status_code=503,
+            detail="TELEGRAM_WEBHOOK_SECRET is not configured. Set it in the environment and re-run /setup-webhook.",
+        )
+    provided = request.headers.get(SECRET_HEADER, "")
+    import hmac
+
+    if not hmac.compare_digest(provided, expected):
+        raise HTTPException(status_code=403, detail="Invalid webhook secret token.")
 
 
 async def trigger_github_redeploy(chat_id: str | int, user_name: str):
@@ -103,7 +108,14 @@ async def trigger_github_redeploy(chat_id: str | int, user_name: str):
 
 @router.post("/webhook")
 async def telegram_webhook(request: Request, background_tasks: BackgroundTasks) -> Dict[str, Any]:
-    """Receives and routes Telegram updates from @GCICD_bot."""
+    """Receives and routes Telegram updates from @GCICD_bot.
+
+    Requests without a valid secret header are rejected. Commands from
+    non-allowlisted chats never trigger actions (the /start handshake still
+    replies with the chat id so the operator can allowlist it).
+    """
+    require_webhook_secret(request)
+
     try:
         data = await request.json()
     except Exception:
@@ -123,6 +135,19 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks) 
         return {"ok": True}
 
     cmd = text.split()[0].lower() if text else ""
+    allowlist = _allowed_chat_ids()
+
+    # Unknown chats: only the onboarding handshake is answered; commands are dropped.
+    if allowlist and str(chat_id) not in allowlist:
+        logger.warning("Rejected Telegram command %r from non-allowlisted chat_id %s", cmd, chat_id)
+        if cmd in ("/start", "/help"):
+            background_tasks.add_task(
+                send_telegram_msg,
+                chat_id,
+                f"👋 Hi {user_name}! This bot only serves its registered owner.\n"
+                f"🆔 Your chat id (for the allowlist): <code>{chat_id}</code>",
+            )
+        return {"ok": True}
 
     if cmd in ("/start", "/help"):
         welcome_text = (
@@ -155,12 +180,9 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks) 
         status_text = (
             f"📊 <b>Portfolio System Status</b>\n\n"
             f"🟢 <b>Status:</b> Healthy &amp; Operational\n"
-            f"🌐 <b>Primary URL:</b> https://sushovan-ai-portfolio.vercel.app\n"
-            f"🔗 <b>Alias URL:</b> https://ambidextrous-portfolio.vercel.app\n"
-            f"⚡ <b>LLM Brain:</b> Groq Llama-3.3-70B\n"
-            f"🌲 <b>Vector DB:</b> Pinecone (hpvdb-openai)\n"
+            f"⚡ <b>LLM Brain:</b> {settings.DEFAULT_MODEL}\n"
             f"🎙️ <b>Voice AI:</b> LiveKit WebRTC\n"
-            f"☁️ <b>Platform:</b> Vercel Serverless Python 3.12"
+            f"☁️ <b>Platform:</b> Vercel Serverless Python"
         )
         background_tasks.add_task(send_telegram_msg, chat_id, status_text)
 
@@ -168,9 +190,9 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks) 
         health_text = (
             f"🩺 <b>Backend Microservice Health</b>\n\n"
             f"• FastAPI Router: <b>OK</b>\n"
-            f"• Groq API: <b>Configured</b>\n"
-            f"• Pinecone MCP: <b>Configured</b>\n"
-            f"• LiveKit Cloud: <b>Active</b>\n"
+            f"• Groq API: <b>{'Configured' if settings.GROQ_API_KEY else 'Not configured'}</b>\n"
+            f"• Pinecone MCP: <b>{'Configured' if settings.PINECONE_API_KEY else 'Not configured'}</b>\n"
+            f"• LiveKit Cloud: <b>{'Active' if settings.LIVEKIT_API_KEY else 'Not configured'}</b>\n"
             f"• Telegram Webhook: <b>Connected</b>"
         )
         background_tasks.add_task(send_telegram_msg, chat_id, health_text)
@@ -179,9 +201,7 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks) 
         info_text = (
             f"ℹ️ <b>Portfolio Agent Overview</b>\n\n"
             f"• <b>GitHub Repo:</b> <a href=\"https://github.com/{settings.GITHUB_REPO}\">{settings.GITHUB_REPO}</a>\n"
-            f"• <b>Production App:</b> <a href=\"https://sushovan-ai-portfolio.vercel.app\">sushovan-ai-portfolio.vercel.app</a>\n"
             f"• <b>CI/CD:</b> GitHub Actions + Vercel CLI Prebuilt\n"
-            f"• <b>Bot Username:</b> @GCICD_bot\n"
             f"• <b>Author:</b> Sushovan Saha"
         )
         background_tasks.add_task(send_telegram_msg, chat_id, info_text)
@@ -197,9 +217,14 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks) 
 
 
 @router.post("/notify")
-async def send_notification(payload: NotificationRequest) -> Dict[str, Any]:
-    """Sends a notification to Telegram (used by GitHub Actions or backend services)."""
-    target_chat = payload.chat_id or settings.TELEGRAM_CHAT_ID
+async def send_notification(request: Request, payload: NotificationRequest) -> Dict[str, Any]:
+    """Sends a notification to Telegram (used by GitHub Actions or backend services).
+
+    Requires the webhook secret header; arbitrary chat ids are ignored in favor
+    of the server-configured allowlist to prevent abuse as an open relay.
+    """
+    require_webhook_secret(request)
+    target_chat = payload.chat_id or (settings.TELEGRAM_CHAT_ID.split(",")[0].strip() if settings.TELEGRAM_CHAT_ID else "")
     if not target_chat:
         return {"ok": False, "error": "No chat_id provided and TELEGRAM_CHAT_ID is unset"}
 
@@ -207,21 +232,35 @@ async def send_notification(payload: NotificationRequest) -> Dict[str, Any]:
     return {"ok": success}
 
 
-@router.get("/setup-webhook")
 @router.post("/setup-webhook")
-async def setup_webhook() -> Dict[str, Any]:
-    """Registers this endpoint as the official Telegram webhook for @GCICD_bot."""
+async def setup_webhook(request: Request) -> Dict[str, Any]:
+    """Registers this endpoint as the official Telegram webhook for @GCICD_bot.
+
+    Admin operation: requires the webhook secret header and registers it with
+    Telegram so subsequent deliveries are authenticated.
+    """
+    require_webhook_secret(request)
+
     token = settings.TELEGRAM_BOT_TOKEN
     if not token:
         return {"ok": False, "error": "TELEGRAM_BOT_TOKEN not configured"}
 
-    webhook_url = "https://sushovan-ai-portfolio.vercel.app/api/telegram/webhook"
+    base_url = os.getenv("PORTFOLIO_PUBLIC_BASE_URL", "").rstrip("/")
+    if not base_url:
+        return {
+            "ok": False,
+            "error": "PORTFOLIO_PUBLIC_BASE_URL is not configured. Set it to your production URL (e.g. https://sushovan-ai-portfolio.vercel.app).",
+        }
+    webhook_url = f"{base_url}/api/telegram/webhook"
+
     url = f"{TELEGRAM_API_BASE}{token}/setWebhook"
     params = {
         "url": webhook_url,
         "drop_pending_updates": True,
         "allowed_updates": ["message", "edited_message"],
     }
+    if settings.TELEGRAM_WEBHOOK_SECRET:
+        params["secret_token"] = settings.TELEGRAM_WEBHOOK_SECRET
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -232,8 +271,10 @@ async def setup_webhook() -> Dict[str, Any]:
 
 
 @router.get("/webhook-info")
-async def webhook_info() -> Dict[str, Any]:
-    """Checks current webhook registration with Telegram."""
+async def webhook_info(request: Request) -> Dict[str, Any]:
+    """Checks current webhook registration with Telegram (admin: secret required)."""
+    require_webhook_secret(request)
+
     token = settings.TELEGRAM_BOT_TOKEN
     if not token:
         return {"ok": False, "error": "TELEGRAM_BOT_TOKEN not configured"}
@@ -245,3 +286,4 @@ async def webhook_info() -> Dict[str, Any]:
             return resp.json()
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
+

@@ -8,7 +8,9 @@ import logging
 import os
 import urllib.parse
 import xml.etree.ElementTree as ET
+
 import httpx
+
 try:
     from langfuse import observe
 except ImportError:
@@ -191,19 +193,25 @@ async def get_news(query: str) -> str:
         logger.warning("Google News RSS fallback failed for '%s': %s", sanitized_query, e)
 
     # --------------------------------------------------------------------------
-    # Tier 3: DuckDuckGo Search fallback
+    # Tier 3: DuckDuckGo Search fallback (sync SDK — run in a worker thread)
     # --------------------------------------------------------------------------
     try:
+        import asyncio
+
         import ddgs
-        with ddgs.DDGS() as d:
-            res = list(d.news(sanitized_query, max_results=3))
-            if res:
-                summaries = [
-                    f"{item.get('title', '')}: {item.get('body', '')[:130]}"
-                    for item in res
-                ]
-                logger.info("get_news success via direct DDGS news for: '%s'", sanitized_query)
-                return "Latest headlines: " + " | ".join(summaries)
+
+        def _ddgs_news(q: str) -> list:
+            with ddgs.DDGS() as d:
+                return list(d.news(q, max_results=3))
+
+        res = await asyncio.to_thread(_ddgs_news, sanitized_query)
+        if res:
+            summaries = [
+                f"{item.get('title', '')}: {item.get('body', '')[:130]}"
+                for item in res
+            ]
+            logger.info("get_news success via direct DDGS news for: '%s'", sanitized_query)
+            return "Latest headlines: " + " | ".join(summaries)
     except Exception as e:
         logger.warning("Direct ddgs news search failed: %s", e)
 
