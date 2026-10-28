@@ -22,4 +22,5 @@ extend-exclude = ["backend/models", ".venv"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "C4", "B"]
 # B008: Depends() in argument defaults is idiomatic FastAPI
-ignore = ["E501", "B008"]
+# E402: conditional/heavy imports (torch, models) are intentional
+ignore = ["E501", "B008", "E402"]

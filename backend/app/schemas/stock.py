@@ -1,6 +1,7 @@
 """Stock Screener Pydantic Schemas."""
 
-from typing import Optional, List, Dict, Any, Union
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -115,6 +116,7 @@ class StockAnalysisResponse(BaseModel):
     shareholding_series: Dict[str, List[float]]
     financial_status: FinancialStatus
     news: List[StockNewsItem]
+    data_quality: Optional[Dict[str, bool]] = None
 
 
 class StockReportRequest(BaseModel):

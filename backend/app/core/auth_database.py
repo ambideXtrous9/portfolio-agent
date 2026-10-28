@@ -298,7 +298,7 @@ class AuthDatabaseManager:
                 except Exception as e:
                     self.last_error = f"{type(e).__name__}: {str(e)}"
                     logger.error(f"Failed to persist user in PostgreSQL: {self.last_error}")
-                    raise RuntimeError(f"Database error: Failed to save user credentials to PostgreSQL ({self.last_error})")
+                    raise RuntimeError(f"Database error: Failed to save user credentials to PostgreSQL ({self.last_error})") from e
             else:
                 err_detail = self.last_error or "Unable to establish connection to PostgreSQL"
                 logger.error(f"PostgreSQL configured but connection pool unavailable: {err_detail}")

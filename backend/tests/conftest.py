@@ -37,9 +37,9 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-only-jwt-secret-please-rotate-0987
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-import backend.app.main as app_main  # noqa: E402
-import backend.app.core.database as chatdb  # noqa: E402
 import backend.app.core.auth_database as authdb  # noqa: E402
+import backend.app.core.database as chatdb  # noqa: E402
+import backend.app.main as app_main  # noqa: E402
 
 
 def _reset_memory_state() -> None:

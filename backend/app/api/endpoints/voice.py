@@ -5,17 +5,20 @@ import os
 import time
 import uuid
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query, Depends
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from backend.app.config import settings
 from backend.app.api.deps import get_current_active_user, get_optional_user
+from backend.app.config import settings
 from backend.app.schemas.auth import UserResponse
+
 try:
     from backend.app.voice_agent.telemetry import is_langfuse_configured
     from backend.app.voice_agent.tools import agent_tools
 except Exception:
-    is_langfuse_configured = lambda: False
+    def is_langfuse_configured():
+        return False
     agent_tools = []
 
 logger = logging.getLogger("voice_endpoint")
@@ -196,6 +199,7 @@ async def voice_chat(
 
     try:
         from langchain_core.messages import HumanMessage
+
         from backend.app.voice_agent.graph import build_langgraph_workflow
 
         workflow = build_langgraph_workflow()

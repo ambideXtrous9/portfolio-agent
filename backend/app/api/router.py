@@ -1,18 +1,19 @@
 """Main API Router aggregating all domain endpoints."""
 
 from fastapi import APIRouter
+
 from backend.app.api.endpoints import (
-    portfolio,
-    tour,
-    harry,
-    stock,
-    vision,
-    cluster,
-    health,
-    voice,
-    telegram,
     auth,
     chat,
+    cluster,
+    harry,
+    health,
+    portfolio,
+    stock,
+    telegram,
+    tour,
+    vision,
+    voice,
 )
 
 api_router = APIRouter()

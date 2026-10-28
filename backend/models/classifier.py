@@ -45,8 +45,9 @@ def load_model_safely(model_class, checkpoint_path, num_classes, lr):
     model = model_class(num_classes=num_classes, lr=lr)
 
     try:
-        # Load checkpoint as plain dictionary
-        state_dict = torch.load(checkpoint_path, map_location='cpu')
+        # Load checkpoint as plain dictionary (weights_only=True avoids
+        # full pickle deserialization — mitigates the pickle RCE vector)
+        state_dict = torch.load(checkpoint_path, map_location='cpu', weights_only=True)
 
         # Validate format
         if not isinstance(state_dict, dict) or 'state_dict' not in state_dict:

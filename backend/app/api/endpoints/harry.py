@@ -1,26 +1,24 @@
 """Harry Potter Lore Scholar & Indian Mythology Agent API with Exact Original LangGraph Workflow."""
 
-import asyncio
 import json
-import os
-import re
 import time
 import uuid
-from typing import TypedDict, Optional, Dict, Any, Literal, AsyncGenerator
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Depends
-from sse_starlette.sse import EventSourceResponse
-from pydantic import BaseModel, Field
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from langchain_core.output_parsers.pydantic import PydanticOutputParser
-from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import create_react_agent
-from langgraph.checkpoint.memory import MemorySaver
+from typing import Any, AsyncGenerator, Dict, Literal, Optional, TypedDict
 
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.output_parsers.pydantic import PydanticOutputParser
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, StateGraph
+from langgraph.prebuilt import create_react_agent
+from pydantic import BaseModel, Field
+from sse_starlette.sse import EventSourceResponse
+
+from backend.app.api.deps import get_current_active_user, validate_token_and_get_user
 from backend.app.config import settings
+from backend.app.core.database import db_manager
 from backend.app.core.llm import get_llm
 from backend.app.core.mcp import get_pinecone_tools
-from backend.app.core.database import db_manager
-from backend.app.api.deps import get_current_active_user, validate_token_and_get_user
 from backend.app.schemas.auth import UserResponse
 from backend.app.schemas.harry import HarryAskRequest, HarryAskResponse
 
@@ -92,12 +90,12 @@ IMPORTANT: The output must be *only* the JSON object—no extra text or reasonin
     }
     user_msg = {"role": "user", "content": f"Classify this topic : {topic}"}
 
-    for attempt in range(3):
+    for _ in range(3):
         try:
             response = llm_classifier.invoke([sys_prompt, user_msg])
             article = classifier_parser.parse(response.content)
             return article.model_dump()
-        except Exception as e:
+        except Exception:
             user_msg = {
                 "role": "user",
                 "content": f"Classify this topic : {topic}\n\nNote: Output JSON only conforming to schema."
@@ -137,10 +135,16 @@ async def researcher_node(state: AgentState) -> AgentState:
             response = await agent.ainvoke({"messages": [{"role": "user", "content": query}]})
             research_text = response["messages"][-1].content
         else:
-            research_text = f"Canonical context for: {query}"
+            research_text = (
+                f"⚠️ Lore retrieval is unavailable (Pinecone tools not connected), so no verified "
+                f"canonical research could be gathered for: {query}."
+            )
     except Exception as e:
         print(f"⚠️ Researcher node error ({type(e).__name__}): {e}")
-        research_text = f"Canonical context for topic: {query}"
+        research_text = (
+            f"⚠️ Lore retrieval failed ({type(e).__name__}), so no verified canonical "
+            f"research could be gathered for: {query}."
+        )
     return {**state, "research": research_text}
 
 

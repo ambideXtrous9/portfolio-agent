@@ -3,28 +3,28 @@
 import asyncio
 import datetime
 import json
-import os
 import re
 import time
 import uuid
+from typing import Annotated, Any, AsyncGenerator, Dict, Optional
+
 import requests
-from typing import Any, Annotated, List, Dict, Optional, AsyncGenerator
-from typing_extensions import TypedDict
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Depends
-from sse_starlette.sse import EventSourceResponse
-from pydantic import BaseModel, Field
-from langchain_core.tools import tool, Tool
-from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, AIMessage
-from langgraph.graph import StateGraph, START, END
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
+from langchain_core.tools import tool
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import create_react_agent
-from langgraph.checkpoint.memory import InMemorySaver
+from pydantic import BaseModel, Field
+from sse_starlette.sse import EventSourceResponse
+from typing_extensions import TypedDict
 
+from backend.app.api.deps import get_current_active_user, validate_token_and_get_user
 from backend.app.config import settings
+from backend.app.core.database import db_manager
 from backend.app.core.llm import get_llm
 from backend.app.core.mcp import get_airbnb_tools
-from backend.app.core.database import db_manager
-from backend.app.api.deps import get_current_active_user, validate_token_and_get_user
 from backend.app.schemas.auth import UserResponse
 from backend.app.schemas.tour import TourPlanRequest, TourPlanResponse
 
@@ -103,19 +103,8 @@ def fetch_open_meteo_fallback(location: str, days: int = 3) -> str:
         res = requests.get(geo_url, timeout=8)
         geo_data = res.json()
         if not geo_data.get("results"):
-            return (
-                f"📍 Location: {location}\n\n"
-                f"🌤️ Current Weather:\n"
-                f"  Temp: 22.0°C (Feels like 22.0°C)\n"
-                f"  Condition: Partly Cloudy\n"
-                f"  Humidity: 65%\n"
-                f"  Wind Gust: 12.0 kph\n"
-                f"  Pressure: 1012 mb\n\n"
-                f"📅 Forecast ({days} Days):\n"
-                f"  Day 1: Pleasant, 24°C / 16°C (Ideal for outdoor exploration)\n"
-                f"  Day 2: Clear skies, 25°C / 17°C\n"
-                f"  Day 3: Mild evening breeze, 23°C / 15°C"
-            )
+            print(f"Open-Meteo fallback: no geocoding results for {location!r}")
+            return f"Weather forecast unavailable for {location} (location could not be resolved)."
         place = geo_data["results"][0]
         lat, lon = place["latitude"], place["longitude"]
         resolved_name = f"{place.get('name', location)}, {place.get('country', '')}".strip(", ")
@@ -131,11 +120,10 @@ def fetch_open_meteo_fallback(location: str, days: int = 3) -> str:
         lines = [
             f"📍 Location: {resolved_name}",
             "\n🌤️ Current Weather:",
-            f"  Temp: {current.get('temperature_2m', 22.0)}°C",
-            f"  Condition: Clear / Mild",
-            f"  Humidity: {current.get('relative_humidity_2m', 60)}%",
-            f"  Wind: {current.get('wind_speed_10m', 10.0)} km/h",
-            f"  Pressure: {current.get('surface_pressure', 1013)} mb",
+            f"  Temp: {current.get('temperature_2m', 'n/a')}°C",
+            f"  Humidity: {current.get('relative_humidity_2m', 'n/a')}%",
+            f"  Wind: {current.get('wind_speed_10m', 'n/a')} km/h",
+            f"  Pressure: {current.get('surface_pressure', 'n/a')} mb",
             f"\n📅 Forecast ({days} Days):",
         ]
         times = daily.get("time", [])
@@ -195,7 +183,8 @@ async def weatherAgent(state: Dict[str, Any]):
         )
         ai_content = result["messages"][-1].content
     except Exception:
-        ai_content = get_forecast(location, days=duration)
+        # get_forecast is sync (requests) — keep it off the event loop
+        ai_content = await asyncio.to_thread(get_forecast, location, days=duration)
 
     return {"knowledge": [f"[Info from Weather Search]\n{ai_content}\n\n"]}
 
@@ -228,12 +217,16 @@ async def airbnbAgent(state: Dict[str, Any]):
             ai_content = response["messages"][-1].content
         else:
             ai_content = (
-                f"Verified stays for {location} ({checkin_str} to {checkout_str}): "
-                f"Top boutique homestays, cottages, and mountain resorts are recommended on Airbnb."
+                f"⚠️ Live Airbnb search is unavailable right now, so no verified listings "
+                f"can be shown for {location} ({checkin_str} to {checkout_str}). "
+                f"Please check Airbnb directly or try again later."
             )
     except Exception as e:
+        print(f"Airbnb agent note: {e}")
         ai_content = (
-            f"Standard boutique stays & cottages recommended for {location} ({checkin_str} to {checkout_str})."
+            f"⚠️ Live Airbnb search failed ({type(e).__name__}), so no verified listings "
+            f"can be shown for {location} ({checkin_str} to {checkout_str}). "
+            f"Please check Airbnb directly or try again later."
         )
 
     return {"knowledge": [f"[Info from AirBnb Search]\n{ai_content}\n\n"]}
@@ -334,7 +327,7 @@ async def tourAgent(state: Dict[str, Any]):
             timeout=120
         )
         summary_content = response.content
-    except Exception as e:
+    except Exception:
         summary_content = f"## 🎯 Trip Summary for {state.get('topic', '')}\n\n" + "\n\n".join(str(k) for k in knowledge_list)
 
     return {"summary": summary_content}

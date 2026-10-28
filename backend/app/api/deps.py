@@ -2,6 +2,7 @@
 
 import logging
 from typing import Callable, Optional
+
 from fastapi import Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordBearer
 
@@ -33,7 +34,7 @@ async def validate_token_and_get_user(token: str) -> UserResponse:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
     # 1. Check if token was blacklisted (logged out)
     token_jti = payload.get("jti")

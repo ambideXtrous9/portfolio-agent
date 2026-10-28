@@ -4,15 +4,16 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
-from backend.app.config import settings
 from backend.app.api.router import api_router
-from backend.app.core.database import db_manager
+from backend.app.config import settings
 from backend.app.core.auth_database import auth_db_manager
+from backend.app.core.database import db_manager
 
 logger = logging.getLogger(__name__)
 
@@ -83,12 +84,12 @@ app = FastAPI(
 )
 
 # CORS configuration — explicit origin allowlist (+ optional regex for preview deployments)
-cors_kwargs = dict(
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+cors_kwargs = {
+    "allow_origins": settings.CORS_ORIGINS,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
 if settings.CORS_ORIGIN_REGEX:
     cors_kwargs["allow_origin_regex"] = settings.CORS_ORIGIN_REGEX
 app.add_middleware(CORSMiddleware, **cors_kwargs)
@@ -128,8 +129,9 @@ if settings.API_V1_STR != "":
     app.include_router(api_router, prefix="")
 
 # Direct WebSocket route aliases
-from backend.app.api.endpoints.tour import websocket_tour
 from backend.app.api.endpoints.harry import websocket_harry
+from backend.app.api.endpoints.tour import websocket_tour
+
 app.websocket("/ws/tour")(websocket_tour)
 app.websocket("/ws/harry")(websocket_harry)
 

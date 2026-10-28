@@ -83,12 +83,39 @@ jobs:
           python -m compileall -q backend/app/ api/
           echo "✅ All backend Python modules compiled cleanly"
 
+      - name: Lint with ruff
+        run: |
+          echo "🔍 Installing ruff..."
+          python -m pip install --quiet ruff
+          echo "🔍 Linting backend..."
+          ruff check backend/app backend/tests --output-format concise
+
+      - name: Run pytest (hermetic in-memory suite)
+        env:
+          DOWNLOAD_MODELS_ON_STARTUP: 'false'
+          VERCEL: '1'
+          JWT_SECRET_KEY: ci-only-jwt-secret-do-not-use-in-prod
+        run: |
+          echo "🔍 Installing project + test dependencies..."
+          python -m pip install --quiet -e . pytest pytest-asyncio
+          echo "🔍 Running tests..."
+          python -m pytest backend/tests -q --tb=short
+
+      - name: Semgrep security scan
+        run: |
+          echo "🔍 Installing semgrep..."
+          python -m pip install --quiet semgrep
+          echo "🔍 Scanning..."
+          semgrep scan --config .semgrep.yml --error --quiet || (echo "❌ Semgrep findings"; exit 1)
+
       - name: Verify Frontend Web Assets
         run: |
           echo "🔍 Verifying frontend static distribution..."
           test -f frontend/index.html || { echo "❌ frontend/index.html missing"; exit 1; }
           test -f frontend/css/style.css || { echo "❌ frontend/css/style.css missing"; exit 1; }
           test -f frontend/js/app.js || { echo "❌ frontend/js/app.js missing"; exit 1; }
+          echo "🔍 Verifying CDN pinning + SRI..."
+          grep -q 'integrity="sha384-' frontend/index.html || { echo "❌ missing SRI hashes"; exit 1; }
           echo "✅ Frontend static directory structure verified"
 
       - name: Telegram Notification (Validation Passed)

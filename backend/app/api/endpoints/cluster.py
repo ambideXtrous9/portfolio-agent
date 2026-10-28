@@ -1,15 +1,17 @@
 """Interactive Clustering Sandbox API endpoints (K-Means & DBSCAN)."""
 
 import math
+from typing import List, Optional
+
 import numpy as np
 import pandas as pd
-from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+
 from backend.app.api.deps import get_optional_user
 from backend.app.schemas.auth import UserResponse
 
 try:
-    from sklearn.cluster import KMeans, DBSCAN
+    from sklearn.cluster import DBSCAN, KMeans
     from sklearn.metrics import silhouette_score
 except ImportError:
     KMeans = None
@@ -99,7 +101,7 @@ def generate_synthetic_points(type_name: str, n_samples: int = 100, noise: float
 
     else:
         # Fallback to random uniform
-        for i in range(n_samples):
+        for _ in range(n_samples):
             pts.append(Point(
                 x=round(float(np.random.uniform(-5, 5)), 2),
                 y=round(float(np.random.uniform(-5, 5)), 2),
@@ -285,7 +287,7 @@ async def run_clustering(
         points=points_result,
         silhouette_score=sil_score,
         centroids=centroids_list,
-        labels=[int(l) for l in labels],
+        labels=[int(v) for v in labels],
         inertia=round(inertia_val, 2) if inertia_val is not None else None
     )
 

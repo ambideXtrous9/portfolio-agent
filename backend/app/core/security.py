@@ -139,8 +139,8 @@ def decode_token(token: str) -> Dict[str, Any]:
         )
         return payload
     except ExpiredSignatureError:
-        raise ValueError("Token has expired.")
+        raise ValueError("Token has expired.") from None
     except InvalidTokenError as e:
-        raise ValueError(f"Invalid token: {str(e)}")
+        raise ValueError(f"Invalid token: {str(e)}") from e
     except PyJWTError as e:
-        raise ValueError(f"Token decoding error: {str(e)}")
+        raise ValueError(f"Token decoding error: {str(e)}") from e

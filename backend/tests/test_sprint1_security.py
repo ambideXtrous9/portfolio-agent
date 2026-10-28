@@ -6,9 +6,8 @@ chat-thread IDOR ownership, WS/voice mandatory auth.
 """
 
 import pytest
+from conftest import auth_headers, register_and_login
 from fastapi.testclient import TestClient
-
-from conftest import register_and_login, auth_headers
 
 
 # ── S1.1: startup asyncio fix ────────────────────────────────────────────────
@@ -157,8 +156,9 @@ def test_cors_allows_allowlisted_origin(client: TestClient):
 # ── S1.6: chat thread IDOR ownership ─────────────────────────────────────────
 def _seed_thread(client: TestClient, owner_email: str, thread: str, message: str):
     """Registers a thread owned by owner_email with one message (in-memory store)."""
-    import backend.app.core.database as chatdb
     from langchain_core.messages import HumanMessage
+
+    import backend.app.core.database as chatdb
 
     token = register_and_login(client, owner_email)
     me = client.get("/api/auth/me", headers=auth_headers(token)).json()
@@ -178,7 +178,6 @@ def test_chat_history_idor_blocked(client: TestClient):
     r = client.get("/api/chat/threads/hp-abc123/history", headers=auth_headers(bob))
     assert r.status_code == 404, "Foreign threads must not be readable"
 
-    alice_tok = _seed_thread(client, "alice2@example.com", "hp-abc123", "secret message") if False else None
     # Owner can read their own thread
     alice_token = register_and_login(client, "alice@example.com")
     r_ok = client.get("/api/chat/threads/hp-abc123/history", headers=auth_headers(alice_token))
@@ -203,6 +202,7 @@ def test_chat_delete_idor_blocked(client: TestClient):
 def _assert_ws_rejects_unauth(path):
     from starlette.testclient import TestClient as ST
     from starlette.websockets import WebSocketDisconnect
+
     import backend.app.main as m
 
     with ST(m.app) as st:

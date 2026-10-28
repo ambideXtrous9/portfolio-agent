@@ -1,28 +1,31 @@
 """Vision AI Studio endpoints: 4-Model Brand Comparison & YOLO Logo Detection."""
 
+import asyncio
 import base64
 import io
 import os
 import sys
 import time
-from typing import List, Dict, Any, Tuple, Optional
-from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
-from PIL import Image, ImageDraw
+from typing import Any, Dict, List, Optional, Tuple
 
-from backend.app.api.deps import get_current_active_user, get_optional_user
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from PIL import Image
+
+from backend.app.api.deps import get_optional_user
 from backend.app.schemas.auth import UserResponse
 from backend.app.schemas.vision import (
+    BoundingBox,
     ClassificationResponse,
-    PredictionItem,
     ModelEvaluationCard,
     MultiModelComparisonResponse,
+    PredictionItem,
     YoloDetectionResponse,
-    BoundingBox,
 )
 
 router = APIRouter(prefix="/vision", tags=["Vision AI"])
 
 from pathlib import Path
+
 from backend.app.core.hf_models import get_models_dir
 
 BACKEND_DIR = str(Path(__file__).resolve().parents[3])
@@ -53,7 +56,7 @@ BRAND_CLASSES = [
     'RedBull', 'Sprite', 'Starbucks', 'Texaco', 
     'Unicef', 'Vodafone', 'Yahoo'
 ]
-INDEX_TO_CLASS = {i: c for i, c in enumerate(BRAND_CLASSES)}
+INDEX_TO_CLASS = dict(enumerate(BRAND_CLASSES))
 
 # Benchmark model specs from the training architecture
 MODEL_SPECS = {
@@ -132,8 +135,8 @@ def get_cached_model(model_name: str):
         return None
 
     try:
-        import torch
         import timm
+        import torch
 
         # Intercept timm.create_model so it doesn't download external weights
         # since the checkpoint already contains all weights
@@ -190,9 +193,10 @@ def detect_brand_and_bbox(image: Image.Image) -> Tuple[str, float, List[float]]:
     bbox_coords = [w * 0.15, h * 0.15, w * 0.85, h * 0.85]
 
     try:
-        from groq import Groq
         import json
         import re
+
+        from groq import Groq
 
         thumb = image.copy().convert("RGB")
         thumb.thumbnail((512, 512))
@@ -324,69 +328,20 @@ def run_single_inference(
         reported_time = round(time.time() - start_time, 4)
 
     if model is None:
-        # Dynamic, image-specific architectural evaluation based on Flickr27 benchmarks
-        from PIL import ImageStat
-        import hashlib
-
-        w, h = image.size
-        stat = ImageStat.Stat(image.convert("L"))
-        contrast = stat.stddev[0] if stat.stddev else 50.0
-
-        img_hash = hashlib.sha256(image.tobytes()[:8192]).hexdigest()
-        val_seed = int(img_hash[:8], 16)
-
-        # Contrast modifier (-0.02 to +0.02)
-        contrast_adj = (min(100.0, max(20.0, contrast)) - 50.0) / 1500.0
-        # Resolution modifier
-        res_factor = (min(2000, max(200, max(w, h))) - 600) / 25000.0
-
-        # Architecture configuration matching Flickr27 Transfer Learning benchmark findings
-        models_cfg = {
-            "EfficientNet": {
-                "acc_offset": 0.03,
-                "noise_mod": 11,
-                "base_time": 0.0385,
-                "time_mod": 13
-            },
-            "InceptionV3": {
-                "acc_offset": -0.04,
-                "noise_mod": 17,
-                "base_time": 0.1045,
-                "time_mod": 19
-            },
-            "Xception": {
-                "acc_offset": -0.09,
-                "noise_mod": 23,
-                "base_time": 0.1368,
-                "time_mod": 29
-            },
-            "MobileNetV2": {
-                "acc_offset": -0.15,
-                "noise_mod": 31,
-                "base_time": 0.0273,
-                "time_mod": 37
-            },
-        }
-
-        cfg = models_cfg.get(model_name, {
-            "acc_offset": 0.0, "noise_mod": 13, "base_time": 0.04, "time_mod": 17
-        })
-
-        n_seed = ((val_seed % cfg["noise_mod"]) / float(cfg["noise_mod"])) - 0.5
-        t_seed = ((val_seed % cfg["time_mod"]) / float(cfg["time_mod"])) - 0.5
-
-        if detected_brand and detected_brand != "None" and detected_conf >= 0.50:
-            acc = detected_conf + cfg["acc_offset"] + contrast_adj + res_factor + (n_seed * 0.025)
-            accuracy = round(min(0.99, max(0.40, acc)), 2)
-            # Threshold from Streamlit classifier.py: if accuracy < 0.80, predicted_class is 'None'
-            predicted_class = detected_brand if accuracy >= 0.80 else "None"
-        else:
-            predicted_class = "None"
-            accuracy = round(max(0.30, 0.45 + (n_seed * 0.08)), 2)
-
-        # Dynamic, architecturally distinct latency scaled with image size
-        inf_time = cfg["base_time"] + (max(w, h) / 1000.0) * 0.0035 + (t_seed * 0.004)
-        reported_time = round(max(0.018, inf_time), 4)
+        # Honest unavailability: without a loaded model we cannot measure real
+        # accuracy or latency, so we report an explicit unavailable card
+        # instead of fabricating deterministic "benchmark" numbers.
+        return ModelEvaluationCard(
+            model_name=model_name,
+            size_mb=size_mb,
+            parameters_m=params_m,
+            predicted_class="None",
+            accuracy=0.0,
+            inference_time_seconds=0.0,
+            inference_time=0.0,
+            status="unavailable",
+            detail="Model weights could not be loaded on this instance; no prediction was performed.",
+        )
 
     return ModelEvaluationCard(
         model_name=model_name,
@@ -417,7 +372,7 @@ async def classify_all_models(
     try:
         image = Image.open(io.BytesIO(contents)).convert("RGB")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Cannot parse image: {e}")
+        raise HTTPException(status_code=400, detail=f"Cannot parse image: {e}") from e
 
     # Prepare base64 thumbnail for frontend preview
     thumb = image.copy()
@@ -429,15 +384,20 @@ async def classify_all_models(
     # Detect brand via AI Vision if local weights are not on disk
     detected_brand, detected_conf = detect_brand_via_vision(image)
 
-    # Evaluate all 4 models sequentially
+    # Evaluate all 4 models sequentially (torch forward passes run in a worker thread)
     models_to_run = ["Xception", "InceptionV3", "MobileNetV2", "EfficientNet"]
     model_cards: List[ModelEvaluationCard] = []
 
     for name in models_to_run:
-        card = run_single_inference(name, image, detected_brand=detected_brand, detected_conf=detected_conf)
+        card = await asyncio.to_thread(
+            run_single_inference, name, image, detected_brand=detected_brand, detected_conf=detected_conf
+        )
         model_cards.append(card)
 
-    fastest_model = min(model_cards, key=lambda m: m.inference_time_seconds).model_name if model_cards else None
+    available = [m for m in model_cards if m.status != "unavailable"]
+    fastest_model = (
+        min(available, key=lambda m: m.inference_time_seconds).model_name if available else None
+    )
 
     return MultiModelComparisonResponse(
         models=model_cards,
@@ -480,7 +440,7 @@ async def detect_logo_yolo(
     try:
         image = Image.open(io.BytesIO(contents)).convert("RGB")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Cannot process image file: {e}")
+        raise HTTPException(status_code=400, detail=f"Cannot process image file: {e}") from e
 
     detections: List[BoundingBox] = []
     annotated_img = image.copy()
@@ -511,25 +471,17 @@ async def detect_logo_yolo(
         print(f"YOLO detection note ({type(e).__name__}): {e}")
 
     if not yolo_loaded:
-        # High quality visual bounding box fallback with brand detection
-        from PIL import ImageStat
-        import hashlib
+        # Visual bounding box fallback via Groq Vision. We report the
+        # confidence the vision model actually returned — no synthetic
+        # jitter/contrast inflation.
+        from PIL import ImageDraw
 
         w, h = image.size
         detected_brand, conf, box = detect_brand_and_bbox(image)
         if detected_brand and detected_brand != "None":
             draw = ImageDraw.Draw(annotated_img)
-
-            # Compute contrast adjustment to provide fine-grained confidence
-            stat = ImageStat.Stat(image.convert("L"))
-            contrast = stat.stddev[0] if stat.stddev else 50.0
-            img_hash = hashlib.sha256(image.tobytes()[:8192]).hexdigest()
-            val_seed = int(img_hash[:8], 16)
-            contrast_adj = (min(100.0, max(20.0, contrast)) - 50.0) / 1500.0
-            jitter = ((val_seed % 7) / 7.0 - 0.5) * 0.02
-            final_conf = round(min(0.99, max(0.68, conf + contrast_adj + jitter)), 3)
-
-            label_text = f" {detected_brand} ({round(final_conf * 100, 1)}%) "
+            final_conf = round(max(0.0, min(1.0, conf)), 3)
+            label_text = f" {detected_brand} ({round(final_conf * 100, 1)}%, vision model) "
 
             line_w = max(3, int(min(w, h) * 0.008))
             draw.rectangle(box, outline="#00FF88", width=line_w)
@@ -550,7 +502,7 @@ async def detect_logo_yolo(
                 except Exception:
                     draw.text(text_pos, label_text, fill="#00FF88", font=font)
             else:
-                draw.text(text_pos, label_text, fill="#00FF88")
+                draw.text(text_pos, label_text, fill="#00FF88", font=font)
 
             detections.append(BoundingBox(
                 label=detected_brand,

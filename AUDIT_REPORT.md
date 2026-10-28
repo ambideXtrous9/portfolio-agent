@@ -177,25 +177,25 @@ Each of these stalls the entire app for seconds on every call:
 ## 7. Suggested Fix Order
 
 ### P0 — single sitting, highest value
-- [ ] `import asyncio` in `main.py`
-- [ ] Reset token out of the response — email delivery path
-- [ ] Telegram webhook: verify `secret_token` header + chat_id allowlist
-- [ ] JWT secret required (no default); move JWT from URLs to httpOnly cookie
-- [ ] Ownership check on chat threads (IDOR)
-- [ ] CORS: explicit origin allowlist
-- [ ] Pin + SRI CDN scripts; sanitize `marked` output (DOMPurify)
+- [x] `import asyncio` in `main.py`
+- [x] Reset token out of the response — email delivery path
+- [x] Telegram webhook: verify `secret_token` header + chat_id allowlist
+- [x] JWT secret required (no default); move JWT from URLs to httpOnly cookie
+- [x] Ownership check on chat threads (IDOR)
+- [x] CORS: explicit origin allowlist
+- [x] Pin + SRI CDN scripts; sanitize `marked` output (DOMPurify)
 
 ### P1 — a weekend
-- [ ] `asyncio.to_thread` for all sync I/O; shared httpx client; module caches for CSVs/JSON graphs/LLM clients
-- [ ] Index chat history `session_id`; user-lookup caching; cap unbounded fallback dicts
-- [ ] Honest-failure policy replacing every fabricated fallback
-- [ ] CI: pytest + ruff + mypy + semgrep
-- [ ] Dependency unification in pyproject (optional `[vision]` extra)
-- [ ] `.dockerignore` fix; compose secret scoping
+- [x] `asyncio.to_thread` for all sync I/O; shared httpx client; module caches for CSVs/JSON graphs/LLM clients
+- [x] Index chat history `session_id`; user-lookup caching; cap unbounded fallback dicts
+- [x] Honest-failure policy replacing every fabricated fallback
+- [x] CI: pytest + ruff + mypy + semgrep
+- [x] Dependency unification in pyproject (optional `[vision]` extra)
+- [x] `.dockerignore` fix; compose secret scoping
 
 ### P2 — design debt
 - [ ] Merge harry/tour modules (FE + BE); shared stream helper
 - [ ] Split `stock.py` into a services/ package; split frontend monoliths
 - [ ] App.js closure → store; dark mode + accessibility pass
-- [ ] Delete `livekit-agent/`, `KMS/`, `scratch/`, dead code and CSS
+- [x] Delete `livekit-agent/`, `KMS/`, `scratch/`, dead code and CSS
 - [ ] Compress assets to WebP; on-demand Plotly/voice dynamic imports

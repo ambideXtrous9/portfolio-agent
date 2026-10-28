@@ -3,11 +3,12 @@
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
 from backend.app.api.deps import get_current_active_user, oauth2_scheme
-from backend.app.core.auth_database import auth_db_manager
 from backend.app.config import settings
+from backend.app.core.auth_database import auth_db_manager
 from backend.app.core.notify import send_telegram_msg
 from backend.app.core.ratelimit import rate_limit
 from backend.app.core.security import (
@@ -109,7 +110,7 @@ async def signup_endpoint(request: UserSignupRequest, response: Response):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Unable to register user: {db_err}",
-        )
+        ) from db_err
 
     # Issue initial JWT Access Token
     token_payload = {
@@ -365,7 +366,7 @@ async def reset_password_endpoint(request: ResetPasswordRequest, request_http: R
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid or expired reset token: {str(e)}",
-        )
+        ) from e
 
     user_id = await auth_db_manager.verify_and_consume_reset_token(request.token)
     if not user_id:

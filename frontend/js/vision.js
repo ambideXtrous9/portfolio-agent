@@ -182,7 +182,7 @@ export function initImageClassifier() {
 
       const timeVal = (m.inference_time_seconds !== undefined && m.inference_time_seconds !== null)
         ? m.inference_time_seconds
-        : (m.inference_time !== undefined && m.inference_time !== null ? m.inference_time : 0.0385);
+        : (m.inference_time !== undefined && m.inference_time !== null ? m.inference_time : 0);
 
       if (sizeEl) sizeEl.textContent = `${m.size_mb.toFixed(2)} MB`;
       if (paramsEl) paramsEl.textContent = `${m.parameters_m.toFixed(2)} M`;
@@ -192,34 +192,28 @@ export function initImageClassifier() {
       }
       if (accEl) accEl.textContent = m.accuracy.toFixed(2);
       if (timeEl) {
-        timeEl.textContent = `${Number(timeVal).toFixed(4)} seconds`;
+        timeEl.textContent = m.status === "unavailable"
+          ? "— (model unavailable)"
+          : `${Number(timeVal).toFixed(4)} seconds`;
       }
     });
   }
 
   function renderModelCardError(errMsg) {
-    const fallbackBenchmarks = {
-      xception: { size: "81.64 MB", params: "21.34 M", cls: "None", acc: "0.00", time: "0.1368 seconds" },
-      inception: { size: "85.30 MB", params: "22.32 M", cls: "None", acc: "0.00", time: "0.1045 seconds" },
-      mobilenet: { size: "9.91 MB", params: "2.56 M", cls: "None", acc: "0.00", time: "0.0273 seconds" },
-      efficientnet: { size: "16.75 MB", params: "4.35 M", cls: "None", acc: "0.00", time: "0.0385 seconds" }
-    };
+    // Honest failure: mark every model as unavailable instead of showing
+    // fabricated benchmark numbers that were never measured.
+    const unavailable = { cls: "None", acc: "—", time: "— (unavailable)" };
 
-    Object.entries(fallbackBenchmarks).forEach(([key, val]) => {
-      const sizeEl = document.getElementById(`size-${key}`);
-      const paramsEl = document.getElementById(`params-${key}`);
-      const classEl = document.getElementById(`class-${key}`);
+    ["xception", "inception", "mobilenet", "efficientnet"].forEach((key) => {      const classEl = document.getElementById(`class-${key}`);
       const accEl = document.getElementById(`acc-${key}`);
       const timeEl = document.getElementById(`time-${key}`);
 
-      if (sizeEl) sizeEl.textContent = val.size;
-      if (paramsEl) paramsEl.textContent = val.params;
       if (classEl) {
-        classEl.textContent = val.cls;
+        classEl.textContent = unavailable.cls;
         classEl.style.color = "var(--st-text-color)";
       }
-      if (accEl) accEl.textContent = val.acc;
-      if (timeEl) timeEl.textContent = val.time;
+      if (accEl) accEl.textContent = unavailable.acc;
+      if (timeEl) timeEl.textContent = unavailable.time;
     });
   }
 }

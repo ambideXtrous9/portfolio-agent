@@ -54,7 +54,7 @@ def setup_langfuse(metadata: Optional[dict] = None):
         trace_provider = TracerProvider()
         set_tracer_provider(trace_provider, metadata=metadata)
 
-        langfuse = Langfuse(
+        Langfuse(
             public_key=pk,
             secret_key=sk,
             base_url=base_url,

@@ -1,18 +1,19 @@
 """PostgreSQL Database Management, Async Connection Pooling, and LangGraph Checkpointing."""
 
 import logging
-from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from typing import Any, Dict, List, Optional
+
+from langchain_core.messages import BaseMessage
 
 logger = logging.getLogger(__name__)
 
 # Try importing PostgreSQL & Checkpoint libraries with graceful fallback
 try:
-    from psycopg_pool import AsyncConnectionPool
-    from psycopg import sql
     from langchain_postgres import PostgresChatMessageHistory
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+    from psycopg import sql
+    from psycopg_pool import AsyncConnectionPool
     POSTGRES_AVAILABLE = True
 except ImportError as err:
     logger.warning(f"PostgreSQL packages not fully installed or available: {err}")
@@ -23,6 +24,7 @@ except ImportError as err:
     AsyncPostgresSaver = None
 
 from langgraph.checkpoint.memory import MemorySaver
+
 from backend.app.config import settings
 
 
@@ -94,6 +96,8 @@ class DatabaseManager:
         self._in_memory_chat_history: Dict[str, List[BaseMessage]] = {}
         # thread ownership: normalized session_id -> user_id (fallback store)
         self._in_memory_thread_owners: Dict[str, str] = {}
+        # unbounded-growth guards for the in-memory fallback stores
+        self._MAX_IN_MEMORY_SESSIONS = 500
         self._initialized: bool = False
         self._tables_created: bool = False
         self._last_connect_attempt: float = 0.0
@@ -248,6 +252,14 @@ class DatabaseManager:
                 norm_id,
                 self.pool,
             )
+        # Guard against unbounded growth in the in-memory fallback
+        if len(self._in_memory_chat_history) >= self._MAX_IN_MEMORY_SESSIONS:
+            try:
+                oldest = next(iter(self._in_memory_chat_history))
+                self._in_memory_chat_history.pop(oldest, None)
+                self._in_memory_thread_owners.pop(oldest, None)
+            except StopIteration:
+                pass
         return InMemoryChatHistory(norm_id, self._in_memory_chat_history)
 
     async def delete_chat_session(self, session_id: str) -> bool:

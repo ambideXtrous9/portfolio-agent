@@ -82,14 +82,15 @@ services:
       disable: true
     volumes:
       - ./backend/app:/app/backend/app
-    env_file:
-      - .env
+    # No env_file: .env here — secrets are scoped explicitly below so the voice
+    # worker never receives DB, JWT, Telegram or webhook credentials.
     environment:
       - PYTHONUNBUFFERED=1
       - LIVEKIT_URL=${LIVEKIT_URL:-}
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=${GROQ_MODEL:-}
       - OPENWEATHER_API_KEY=${WEATHER_API_KEY:-}
       - WEATHER_API_KEY=${WEATHER_API_KEY:-}
       - TAVILY_API_KEY=${TAVILY_API_KEY:-}
