@@ -132,7 +132,10 @@ jobs:
   deploy-preview:
     name: Deploy to Vercel Preview
     needs: validate
-    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || (github.event_name == 'workflow_dispatch' && inputs.environment == 'preview')
+    # Preview deployments are manual-only (workflow_dispatch, environment=preview).
+    # Feature branches / open PRs never deploy to Vercel — only merged-to-main
+    # code reaches production (deploy-production).
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'preview'
     runs-on: ubuntu-latest
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
