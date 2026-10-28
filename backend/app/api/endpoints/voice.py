@@ -49,8 +49,8 @@ def generate_livekit_token(room_name: str, participant_name: str, identity: str)
 
     if not api_key or not api_secret:
         raise HTTPException(
-            status_code=500,
-            detail="LiveKit credentials (LIVEKIT_API_KEY and LIVEKIT_API_SECRET) not configured.",
+            status_code=503,
+            detail="LiveKit voice is not configured (LIVEKIT_API_KEY/LIVEKIT_API_SECRET missing).",
         )
 
     token_ttl_seconds = 3600  # 1 hour — previously 6h, far longer than call sessions need
