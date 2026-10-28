@@ -85,11 +85,15 @@ class PooledPostgresChatMessageHistory:
 class DatabaseManager:
     """Manages PostgreSQL connection pool, chat message history, and LangGraph checkpointer."""
 
+    OWNERS_TABLE = "chat_thread_owners"
+
     def __init__(self):
         self.pool: Optional[Any] = None
         self.checkpointer: Any = MemorySaver()
         self._is_in_memory: bool = True
         self._in_memory_chat_history: Dict[str, List[BaseMessage]] = {}
+        # thread ownership: normalized session_id -> user_id (fallback store)
+        self._in_memory_thread_owners: Dict[str, str] = {}
         self._initialized: bool = False
         self._tables_created: bool = False
         self._last_connect_attempt: float = 0.0
@@ -155,6 +159,24 @@ class DatabaseManager:
                 async with self.pool.connection() as conn:
                     logger.info(f"Ensuring chat history table '{settings.TABLE_NAME}' exists...")
                     await PostgresChatMessageHistory.acreate_tables(conn, settings.TABLE_NAME)
+                    # Performance index: session_id lookups/deletes were doing seq scans
+                    await conn.execute(
+                        sql.SQL(
+                            "CREATE INDEX IF NOT EXISTS {} ON {} (session_id)"
+                        ).format(
+                            sql.Identifier(f"idx_{settings.TABLE_NAME}_session_id"),
+                            sql.Identifier(settings.TABLE_NAME),
+                        )
+                    )
+                    # Thread ownership registry (IDOR protection)
+                    await conn.execute(
+                        sql.SQL(
+                            "CREATE TABLE IF NOT EXISTS {} ("
+                            "session_id TEXT PRIMARY KEY, "
+                            "user_id TEXT NOT NULL, "
+                            "created_at TIMESTAMPTZ NOT NULL DEFAULT now())"
+                        ).format(sql.Identifier(self.OWNERS_TABLE))
+                    )
 
             # 2. Initialize AsyncPostgresSaver checkpointer for LangGraph
             logger.info("Setting up LangGraph AsyncPostgresSaver checkpointer...")
@@ -245,6 +267,82 @@ class DatabaseManager:
                 await cur.execute(query, (norm_id,))
                 deleted_rows = cur.rowcount
                 return deleted_rows > 0
+
+    async def claim_chat_thread(self, session_id: str, user_id: str) -> bool:
+        """
+        Registers thread ownership for the given user (first claim wins).
+
+        Returns True when this call created the ownership record. Never raises
+        for storage issues: falls back to the in-process registry.
+        """
+        norm_id = self.normalize_session_id(session_id)
+        if self._is_in_memory or not self.pool or not POSTGRES_AVAILABLE:
+            if norm_id in self._in_memory_thread_owners:
+                return False
+            self._in_memory_thread_owners[norm_id] = str(user_id)
+            return True
+        try:
+            async with self.pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        sql.SQL("INSERT INTO {} (session_id, user_id) VALUES (%s, %s) ON CONFLICT (session_id) DO NOTHING").format(
+                            sql.Identifier(self.OWNERS_TABLE)
+                        ),
+                        (norm_id, str(user_id)),
+                    )
+                    return cur.rowcount > 0
+        except Exception as e:
+            logger.warning("Thread ownership claim fell back to memory: %s", e)
+            if norm_id in self._in_memory_thread_owners:
+                return False
+            self._in_memory_thread_owners[norm_id] = str(user_id)
+            return True
+
+    async def get_thread_owner(self, session_id: str) -> Optional[str]:
+        """Returns the owning user_id of a thread, or None when unclaimed."""
+        norm_id = self.normalize_session_id(session_id)
+        if self._is_in_memory or not self.pool or not POSTGRES_AVAILABLE:
+            return self._in_memory_thread_owners.get(norm_id)
+        try:
+            async with self.pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        sql.SQL("SELECT user_id FROM {} WHERE session_id = %s").format(sql.Identifier(self.OWNERS_TABLE)),
+                        (norm_id,),
+                    )
+                    row = await cur.fetchone()
+                    return row[0] if row else None
+        except Exception as e:
+            logger.warning("Thread ownership lookup fell back to memory: %s", e)
+            return self._in_memory_thread_owners.get(norm_id)
+
+    async def ensure_thread_access(self, session_id: str, user_id: str) -> None:
+        """
+        Guarantees the user owns the thread:
+        - already owned by the user → no-op
+        - unclaimed → claimed by this user
+        - owned by someone else → raises PermissionError
+        """
+        owner = await self.get_thread_owner(session_id)
+        if owner is not None and owner != str(user_id):
+            raise PermissionError("Thread belongs to another user.")
+        await self.claim_chat_thread(session_id, user_id)
+
+    async def delete_thread_ownership(self, session_id: str) -> None:
+        """Removes the ownership record alongside thread deletion."""
+        norm_id = self.normalize_session_id(session_id)
+        self._in_memory_thread_owners.pop(norm_id, None)
+        if self._is_in_memory or not self.pool or not POSTGRES_AVAILABLE:
+            return
+        try:
+            async with self.pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        sql.SQL("DELETE FROM {} WHERE session_id = %s").format(sql.Identifier(self.OWNERS_TABLE)),
+                        (norm_id,),
+                    )
+        except Exception as e:
+            logger.warning("Thread ownership delete note: %s", e)
 
     @property
     def is_in_memory(self) -> bool:

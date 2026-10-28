@@ -384,6 +384,7 @@ async def generate_tour_plan(
         "configurable": {"thread_id": thread_id},
         "metadata": {"user_id": current_user.id, "email": current_user.email},
     }
+    await db_manager.ensure_thread_access(thread_id, current_user.id)
 
     graph = get_tour_agent_graph()
     final_state = await graph.ainvoke(
@@ -425,18 +426,25 @@ async def websocket_tour(websocket: WebSocket):
     - Step-by-step live agent progress updates with elapsed timers
     - Node progress: weatherAgent, airbnbAgent, tourAgent
     - Live token streaming for tourAgent synthesis
+
+    Authentication is REQUIRED: a valid token must be provided at handshake
+    (via ?token= query param or cookie); otherwise the socket is closed.
     """
-    token = websocket.query_params.get("token")
+    await websocket.accept()
+
+    token = websocket.query_params.get("token") or websocket.cookies.get("access_token")
+    user = None
     if token:
         try:
-            await validate_token_and_get_user(token)
+            user = await validate_token_and_get_user(token)
         except Exception:
-            await websocket.accept()
-            await websocket.send_json({"type": "error", "message": "Authentication required. Invalid or expired token."})
-            await websocket.close()
-            return
+            user = None
 
-    await websocket.accept()
+    if user is None:
+        await websocket.send_json({"type": "error", "message": "Authentication required. Invalid or expired token."})
+        await websocket.close(code=4401)
+        return
+
     try:
         while True:
             data = await websocket.receive_json()
@@ -445,16 +453,15 @@ async def websocket_tour(websocket: WebSocket):
                 await websocket.send_json({"type": "error", "message": "Empty query received"})
                 continue
 
-            # Verify authentication token if not supplied at handshake
-            msg_token = data.get("token") or token
-            if not token and msg_token:
-                try:
-                    await validate_token_and_get_user(msg_token)
-                except Exception:
-                    await websocket.send_json({"type": "error", "message": "Authentication required. Invalid or expired token."})
-                    continue
-
             thread_id = data.get("thread_id") or str(uuid.uuid4())
+
+            # Thread ownership: claim new threads, reject foreign ones
+            try:
+                await db_manager.ensure_thread_access(thread_id, user.id)
+            except PermissionError:
+                await websocket.send_json({"type": "error", "message": "Session belongs to another user."})
+                continue
+
             config = {
                 "configurable": {"thread_id": thread_id},
                 "version": "v2"
@@ -556,6 +563,17 @@ async def stream_tour_sse(
     """Server-Sent Events streaming endpoint backed by PostgreSQL checkpointer and auth guard."""
     async def event_generator() -> AsyncGenerator[Dict[str, Any], None]:
         thread_id = session_id or str(uuid.uuid4())
+
+        # Thread ownership: claim new threads, reject foreign ones
+        try:
+            await db_manager.ensure_thread_access(thread_id, current_user.id)
+        except PermissionError:
+            yield {
+                "event": "error",
+                "data": json.dumps({"message": "Session belongs to another user.", "node": "auth"}),
+            }
+            return
+
         config = {
             "configurable": {"thread_id": thread_id},
             "metadata": {"user_id": current_user.id, "email": current_user.email},

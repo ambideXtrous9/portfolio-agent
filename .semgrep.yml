@@ -1,11 +1,11 @@
 rules:
   - id: trailofbits.python.pickles-in-pytorch.pickles-in-pytorch
     severity: INFO
-    message: "Ignoring torch.load in classifier.py - safe usage with validation"
+    message: "Ignoring torch.load in vision.py - checkpoints loaded with weights_only=True (no pickle deserialization)"
     metadata:
-      confidence: LOW
-      ignored_reason: "Controlled usage with input validation"
+      confidence: HIGH
+      ignored_reason: "weights_only=True is used, mitigating the pickle RCE vector"
     languages: [python]
     paths:
-      exclude:
-        - "ImageClassifier/classifier.py"
+      include:
+        - "backend/app/api/endpoints/vision.py"

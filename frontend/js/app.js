@@ -22,13 +22,13 @@ import {
   apiResetPassword,
   apiGetChatHistory,
   apiClearChatHistory,
-} from "./api.js?v=3.9";
-import { initTourAgent } from "./tour.js?v=3.6";
-import { initHarryScholar } from "./harry.js?v=3.6";
-import { initStockScreener } from "./stock.js?v=3.6";
-import { initYoloLogo, initImageClassifier } from "./vision.js?v=3.6";
-import { initClusterSandbox } from "./cluster.js?v=3.7";
-import { initVoiceAgent } from "./voice.js?v=3.8";
+} from "./api.js";
+import { initTourAgent } from "./tour.js";
+import { initHarryScholar } from "./harry.js";
+import { initStockScreener } from "./stock.js";
+import { initYoloLogo, initImageClassifier } from "./vision.js";
+import { initClusterSandbox } from "./cluster.js";
+import { initVoiceAgent } from "./voice.js";
 
 // Dynamic sidebar images matching section themes
 const SIDEBAR_IMAGES = {

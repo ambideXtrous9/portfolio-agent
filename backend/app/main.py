@@ -1,5 +1,7 @@
 """FastAPI Application Entry Point."""
 
+import asyncio
+import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -12,28 +14,32 @@ from backend.app.api.router import api_router
 from backend.app.core.database import db_manager
 from backend.app.core.auth_database import auth_db_manager
 
+logger = logging.getLogger(__name__)
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("🚀 ambideXtrous AI Portfolio FastAPI backend starting up...")
-    print(f"🔧 Model: {settings.DEFAULT_MODEL}")
-    print(f"🌲 Pinecone Index: {settings.PINECONE_INDEX_NAME}")
+    logging.basicConfig(level=logging.INFO)
+    logger.info(
+        "🚀 %s FastAPI backend starting up (model=%s, pinecone=%s)",
+        settings.PROJECT_NAME, settings.DEFAULT_MODEL, settings.PINECONE_INDEX_NAME,
+    )
 
     # 1. Initialize PostgreSQL Connection Pools in parallel
-    try:
-        await asyncio.gather(
-            auth_db_manager.initialize(),
-            db_manager.initialize(),
-            return_exceptions=True,
-        )
-        app.state.db_pool = db_manager.pool
-        app.state.checkpointer = db_manager.checkpointer
-        app.state.auth_db_pool = auth_db_manager.pool
-    except Exception as e:
-        print(f"⚠️ Database initialization note: {e}")
+    results = await asyncio.gather(
+        auth_db_manager.initialize(),
+        db_manager.initialize(),
+        return_exceptions=True,
+    )
+    for res in results:
+        if isinstance(res, Exception):
+            logger.warning("⚠️ Database initialization note: %s", res)
+    app.state.db_pool = db_manager.pool
+    app.state.checkpointer = db_manager.checkpointer
+    app.state.auth_db_pool = auth_db_manager.pool
 
     # 2. Synchronize Hugging Face model checkpoints & preload vision models
     # On serverless cold starts, don't let optional external downloads block startup
@@ -42,29 +48,29 @@ async def lifespan(app: FastAPI):
             from backend.app.core.hf_models import sync_hf_checkpoints
             sync_hf_checkpoints()
         except Exception as e:
-            print(f"⚠️ Hugging Face checkpoints sync note: {e}")
+            logger.warning("⚠️ Hugging Face checkpoints sync note: %s", e)
 
         try:
             from backend.app.api.endpoints.vision import preload_vision_models
             preload_vision_models()
         except Exception as e:
-            print(f"⚠️ Vision models preloading note: {e}")
+            logger.warning("⚠️ Vision models preloading note: %s", e)
 
     try:
         from backend.app.core.mcp import get_mcp_client
         get_mcp_client()
-        print("🌲 MultiServerMCPClient pre-initialized for Airbnb and Pinecone")
+        logger.info("🌲 MultiServerMCPClient pre-initialized for Airbnb and Pinecone")
     except Exception as e:
-        print(f"⚠️ MCP client pre-initialization note: {e}")
+        logger.warning("⚠️ MCP client pre-initialization note: %s", e)
 
-    print("✨ All databases, models, and background services initialized. Backend is ready!")
+    logger.info("✨ All databases, models, and background services initialized. Backend is ready!")
     yield
-    print("🛑 ambideXtrous AI Portfolio FastAPI backend shutting down...")
+    logger.info("🛑 ambideXtrous AI Portfolio FastAPI backend shutting down...")
     try:
         await auth_db_manager.close()
         await db_manager.close()
     except Exception as e:
-        print(f"⚠️ Shutdown resource cleanup note: {e}")
+        logger.warning("⚠️ Shutdown resource cleanup note: %s", e)
 
 
 app = FastAPI(
@@ -76,14 +82,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS configuration
-app.add_middleware(
-    CORSMiddleware,
+# CORS configuration — explicit origin allowlist (+ optional regex for preview deployments)
+cors_kwargs = dict(
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+if settings.CORS_ORIGIN_REGEX:
+    cors_kwargs["allow_origin_regex"] = settings.CORS_ORIGIN_REGEX
+app.add_middleware(CORSMiddleware, **cors_kwargs)
 
 
 @app.middleware("http")

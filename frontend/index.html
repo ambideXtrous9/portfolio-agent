@@ -3,18 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ambideXtrous</title>
+  <title>ambideXtrous — AI Portfolio & Multi-Agent Intelligence Hub</title>
+  <meta name="description" content="ambideXtrous: autonomous multi-agent AI portfolio — stock research agents, mythology AI, travel planning agents, voice assistant, and computer-vision labs.">
+  <meta name="theme-color" content="#faf6f1">
+  <meta property="og:title" content="ambideXtrous — AI Portfolio & Multi-Agent Intelligence Hub">
+  <meta property="og:description" content="Autonomous multi-agent AI portfolio: stock research, mythology AI, tour planning, voice agents and vision labs.">
+  <meta property="og:type" content="website">
   <link rel="icon" href="assets/images/boom.png" type="image/png">
   <!-- Google Fonts: Newsreader (Editorial Serif), Plus Jakarta Sans & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=4.0">
-  
-  <!-- CDNs for Plotly, Marked and LiveKit -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+
+  <!-- CDNs (pinned versions + SRI integrity hashes + defer to avoid render blocking) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/marked@18.1.2/lib/marked.umd.js"
+          integrity="sha384-nCN5FOaVTXXYilftBH/VQuC9ypBYOxrctAZn2x7ggYClXaporWSzM0y+ODhb8MTi"
+          crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.4.17/dist/purify.min.js"
+          integrity="sha384-P0JNneQf81HOl9VwNXK76cQ9VMD6Nfsnepxb0cCOg8+UzEdzgPHAPV4wVQrvYQSx"
+          crossorigin="anonymous"></script>
+  <script defer src="https://cdn.plot.ly/plotly-2.35.2.min.js"
+          integrity="sha384-cCVCZkAjYNxaYKbM8lsArLznDF/SvMFr1jcZrvOpSTCa0W40ZAdLzHCEulnUa5i7"
+          crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/livekit-client@2.23.0/dist/livekit-client.umd.min.js"
+          integrity="sha384-5Eup/y0O0HaGMTnRv9dQddV/+npZKkzbmhjrFfyJsiMgphEG4bpxscOotD6/NPPj"
+          crossorigin="anonymous"></script>
 </head>
 <body>
   <div class="st-app">
@@ -1259,6 +1273,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Client Application Scripts -->
-  <script type="module" src="js/app.js?v=4.2"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
  */
 
 import { streamAgent, apiGetChatHistory, apiClearChatHistory, getAuthToken } from "./api.js";
+import { renderSafeMarkdown } from "./markdown.js";
 
 export function initTourAgent() {
   const workspace = document.getElementById("tour-workspace");
@@ -84,7 +85,7 @@ export function initTourAgent() {
             <div class="st-chat-avatar">${isUser ? "👤" : "🏡"}</div>
             <div class="st-chat-content">
               <strong>${isUser ? "You" : "Travel Agent"}</strong><br>
-              ${isUser ? escapeHtml(msg.content) : (window.marked ? marked.parse(msg.content) : escapeHtml(msg.content))}
+              ${isUser ? escapeHtml(msg.content) : renderSafeMarkdown(msg.content)}
             </div>
           `;
           chatHistory.appendChild(msgDiv);
@@ -298,7 +299,7 @@ export function initTourAgent() {
         if (bottomSendBtn) bottomSendBtn.disabled = false;
         const text = data.content || data.full_text || fullMarkdown || "";
         if (text) {
-          markdownBody.innerHTML = window.marked ? marked.parse(text) : escapeHtml(text);
+          markdownBody.innerHTML = renderSafeMarkdown(text);
         }
       },
       onError: (err) => {

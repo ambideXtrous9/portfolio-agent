@@ -11,6 +11,7 @@
  */
 
 import { fetchAPI } from "./api.js";
+import { renderSafeMarkdown, escapeHtml, safeExternalLink } from "./markdown.js";
 
 export function initStockScreener() {
   const stockNav = document.getElementById("stock-subtabs");
@@ -169,12 +170,12 @@ export function initStockScreener() {
       dataDisplayHtml = `
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; margin: 1rem 0;">
           ${stocks.map((s, idx) => `
-            <div class="stock-clickable-item" data-symbol="${s["Symbol"] || s.symbol}" style="padding: 0.65rem 0.85rem; background: rgba(255, 255, 255, 0.8); border: 1px solid var(--sand-200); border-radius: var(--st-radius); box-shadow: 0 1px 3px rgba(60, 50, 40, 0.02); font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;">
+            <div class="stock-clickable-item" data-symbol="${escapeHtml(s["Symbol"] || s.symbol)}" style="padding: 0.65rem 0.85rem; background: rgba(255, 255, 255, 0.8); border: 1px solid var(--sand-200); border-radius: var(--st-radius); box-shadow: 0 1px 3px rgba(60, 50, 40, 0.02); font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;">
               <div>
                 <span style="font-weight: 700; color: var(--st-text-muted); margin-right: 6px;">#${idx + 1}</span>
-                <strong style="color: var(--terracotta-600); font-family: var(--st-font-mono);">${s["Symbol"]}</strong> — ${s["Company Name"] || ""} (${s["Change %"] || ""})
+                <strong style="color: var(--terracotta-600); font-family: var(--st-font-mono);">${escapeHtml(s["Symbol"])}</strong> — ${escapeHtml(s["Company Name"] || "")} (${escapeHtml(s["Change %"] || "")})
               </div>
-              <span style="font-size: 0.82rem; background: var(--sage-50); color: var(--sage-700); border: 1px solid var(--sage-200); padding: 3px 10px; border-radius: 9999px; font-weight: 600; font-family: var(--st-font-mono);">${s["Vol Ratio"] || ""}</span>
+              <span style="font-size: 0.82rem; background: var(--sage-50); color: var(--sage-700); border: 1px solid var(--sage-200); padding: 3px 10px; border-radius: 9999px; font-weight: 600; font-family: var(--st-font-mono);">${escapeHtml(s["Vol Ratio"] || "")}</span>
             </div>
           `).join("")}
         </div>
@@ -186,27 +187,28 @@ export function initStockScreener() {
             <thead>
               <tr>
                 <th style="width: 48px;">#</th>
-                ${columns.map((c) => `<th>${c}</th>`).join("")}
+                ${columns.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}
               </tr>
             </thead>
             <tbody>
               ${stocks.map((row, idx) => {
                 const sym = row["Symbol"] || row["symbol"] || Object.values(row)[0];
+                const symSafe = escapeHtml(sym);
                 return `
-                <tr class="stock-clickable-row" data-symbol="${sym}" title="Click to analyze ${sym}">
+                <tr class="stock-clickable-row" data-symbol="${symSafe}" title="Click to analyze ${symSafe}">
                   <td style="font-weight: 600; color: var(--st-text-muted);">${idx + 1}</td>
                   ${columns.map((col) => {
                     let cellVal = row[col] !== undefined && row[col] !== null ? row[col] : "N/A";
                     if (col === "Score" && typeof cellVal === "string" && cellVal.includes("Green")) {
-                      return `<td><span style="background: #E8F5E9; color: #2E7D32; font-weight: 700; padding: 3px 8px; border-radius: 6px; font-size: 0.84rem; border: 1px solid #C8E6C9; white-space: nowrap;">${cellVal}</span></td>`;
+                      return `<td><span style="background: #E8F5E9; color: #2E7D32; font-weight: 700; padding: 3px 8px; border-radius: 6px; font-size: 0.84rem; border: 1px solid #C8E6C9; white-space: nowrap;">${escapeHtml(cellVal)}</span></td>`;
                     } else if (col === "Signals" && typeof cellVal === "string") {
-                      return `<td><span style="font-weight: 600; color: var(--terracotta-700); font-size: 0.84rem; white-space: nowrap;">${cellVal}</span></td>`;
+                      return `<td><span style="font-weight: 600; color: var(--terracotta-700); font-size: 0.84rem; white-space: nowrap;">${escapeHtml(cellVal)}</span></td>`;
                     } else if (col === "Green Parameters" && typeof cellVal === "string") {
-                      return `<td style="font-size: 0.82rem; color: #555; max-width: 320px; line-height: 1.4;">${cellVal}</td>`;
+                      return `<td style="font-size: 0.82rem; color: #555; max-width: 320px; line-height: 1.4;">${escapeHtml(cellVal)}</td>`;
                     } else if (col === "Symbol") {
-                      return `<td><strong style="color: var(--terracotta-600); font-family: var(--st-font-mono);">${cellVal}</strong></td>`;
+                      return `<td><strong style="color: var(--terracotta-600); font-family: var(--st-font-mono);">${symSafe}</strong></td>`;
                     }
-                    return `<td>${cellVal}</td>`;
+                    return `<td>${escapeHtml(cellVal)}</td>`;
                   }).join("")}
                 </tr>
               `;
@@ -403,7 +405,7 @@ export function initStockScreener() {
       <div style="padding: 2.5rem 1rem; text-align: center; border-top: 2px solid var(--st-border-color); margin-top: 2rem;">
         <span class="st-spinner" style="width: 28px; height: 28px; border-width: 3px;"></span>
         <div style="margin-top: 1rem; font-weight: 600; font-size: 1.1rem; color: var(--st-text-color);">
-          Fetching live fundamentals, technical indicators, and shareholding records for <strong>${symbol}</strong>...
+          Fetching live fundamentals, technical indicators, and shareholding records for <strong>${escapeHtml(symbol)}</strong>...
         </div>
       </div>
     `;
@@ -414,7 +416,7 @@ export function initStockScreener() {
     } catch (err) {
       inlineContainer.innerHTML = `
         <div style="padding: 1.5rem; background: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB; border-radius: var(--st-radius); margin-top: 2rem;">
-          <strong>Error fetching stock analysis:</strong> ${err.message}
+          <strong>Error fetching stock analysis:</strong> ${escapeHtml(err.message)}
         </div>
       `;
     }
@@ -527,7 +529,7 @@ export function initStockScreener() {
         <div style="margin-top: 1.25rem;">
           <h4 style="margin-bottom: 0.5rem; font-size: 1.05rem;">Key Executives</h4>
           <ul style="margin: 0; padding-left: 1.25rem; line-height: 1.8;">
-            ${officers.map(o => `<li><strong>${o.name}</strong>: ${o.title}</li>`).join("")}
+            ${officers.map(o => `<li><strong>${escapeHtml(o.name)}</strong>: ${escapeHtml(o.title)}</li>`).join("")}
           </ul>
         </div>
       `
@@ -540,9 +542,9 @@ export function initStockScreener() {
         <!-- Company Header (render_company_header) -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
           <div>
-            <h1 class="serif-heading" style="margin: 0; font-size: 2.2rem; font-weight: 300; color: var(--sand-900);">${data.company_name}</h1>
+            <h1 class="serif-heading" style="margin: 0; font-size: 2.2rem; font-weight: 300; color: var(--sand-900);">${escapeHtml(data.company_name)}</h1>
             <div style="font-size: 14px; color: #666; margin-top: 4px;">
-              ${data.symbol} • ${data.industry}
+              ${escapeHtml(data.symbol)} • ${escapeHtml(data.industry)}
             </div>
           </div>
           <div style="text-align: right;">
@@ -707,8 +709,8 @@ export function initStockScreener() {
               <ul style="margin: 0; padding-left: 1.25rem; line-height: 2.2;">
                 ${data.news.map((n) => `
                   <li>
-                    <a href="${n.url}" target="_blank" style="color: var(--terracotta-600); font-weight: 600; text-decoration: none; font-size: 0.98rem;">${n.title}</a>
-                    ${n.publisher ? `<span style="color: var(--st-text-muted); font-size: 0.85rem; margin-left: 8px;">— ${n.publisher}</span>` : ""}
+                    ${safeExternalLink(n.url, n.title).replace('<a ', `<a style="color: var(--terracotta-600); font-weight: 600; text-decoration: none; font-size: 0.98rem;" `)}
+                    ${n.publisher ? `<span style="color: var(--st-text-muted); font-size: 0.85rem; margin-left: 8px;">— ${escapeHtml(n.publisher)}</span>` : ""}
                   </li>
                 `).join("")}
               </ul>
@@ -785,7 +787,7 @@ export function initStockScreener() {
           });
 
           const thinkingPart = repRes.thinking_part || "Reasoning synthesized based on institutional factors.";
-          const reportHtml = window.marked ? window.marked.parse(repRes.report_markdown) : repRes.report_markdown;
+          const reportHtml = renderSafeMarkdown(repRes.report_markdown);
 
           aiReportContainer.innerHTML = `
             <div style="margin-top: 1.5rem;">
@@ -821,7 +823,7 @@ export function initStockScreener() {
             });
           }
         } catch (repErr) {
-          aiReportContainer.innerHTML = `<div style="color: #D32F2F;">⚠️ Report generation error: ${repErr.message}</div>`;
+          aiReportContainer.innerHTML = `<div style="color: #D32F2F;">⚠️ Report generation error: ${escapeHtml(repErr.message)}</div>`;
         } finally {
           btnAiReport.disabled = false;
           btnAiReport.innerHTML = "🤖 AI Research Report";
@@ -1133,11 +1135,5 @@ export function initStockScreener() {
         displayModeBar: false,
       });
     });
-  }
-
-  function escapeHtml(text) {
-    const div = document.createElement("div");
-    div.innerText = text;
-    return div.innerHTML;
   }
 }

@@ -2,6 +2,7 @@
  * Vision Modules: 4-Model Image Classifier & YOLO Logo Detection
  * Matches exact Streamlit functionality and side-by-side comparison UI.
  */
+import { escapeHtml } from "./markdown.js";
 
 import { getAPIBase, getAuthToken } from "./api.js";
 
@@ -319,7 +320,7 @@ export function initYoloLogo() {
             <strong>🎯 Detected Logos (${data.total_detections}):</strong>
             <ul style="margin: 0.5rem 0 0 1.25rem;">
               ${data.detections.map(d => `
-                <li><strong>${d.label}</strong> (Confidence: ${(d.confidence * 100).toFixed(1)}%)</li>
+                <li><strong>${escapeHtml(d.label)}</strong> (Confidence: ${(d.confidence * 100).toFixed(1)}%)</li>
               `).join("")}
             </ul>
           </div>
@@ -329,7 +330,7 @@ export function initYoloLogo() {
       }
     } catch (err) {
       console.error("YOLO error:", err);
-      boxesSummary.innerHTML = `<div style="color: #D32F2F; font-size: 0.9rem; padding: 0.75rem; background: #FFEBEE; border: 1px solid #FFCDD2; border-radius: var(--st-radius);">⚠️ YOLO detection error: ${err.message}</div>`;
+      boxesSummary.innerHTML = `<div style="color: #D32F2F; font-size: 0.9rem; padding: 0.75rem; background: #FFEBEE; border: 1px solid #FFCDD2; border-radius: var(--st-radius);">⚠️ YOLO detection error: ${escapeHtml(err.message)}</div>`;
     }
   }
 }

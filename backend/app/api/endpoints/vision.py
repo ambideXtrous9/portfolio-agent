@@ -162,7 +162,8 @@ def get_cached_model(model_name: str):
             model_obj = EfficientNet(num_classes=27, lr=0.001)
 
         if model_obj:
-            checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+            # weights_only=True: avoids full pickle deserialization (arbitrary code execution)
+            checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=True)
             st_dict = checkpoint.get("state_dict", checkpoint)
             model_obj.load_state_dict(st_dict, strict=False)
             model_obj.eval()

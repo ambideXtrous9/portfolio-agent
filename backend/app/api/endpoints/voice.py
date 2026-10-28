@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 
 from backend.app.config import settings
-from backend.app.api.deps import get_optional_user
+from backend.app.api.deps import get_current_active_user, get_optional_user
 from backend.app.schemas.auth import UserResponse
 try:
     from backend.app.voice_agent.telemetry import is_langfuse_configured
@@ -37,15 +37,20 @@ class TokenResponse(BaseModel):
 
 
 def generate_livekit_token(room_name: str, participant_name: str, identity: str) -> str:
-    """Generate signed JWT token for LiveKit WebRTC Room access."""
+    """Generate signed JWT token for LiveKit WebRTC Room access.
+
+    Tokens are valid for 1 hour and scoped to the authenticated caller.
+    """
     api_key = settings.LIVEKIT_API_KEY or os.getenv("LIVEKIT_API_KEY", "")
     api_secret = settings.LIVEKIT_API_SECRET or os.getenv("LIVEKIT_API_SECRET", "")
-    
+
     if not api_key or not api_secret:
         raise HTTPException(
             status_code=500,
             detail="LiveKit credentials (LIVEKIT_API_KEY and LIVEKIT_API_SECRET) not configured.",
         )
+
+    token_ttl_seconds = 3600  # 1 hour — previously 6h, far longer than call sessions need
 
     # 1. Try official livekit.api
     try:
@@ -76,7 +81,7 @@ def generate_livekit_token(room_name: str, participant_name: str, identity: str)
             "sub": identity,
             "name": participant_name,
             "nbf": now,
-            "exp": now + 6 * 3600,
+            "exp": now + token_ttl_seconds,
             "video": {
                 "roomJoin": True,
                 "room": room_name,
@@ -93,17 +98,13 @@ async def get_voice_token(
     room: Optional[str] = Query(None, description="Target room name"),
     name: Optional[str] = Query(None, description="Participant display name"),
     identity: Optional[str] = Query(None, description="Unique caller identifier"),
-    current_user: Optional[UserResponse] = Depends(get_optional_user),
+    current_user: UserResponse = Depends(get_current_active_user),
 ):
-    """Generate and return a LiveKit WebRTC access token via GET request."""
-    url = settings.LIVEKIT_URL or os.getenv("LIVEKIT_URL", "wss://my-voice-agent-6wug4ta7.livekit.cloud")
+    """Generate and return a LiveKit WebRTC access token (authentication required)."""
+    url = settings.LIVEKIT_URL or os.getenv("LIVEKIT_URL", "")
     room_name = (room or "").strip() or f"voice-tour-{uuid.uuid4().hex[:6]}"
-    if current_user:
-        participant_name = (name or "").strip() or (current_user.full_name or "Traveler")
-        caller_identity = (identity or "").strip() or f"user-{current_user.id[:8]}"
-    else:
-        participant_name = (name or "").strip() or "Guest Traveler"
-        caller_identity = (identity or "").strip() or f"guest-{uuid.uuid4().hex[:6]}"
+    participant_name = (name or "").strip() or (current_user.full_name or "Traveler")
+    caller_identity = (identity or "").strip() or f"user-{current_user.id[:8]}"
 
     jwt_token = generate_livekit_token(room_name, participant_name, caller_identity)
     logger.info("Issued LiveKit token for %s in room %s", caller_identity, room_name)
@@ -120,9 +121,9 @@ async def get_voice_token(
 @router.post("/token", response_model=TokenResponse)
 async def post_voice_token(
     payload: TokenRequest,
-    current_user: Optional[UserResponse] = Depends(get_optional_user),
+    current_user: UserResponse = Depends(get_current_active_user),
 ):
-    """Generate and return a LiveKit WebRTC access token via POST request."""
+    """Generate and return a LiveKit WebRTC access token via POST request (authentication required)."""
     return await get_voice_token(
         room=payload.room,
         name=payload.name,
@@ -135,15 +136,19 @@ async def post_voice_token(
 async def get_voice_status(
     current_user: Optional[UserResponse] = Depends(get_optional_user),
 ):
-    """Health & configuration status of the LiveKit voice integration."""
+    """Health & configuration status of the LiveKit voice integration.
+
+    The LiveKit URL is only disclosed to authenticated callers.
+    """
     api_key = settings.LIVEKIT_API_KEY or os.getenv("LIVEKIT_API_KEY", "")
     api_secret = settings.LIVEKIT_API_SECRET or os.getenv("LIVEKIT_API_SECRET", "")
     url = settings.LIVEKIT_URL or os.getenv("LIVEKIT_URL", "")
+    configured = bool(api_key and api_secret and url)
 
     return {
-        "status": "online" if (api_key and api_secret and url) else "unconfigured",
+        "status": "online" if configured else "unconfigured",
         "service": "livekit-voice-agent",
-        "livekit_url": url,
+        "livekit_url": url if current_user else None,
         "features": {
             "silero_vad": True,
             "bvc_noise_cancellation": True,
