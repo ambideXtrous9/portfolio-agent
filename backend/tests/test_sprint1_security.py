@@ -233,6 +233,19 @@ def test_voice_token_requires_auth(client: TestClient):
     assert body["token"] and body["room"]
 
 
+def test_voice_token_honest_503_without_creds(client: TestClient, monkeypatch):
+    monkeypatch.setenv("LIVEKIT_API_KEY", "")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "")
+    import backend.app.config as cfg
+
+    monkeypatch.setattr(cfg.settings, "LIVEKIT_API_KEY", "")
+    monkeypatch.setattr(cfg.settings, "LIVEKIT_API_SECRET", "")
+    tok = register_and_login(client, "novk@example.com")
+    r = client.get("/api/voice/token", headers=auth_headers(tok))
+    assert r.status_code == 503, r.text
+    assert "not configured" in r.json()["detail"]
+
+
 def test_voice_status_hides_url_from_anon(client: TestClient):
     r = client.get("/api/voice/status")
     assert r.status_code == 200

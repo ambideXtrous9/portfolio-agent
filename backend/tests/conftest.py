@@ -34,6 +34,12 @@ for _key in (
 # Deterministic secret for the test run only
 os.environ.setdefault("JWT_SECRET_KEY", "test-only-jwt-secret-please-rotate-0987654321")
 
+# LiveKit creds so the authed /voice/token path (JWT issuance) is exercised;
+# without these the endpoint honestly reports 503 (not configured).
+os.environ.setdefault("LIVEKIT_API_KEY", "test-livekit-key")
+os.environ.setdefault("LIVEKIT_API_SECRET", "test-livekit-secret-0123456789abcdef")
+os.environ.setdefault("LIVEKIT_URL", "wss://test-livekit.example")
+
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 

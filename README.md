@@ -41,7 +41,7 @@
 | **Vector Database** | <a href="https://www.pinecone.io/"><img src="frontend/assets/images/icons/tile_pinecone.svg" height="18" width="18" alt="Pinecone" /></a> Pinecone Vector DB | `hpvdb-openai` index &bull; 8,970 embeddings | 🟢 `Indexed` |
 | **Model Checkpoint Hub** | <a href="https://huggingface.co/ambideXtrous9/brand-logo-classifiers"><img src="frontend/assets/images/icons/tile_huggingface.svg" height="18" width="18" alt="Hugging Face" /></a> Hugging Face Hub | [`ambideXtrous9/brand-logo-classifiers`](https://huggingface.co/ambideXtrous9/brand-logo-classifiers) | 🟢 `Synced` |
 | **Voice Streaming Mesh** | <a href="https://livekit.io/"><img src="frontend/assets/images/icons/tile_livekit.svg" height="18" width="18" alt="LiveKit" /></a> LiveKit Cloud | WebRTC Real-Time SFU Mesh | 🟢 `Connected` |
-| **Authentication Guard** | <a href="https://jwt.io/"><img src="frontend/assets/images/icons/tile_jwt.svg" height="18" width="18" alt="JWT" /></a> PyJWT + Argon2id | Bearer Token Gating & Neon Blacklist | 🔒 `Enforced` |
+| **Authentication Guard** | <a href="https://jwt.io/"><img src="frontend/assets/images/icons/tile_jwt.svg" height="18" width="18" alt="JWT" /></a> PyJWT + Argon2id | Bearer + httpOnly Cookie Gating & Neon Blacklist | 🔒 `Enforced` |
 
 </div>
 
@@ -133,7 +133,7 @@ flowchart LR
     subgraph Tier_CICD ["CI/CD Automation Pipeline"]
         direction TB
         Git_Repo["GitHub Source Repository\n(main branch)"]
-        GHA_Runner["GitHub Actions CI Runner\n• Linting & Syntax Validation\n• Pytest Integration Suite\n• uv.lock Dependency Audit"]
+        GHA_Runner["GitHub Actions CI Runner\n• Ruff Lint\n• Pytest Hermetic Suite\n• Semgrep Security Scan"]
         Git_Repo -->|"git push / PR merge"| GHA_Runner
     end
 
@@ -266,9 +266,11 @@ sequenceDiagram
 
 Identity verification and token invalidation are enforced at the API gateway via `backend/app/core/auth_db.py`:
 
-* **Argon2id Password Hashing**: Passwords stored as `$argon2id$v=19$m=65536,t=3,p=4` hashes (memory-hard, ASIC/GPU brute-force proof).
+* **Argon2id Password Hashing**: Passwords stored as `$argon2id$v=19$m=65536,t=3,p=4` hashes (memory-hard, ASIC/GPU brute-force proof) with an enforced minimum-8 password policy.
 * **Stateless JWT + Stateful Revocation**: HS256-signed bearer tokens paired with immediate `token_blacklist` table writes on logout.
-* **Gateway Request Guard**: Middleware validates signatures, expiration, and queries `token_blacklist` before allowing agent execution.
+* **httpOnly Cookie Transport**: Access tokens are additionally set as `access_token` httpOnly cookies (SameSite=Lax, Secure in production) on signup/login and cleared on logout — SSE streams authenticate via cookie instead of URL query tokens for same-origin and localhost clients.
+* **Gateway Request Guard**: Dependency guard validates signatures, expiration, and queries `token_blacklist` before allowing agent execution; accepts Bearer headers, query tokens, or the auth cookie.
+* **Anti-Enumeration & Rate Limiting**: Login failures return a uniform `Incorrect email or password.` message; password-reset tokens are never returned in HTTP responses (delivered via Telegram to the allowlisted owner chat); in-process sliding-window rate limits guard `login` (10/5min), `forgot-password` (5/5min) and `reset-password` (5/5min).
 
 ```mermaid
 sequenceDiagram
@@ -292,7 +294,7 @@ sequenceDiagram
     Auth->>NeonAuth: SELECT id, hashed_password, is_active FROM users WHERE email = ?
     NeonAuth-->>Auth: User Record
     Auth->>Auth: Verify password against Argon2id hash
-    Auth-->>User: 200 OK & JWT Bearer Token (HS256 signed)
+    Auth-->>User: 200 OK & JWT Bearer Token + httpOnly Cookie (HS256 signed)
 
     Note over User,Agent: 3. Protected AI Agent Request Gating
     User->>Edge: POST /api/harry/ask (Authorization: Bearer <token>)
@@ -308,11 +310,11 @@ sequenceDiagram
     end
 
     Note over User,NeonAuth: 4. Secure Logout & Immediate Revocation
-    User->>Edge: POST /api/auth/logout (Authorization: Bearer <token>)
+    User->>Edge: POST /api/auth/logout (Bearer <token> or auth cookie)
     Edge->>Auth: Compute SHA-256 hash of token and extract exp
     Auth->>NeonAuth: INSERT INTO token_blacklist (token_hash, expires_at, revoked_at)
     NeonAuth-->>Auth: Token Blacklisted
-    Auth-->>User: 200 OK (Session successfully terminated)
+    Auth-->>User: 200 OK (Cookie cleared, session terminated)
 ```
 
 ---
@@ -363,6 +365,7 @@ sequenceDiagram
 A bidirectional ChatOps control loop connecting Telegram (`@GCICD_bot`), FastAPI (`backend/app/api/endpoints/telegram.py`), and GitHub Actions (`backend/scripts/telegram_notify.py`):
 
 * **Remote CI/CD Dispatch**: `/redeploy` or `/deploy` triggers GitHub Actions `workflow_dispatch` with caller metadata.
+* **Webhook Hardening**: Every webhook delivery is authenticated via the `X-Telegram-Bot-Api-Secret-Token` header (`TELEGRAM_WEBHOOK_SECRET`, constant-time compare) and a chat-id allowlist — only the owner chat can trigger redeployments; unknown chats are logged and ignored.
 * **Real-Time Step Notifications**: `telegram_notify.py` streams HTML alerts for `pipeline_start`, `validation_pass/fail`, `deploy_start`, and `deploy_success`.
 * **Live Operational Probes**: `/status`, `/health`, and `/info` probe API endpoints, Groq LPU, Pinecone MCP, and LiveKit Cloud SFU.
 
@@ -392,7 +395,7 @@ sequenceDiagram
     Notify->>TG: POST sendMessage (Commit, Branch, Live Action URL)
     TG-->>Admin: "CI/CD Pipeline Started"
 
-    Runner->>Runner: Execute Linting, uv.lock Audit & Pytest Suite
+    Runner->>Runner: Execute Ruff Lint, Pytest Suite & Semgrep Scan
     alt Tests Pass
         Runner->>Notify: run telegram_notify.py --event validation_pass
         Notify->>TG: POST sendMessage (Integrity Verified)
@@ -435,13 +438,14 @@ flowchart LR
 
     subgraph GitHubActions ["GitHub Actions CI Pipeline"]
         direction TB
-        Checkout["actions/checkout@v4"]
-        SetupPython["actions/setup-python@v5\nPython 3.12"]
-        VerifyDeps["Dependency Verification\nuv lock / pip check"]
-        RunTests["Integration & Unit Tests\npytest backend/tests/"]
+        Checkout["actions/checkout@v7"]
+        SetupPython["actions/setup-python@v7\nPython 3.12"]
+        RunLint["Ruff Lint Gate\nbackend/app + backend/tests"]
+        RunTests["Hermetic Test Suite\npytest backend/tests/ (31 tests)"]
+        RunSemgrep["Semgrep Security Scan\n(.semgrep.yml — 5 rules)"]
         TG_Alerts["Telegram Pipeline Alerts\n(telegram_notify.py)"]
         DeployTrigger["Deploy Webhook Trigger"]
-        Checkout --> SetupPython --> VerifyDeps --> RunTests --> TG_Alerts --> DeployTrigger
+        Checkout --> SetupPython --> RunLint --> RunTests --> RunSemgrep --> TG_Alerts --> DeployTrigger
     end
 
     subgraph VercelEdgeDeploy ["Vercel Production Deployment"]
@@ -469,7 +473,7 @@ PostgreSQL is completely decoupled from the application container and runs as a 
 | **Connection Pooling** | `psycopg_pool.AsyncConnectionPool` (`prepare_threshold=None`) | High-concurrency async pooling compatible with Neon PgBouncer transaction mode. |
 | **Auth Schema** | `users`, `token_blacklist`, `password_resets` | Argon2id credential storage, instant JWT invalidation, and session tracking. |
 | **Checkpoint Schema** | `checkpoints`, `checkpoint_blobs`, `checkpoint_writes` | Full graph serialization for LangGraph multi-turn session persistence. |
-| **Conversational Memory** | `portfolio_chat_history` | Chronological session history synced for user chat sidebars. |
+| **Conversational Memory** | `portfolio_chat_history`, `chat_thread_owners` | Chronological session history synced for user chat sidebars; per-user thread ownership (first claim wins) for IDOR protection. |
 | **Resilience & Fallback** | Automatic fallback to `MemorySaver` | Seamless local development and zero-crash operation when offline. |
 
 ---
@@ -483,7 +487,7 @@ PostgreSQL is completely decoupled from the application container and runs as a 
 | **Gateway & Application** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=fastapi,python,docker,linux" height="28" alt="Backend" /></a> | FastAPI 0.115 async runtime, lifespan startup hooks, SSE token streaming, and Docker Compose orchestration. |
 | **Model Context Protocol (MCP)** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=nodejs,npm,bash" height="28" alt="MCP" /></a> | `MultiServerMCPClient` orchestrating Node.js stdio servers (`@openbnb/mcp-server-airbnb`, `@pinecone-database/mcp`). |
 | **Database & Persistence** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=postgres" height="28" alt="PostgreSQL" /></a> <a href="https://neon.tech"><img src="frontend/assets/images/icons/tile_neon.svg" height="28" width="28" alt="Neon" /></a> <a href="https://langchain-ai.github.io/langgraph/"><img src="frontend/assets/images/icons/tile_langgraph.svg" height="28" width="28" alt="LangGraph" /></a> | Standalone Lakebase Postgres with PgBouncer connection pooling (`psycopg_pool`), Argon2id auth, and LangGraph checkpoints (`AsyncPostgresSaver`). |
-| **Auth & Security** | <a href="https://jwt.io/"><img src="frontend/assets/images/icons/tile_jwt.svg" height="28" width="28" alt="JWT" /></a> <a href="https://neon.tech"><img src="frontend/assets/images/icons/tile_neon.svg" height="28" width="28" alt="Neon Auth" /></a> | Cryptographic Argon2id password hashing, stateless JWT Bearer token generation, and Neon blacklist token invalidation table. |
+| **Auth & Security** | <a href="https://jwt.io/"><img src="frontend/assets/images/icons/tile_jwt.svg" height="28" width="28" alt="JWT" /></a> <a href="https://neon.tech"><img src="frontend/assets/images/icons/tile_neon.svg" height="28" width="28" alt="Neon Auth" /></a> | Cryptographic Argon2id password hashing, stateless JWT Bearer + httpOnly cookie sessions, anti-enumeration rate limiting, and Neon blacklist token invalidation table. |
 | **Deep Learning & Models** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=pytorch,tensorflow" height="28" alt="ML" /></a> <a href="https://huggingface.co/ambideXtrous9/brand-logo-classifiers"><img src="frontend/assets/images/icons/tile_huggingface.svg" height="28" width="28" alt="Hugging Face" /></a> | Transfer Learning (Xception, InceptionV3, MobileNetV2, EfficientNet-B0), YOLOv8, and dynamic startup checkpoint download. |
 | **Presentation Layer** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=html,css,js,ts" height="28" alt="Frontend" /></a> | Decoupled SPA, Obsidian/Streamlit design system, WebSockets, SSE event handlers, and responsive CSS variables. |
 | **Vector Search & RAG** | <a href="https://www.pinecone.io"><img src="frontend/assets/images/icons/tile_pinecone.svg" height="28" width="28" alt="Pinecone DB" /></a> <a href="https://langchain.com"><img src="frontend/assets/images/icons/tile_langchain.svg" height="28" width="28" alt="LangChain" /></a> | 8,970 vector chunks in `hpvdb-openai` index with Cross-Encoder Neural Reranking for lore retrieval. |
@@ -500,7 +504,7 @@ PostgreSQL is completely decoupled from the application container and runs as a 
 | **Neon Checkpointing & Auth** | <img src="frontend/assets/images/icons/tile_neon.svg" height="20" width="20" alt="Neon" /> <img src="frontend/assets/images/icons/tile_langgraph.svg" height="20" width="20" alt="LangGraph" /> LangGraph `AsyncPostgresSaver`, Neon Postgres | Real-time thread state serialization, persistent multi-turn memory, and Argon2id session authentication. |
 | **HF Dynamic Checkpoints** | <img src="frontend/assets/images/icons/tile_huggingface.svg" height="20" width="20" alt="Hugging Face" /> Hugging Face Hub, `huggingface_hub` | Dynamic lifespan startup synchronization of deep learning weights (.ckpt, .pt) keeping repo lightweight. |
 | **JWT Authentication Guard** | <img src="frontend/assets/images/icons/tile_jwt.svg" height="20" width="20" alt="JWT" /> FastAPI, PyJWT, Argon2id | Strict authentication gating on all AI agent endpoints; public access limited strictly to Home. |
-| **Stock Screener & Valuation** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=python" height="20" alt="Python" /></a> Pandas, Technical Analysis, Valuation Models | 20-DMA volume breakout scanner across Nifty 500/Microcap 250 with automated institutional research reports. |
+| **Stock Screener & Valuation** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=python" height="20" alt="Python" /></a> Pandas, Technical Analysis, Valuation Models | 20-DMA volume breakout scanner across Nifty 500/Microcap 250 with automated institutional research reports and explicit `data_quality` flags — no fabricated data. |
 | **Vision AI & YOLO Detection** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=pytorch" height="20" alt="PyTorch" /></a> PyTorch, YOLOv8, Timm | 27-brand corporate logo neural classification with real-time bounding-box coordinates overlay. |
 | **2D Clustering Sandbox** | <a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=scikitlearn" height="20" alt="Scikit-Learn" /></a> Scikit-Learn, Plotly.js | Interactive 2D spatial canvas with real-time K-Means, DBSCAN, and Silhouette Coefficient evaluation. |
 | **Voice AI Agent** | <img src="frontend/assets/images/icons/tile_livekit.svg" height="20" width="20" alt="LiveKit" /> <img src="frontend/assets/images/icons/tile_webrtc.svg" height="20" width="20" alt="WebRTC" /> LiveKit WebRTC, Groq Whisper, Silero VAD | Low-latency full-duplex conversational voice agent with live audio waveform visualization. |
@@ -514,22 +518,28 @@ PostgreSQL is completely decoupled from the application container and runs as a 
 | Domain | Method | Endpoint | Auth | Description |
 | :--- | :---: | :--- | :---: | :--- |
 | **System** | `GET` | `/api/system/health` | Public | System status and checkpointer mode. |
-| **Auth** | `POST` | `/api/auth/signup` | Public | Register new user account. |
-| **Auth** | `POST` | `/api/auth/login` | Public | Authenticate and issue JWT Bearer token. |
-| **Auth** | `GET` | `/api/auth/me` | 🔒 Bearer | Fetch authenticated user profile. |
-| **Auth** | `POST` | `/api/auth/logout` | 🔒 Bearer | Revoke token and add to PostgreSQL blacklist. |
-| **Chat** | `GET` | `/api/chat/threads/{id}/history` | 🔒 Bearer | Retrieve thread chat history. |
-| **Chat** | `DELETE`| `/api/chat/threads/{id}` | 🔒 Bearer | Delete thread history and checkpoints. |
+| **Auth** | `POST` | `/api/auth/signup` | Public | Register new user account (min-8 password) and set auth cookie. |
+| **Auth** | `POST` | `/api/auth/login` | Public | Authenticate, issue JWT Bearer token + httpOnly cookie (rate-limited). |
+| **Auth** | `GET` | `/api/auth/me` | 🔒 Bearer/Cookie | Fetch authenticated user profile. |
+| **Auth** | `POST` | `/api/auth/logout` | 🔒 Bearer/Cookie | Revoke token, add to PostgreSQL blacklist, clear cookie. |
+| **Auth** | `POST` | `/api/auth/forgot-password` | Public | Anti-enumeration response; reset token delivered via Telegram only (rate-limited). |
+| **Auth** | `POST` | `/api/auth/reset-password` | Public | Consume reset token and set new password (rate-limited). |
+| **Chat** | `GET` | `/api/chat/threads/{id}/history` | 🔒 Bearer | Retrieve thread chat history (owner-only, 404 otherwise). |
+| **Chat** | `DELETE`| `/api/chat/threads/{id}` | 🔒 Bearer | Delete thread history and checkpoints (owner-only). |
 | **Harry Potter** | `POST` | `/api/harry/ask` | 🔒 Bearer | Lore query with Pinecone retrieval. |
-| **Harry Potter** | `GET` | `/api/harry/ask/stream` | 🔒 Bearer | Real-time SSE token stream. |
+| **Harry Potter** | `GET` | `/api/harry/ask/stream` | 🔒 Bearer/Cookie | Real-time SSE token stream. |
 | **Tour Planner** | `POST` | `/api/tour/plan` | 🔒 Bearer | Airbnb accommodations and travel plan. |
-| **Tour Planner** | `GET` | `/api/tour/stream` | 🔒 Bearer | Real-time SSE streaming with MCP tools. |
+| **Tour Planner** | `GET` | `/api/tour/stream` | 🔒 Bearer/Cookie | Real-time SSE streaming with MCP tools. |
 | **Stock Screener** | `POST` | `/api/stock/scan` | 🔒 Bearer | Volume breakout equity scanner. |
-| **Stock Screener** | `GET` | `/api/stock/report` | 🔒 Bearer | Institutional valuation report. |
-| **Vision Studio** | `POST` | `/api/vision/classify` | 🔒 Bearer | 27-brand logo classification. |
-| **Vision Studio** | `POST` | `/api/vision/yolo` | 🔒 Bearer | YOLO logo bounding box detection. |
+| **Stock Screener** | `GET` | `/api/stock/analysis/{symbol}` | Public | Full company analysis with `data_quality` flags (15-min cache). |
+| **Stock Screener** | `POST` | `/api/stock/report` | 🔒 Bearer | Institutional AI valuation report (Groq). |
+| **Vision Studio** | `POST` | `/api/vision/classify-all` | Public | 4-model transfer-learning comparison (weights-only torch.load). |
+| **Vision Studio** | `POST` | `/api/vision/yolo` | Public | YOLO logo bounding-box detection. |
 | **Clustering** | `POST` | `/api/cluster/run` | 🔒 Bearer | K-Means & DBSCAN with Silhouette scores. |
-| **Voice Agent** | `GET` | `/api/voice/status` | 🔒 Bearer | LiveKit room tokens and agent readiness. |
+| **Voice Agent** | `GET`/`POST` | `/api/voice/token` | 🔒 Bearer | LiveKit room token (1-hour TTL). |
+| **Voice Agent** | `GET` | `/api/voice/status` | Public | Agent readiness; LiveKit URL hidden for anonymous callers. |
+| **Telegram Bot** | `POST` | `/api/telegram/webhook` | 🔒 Secret Header | Bot updates; `X-Telegram-Bot-Api-Secret-Token` + chat allowlist. |
+| **Telegram Bot** | `POST` | `/api/telegram/notify` | 🔒 Secret Header | Admin-only pipeline alert injection. |
 
 ---
 
@@ -567,13 +577,13 @@ python run.py
 
 ## 🧪 Integration Verification
 
-Run the end-to-end integration test suite verifying authentication gating, PostgreSQL checkpointing, session isolation, and token blacklisting:
+Run the hermetic end-to-end test suite — it boots the full ASGI app in-process (in-memory fallback stores, no Postgres/HF/network needed) and verifies authentication gating, cookie transport, anti-enumeration responses, Telegram webhook auth, CORS allowlisting, thread-ownership IDOR guards, WebSocket close codes, and voice-token 401s:
 
 ```bash
-python3 backend/tests/test_postgres_auth.py
+pytest backend/tests -q
 ```
 
-> **Result**: 11/11 tests passing (Health, 401 Unauthorized Gating, Signup, Login, Profile, Bearer Auth, Query Token, Chat History, Logout & Revocation).
+> **Result**: 31/31 tests passing — `test_sprint1_security.py` (behavioral security suite) + `test_static_hardening.py` (CI-enforceable SRI/XSS/pickle regression guards). CI runs this suite plus `ruff` and `semgrep` on every PR before any deployment.
 
 ---
 
@@ -584,17 +594,18 @@ portfolio-agent/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                     # FastAPI application & lifespan management
-│   │   ├── config.py                   # Pydantic Settings
-│   │   ├── core/                       # Auth, DB, LLM factory, MCP client
+│   │   ├── config.py                   # Pydantic Settings (CORS allowlist, JWT, secrets)
+│   │   ├── core/                       # Auth, DB, LLM factory, MCP client, ratelimit, notify
 │   │   ├── schemas/                    # Pydantic validation models
+│   │   ├── voice_agent/                # LiveKit worker (tools, telemetry, LangGraph)
 │   │   └── api/endpoints/              # Auth-guarded feature endpoints
-│   └── tests/test_postgres_auth.py     # Integration test suite
+│   └── tests/                          # Hermetic pytest suite (conftest + security suites)
 ├── frontend/
 │   ├── index.html                      # SPA interface with dedicated chat sidebars
 │   ├── css/style.css                   # Streamlit & Obsidian design system
-│   ├── js/                             # Authenticated API client & agent view modules
+│   ├── js/                             # Authenticated API client & agent view modules (markdown.js sanitizer)
 │   └── assets/images/                  # Hero banner, graphs, diagrams
-├── docker-compose.yml                  # 3-tier production stack
+├── docker-compose.yml                  # 3-tier production stack (scoped secrets)
 └── run.py                              # Local dev runner
 ```
 
