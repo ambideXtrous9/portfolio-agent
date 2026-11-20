@@ -252,9 +252,18 @@ export function initClusterSandbox() {
     });
   });
 
-  // Slider controls
+  // Slider controls with smooth 120ms debounce
+  let sliderDebounceTimer = null;
+  function scheduleClustering() {
+    if (sliderDebounceTimer) clearTimeout(sliderDebounceTimer);
+    sliderDebounceTimer = setTimeout(() => {
+      runClustering();
+    }, 120);
+  }
+
   kmeansSlider.addEventListener("input", (e) => {
     kmeansVal.innerText = e.target.value;
+    scheduleClustering();
   });
   kmeansSlider.addEventListener("change", runClustering);
 
@@ -262,6 +271,7 @@ export function initClusterSandbox() {
     const eps = parseInt(e.target.value);
     dbscanVal.innerText = eps;
     updateDbscanGuidance(eps);
+    scheduleClustering();
   });
   dbscanSlider.addEventListener("change", runClustering);
 
@@ -488,6 +498,18 @@ export function initClusterSandbox() {
       ? "DBSCAN Clustering Visualization"
       : "K-Means Clustering Visualization";
 
+    // Update live telemetry summary cards
+    const algoMetricEl = document.getElementById("cluster-metric-algo");
+    const countMetricEl = document.getElementById("cluster-metric-count");
+    const noiseMetricEl = document.getElementById("cluster-metric-noise");
+    const silMetricEl = document.getElementById("cluster-metric-sil");
+    if (algoMetricEl) algoMetricEl.textContent = isDbscan ? "DBSCAN" : "K-Means";
+    if (countMetricEl) countMetricEl.textContent = data.num_clusters != null ? String(data.num_clusters) : "0";
+    if (noiseMetricEl) noiseMetricEl.textContent = data.num_noise != null ? String(data.num_noise) : "0";
+    if (silMetricEl) {
+      silMetricEl.textContent = data.silhouette_score != null ? Number(data.silhouette_score).toFixed(3) : "—";
+    }
+
     // Build distinct HSV color palette matching sns.color_palette('hsv', n)
     const uniqueClusters = Array.from(new Set(points.map((p) => p.cluster))).sort((a, b) => a - b);
     const nonNoiseClusters = uniqueClusters.filter((c) => c !== -1);
@@ -528,6 +550,24 @@ export function initClusterSandbox() {
         },
       };
     });
+
+    // Plot K-Means centroids if available
+    if (!isDbscan && Array.isArray(data.centroids) && data.centroids.length > 0) {
+      traces.push({
+        x: data.centroids.map((c) => c[0]),
+        y: data.centroids.map((c) => c[1]),
+        mode: "markers",
+        type: "scatter",
+        name: "Centroids",
+        showlegend: false,
+        marker: {
+          symbol: "diamond",
+          size: 13,
+          color: "#23201B",
+          line: { color: "#FFFFFF", width: 2 },
+        },
+      });
+    }
 
     const layout = {
       title: {

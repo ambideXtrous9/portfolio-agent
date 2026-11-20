@@ -1,6 +1,5 @@
 """Vercel Serverless Function entry point for ambideXtrous AI Portfolio FastAPI backend."""
 
-import os
 import sys
 from pathlib import Path
 

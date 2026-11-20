@@ -60,15 +60,22 @@ Rules for your voice responses:
 7. For general conversation or greetings, reply directly without invoking tools."""
 
 
+_cached_voice_llm = None
+_cached_voice_workflow = None
+
+
 def get_groq_llm():
-    """Instantiate and return the Groq chat model configured for low-latency tool calling."""
-    return ChatGroq(
-        model=GROQ_MODEL,
-        groq_api_key=GROQ_API_KEY,
-        temperature=0.4,
-        reasoning_effort="low",
-        max_tokens=250,
-    )
+    """Instantiate and return the cached Groq chat model configured for low-latency tool calling."""
+    global _cached_voice_llm
+    if _cached_voice_llm is None:
+        _cached_voice_llm = ChatGroq(
+            model=GROQ_MODEL,
+            groq_api_key=GROQ_API_KEY or None,
+            temperature=0.4,
+            reasoning_effort="low",
+            max_tokens=250,
+        )
+    return _cached_voice_llm
 
 
 @observe(name="langgraph_agent_node")
@@ -102,7 +109,11 @@ async def agent_node(state: AgentState) -> dict:
 
 
 def build_langgraph_workflow():
-    """Build, wire, and compile the LangGraph ReAct agent workflow."""
+    """Build, wire, and compile the LangGraph ReAct agent workflow (cached singleton)."""
+    global _cached_voice_workflow
+    if _cached_voice_workflow is not None:
+        return _cached_voice_workflow
+
     workflow = StateGraph(AgentState)
 
     workflow.add_node("agent", agent_node)
@@ -112,7 +123,8 @@ def build_langgraph_workflow():
     workflow.add_conditional_edges("agent", tools_condition)
     workflow.add_edge("tools", "agent")
 
-    return workflow.compile()
+    _cached_voice_workflow = workflow.compile()
+    return _cached_voice_workflow
 
 
 class VoiceGraphWrapper:

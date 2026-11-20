@@ -25,21 +25,38 @@ export function initVoiceAgent() {
   const toolName = document.getElementById('voiceToolName');
   const transcriptList = document.getElementById('voiceTranscriptList');
   const roomNameBadge = document.getElementById('voiceRoomBadge');
+  const promptInput = document.getElementById('voiceTextPromptInput');
+  const btnSendPrompt = document.getElementById('voiceBtnSendPrompt');
+  const voiceTab = document.getElementById('tab-voice');
 
   // State management
   let room = null;
   let isConnected = false;
+  let isServerlessVoiceMode = false;
   let isMuted = false;
   let audioContext = null;
   let micAnalyser = null;
   let agentAnalyser = null;
   let micStream = null;
+  let speechRecognition = null;
   let currentAgentState = 'idle'; // 'idle', 'connecting', 'listening', 'thinking', 'speaking'
   let pendingPrompt = null;
   let phase = 0;
+  let synthSpeakPulse = 0;
 
-  // 60fps Organic Harmonic Aura Visualizer
+  function isVoiceTabVisible() {
+    if (document.visibilityState !== 'visible') return false;
+    if (!voiceTab) return true;
+    return voiceTab.classList.contains('active');
+  }
+
+  // 60fps Organic Harmonic Aura Visualizer (gated on tab visibility)
   function renderOrb() {
+    if (!isVoiceTabVisible()) {
+      setTimeout(() => requestAnimationFrame(renderOrb), 250);
+      return;
+    }
+
     const width = canvas.width;
     const height = canvas.height;
     const centerX = width / 2;
@@ -53,10 +70,16 @@ export function initVoiceAgent() {
       const data = new Uint8Array(agentAnalyser.frequencyBinCount);
       agentAnalyser.getByteFrequencyData(data);
       audioVolume = data.reduce((a, b) => a + b, 0) / (data.length * 255);
+    } else if (currentAgentState === 'speaking') {
+      synthSpeakPulse += 0.14;
+      audioVolume = 0.25 + 0.18 * Math.abs(Math.sin(synthSpeakPulse));
     } else if (currentAgentState === 'listening' && micAnalyser) {
       const data = new Uint8Array(micAnalyser.frequencyBinCount);
       micAnalyser.getByteFrequencyData(data);
       audioVolume = data.reduce((a, b) => a + b, 0) / (data.length * 255);
+    } else if (currentAgentState === 'thinking') {
+      synthSpeakPulse += 0.08;
+      audioVolume = 0.12 + 0.08 * Math.sin(synthSpeakPulse);
     }
 
     const baseRadius = 105 + audioVolume * 65;
@@ -313,17 +336,28 @@ export function initVoiceAgent() {
       await room.connect(url, token);
       await room.localParticipant.setMicrophoneEnabled(true);
 
-      // Check for remote agent presence
+      // Check for remote agent presence; if no remote LiveKit worker joins, answer pending queries via Serverless Voice API
       setTimeout(() => {
         if (isConnected && room && (!room.remoteParticipants || room.remoteParticipants.size === 0)) {
-          addTranscript('System', '⏳ Live WebRTC room open. Waiting for agent worker to respond. If running locally or on server, start the worker with: python -m backend.app.voice_agent.agent dev');
+          addTranscript('System', '⚡ Serverless Voice Bridge active (Groq LangGraph + Live Tools). Ask any question by voice or text!');
         }
-      }, 6000);
+      }, 4500);
 
-      // Local microphone analyser
+      // Local microphone analyser: reuse published mic track when available to avoid opening mic twice
       try {
-        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const micSource = audioContext.createMediaStreamSource(micStream);
+        let existingTrack = null;
+        if (room.localParticipant && room.localParticipant.audioTrackPublications) {
+          for (const pub of room.localParticipant.audioTrackPublications.values()) {
+            if (pub.track && pub.track.mediaStreamTrack) {
+              existingTrack = pub.track.mediaStreamTrack;
+              break;
+            }
+          }
+        }
+        const streamForAnalyser = existingTrack
+          ? new MediaStream([existingTrack])
+          : (micStream = await navigator.mediaDevices.getUserMedia({ audio: true }));
+        const micSource = audioContext.createMediaStreamSource(streamForAnalyser);
         micAnalyser = audioContext.createAnalyser();
         micAnalyser.fftSize = 64;
         micSource.connect(micAnalyser);
@@ -332,13 +366,97 @@ export function initVoiceAgent() {
       }
 
     } catch (err) {
-      console.error('Call connection error:', err);
-      if (err.name === 'NotAllowedError' || (err.message && err.message.toLowerCase().includes('permission'))) {
-        addTranscript('System', 'Microphone access denied. Please allow microphone permissions in your browser.');
-      } else {
-        addTranscript('System', `Connection error: ${err.message || 'Unable to establish WebRTC connection.'}`);
+      console.warn('LiveKit WebRTC unavailable, activating Serverless Voice Assistant fallback:', err);
+      await startServerlessVoiceSession();
+    }
+  }
+
+  function speakTextWithBrowserTTS(text) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window) || !text) {
+      updateUIState(isConnected ? 'listening' : 'disconnected');
+      return;
+    }
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.03;
+      utterance.pitch = 1.0;
+      utterance.onstart = () => {
+        updateUIState('speaking');
+      };
+      utterance.onend = () => {
+        updateUIState(isConnected ? 'listening' : 'disconnected');
+      };
+      utterance.onerror = () => {
+        updateUIState(isConnected ? 'listening' : 'disconnected');
+      };
+      window.speechSynthesis.speak(utterance);
+    } catch (_) {
+      updateUIState(isConnected ? 'listening' : 'disconnected');
+    }
+  }
+
+  async function queryServerlessVoiceAgent(promptText) {
+    try {
+      updateUIState('thinking');
+      const res = await fetchAPI('/voice/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: promptText,
+          room: roomNameBadge?.textContent || 'serverless-voice',
+        }),
+      });
+      if (res && Array.isArray(res.tools_used) && res.tools_used.length > 0) {
+        res.tools_used.forEach((tName) => {
+          showToolActivity(`Tool: ${tName}`);
+          addTranscript('Agent', `[Tool Call] Executed ${tName}`);
+        });
       }
-      disconnectCall();
+      const reply = res?.reply || 'I processed your request.';
+      addTranscript(res?.sender || 'Agent', reply);
+      speakTextWithBrowserTTS(reply);
+    } catch (err) {
+      console.error('Serverless voice chat error:', err);
+      addTranscript('System', `Voice AI note: ${err.message || 'Could not reach voice backend.'}`);
+      updateUIState(isConnected ? 'idle' : 'disconnected');
+    }
+  }
+
+  async function startServerlessVoiceSession() {
+    isConnected = true;
+    isServerlessVoiceMode = true;
+    if (roomNameBadge) roomNameBadge.textContent = 'serverless-voice';
+    updateUIState('listening');
+    addTranscript('System', '🎙️ Connected to Serverless Voice AI (Groq LangGraph + Web Speech). Speak or click a prompt!');
+
+    // Attach optional browser SpeechRecognition for hands-free voice input
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRec && !speechRecognition) {
+      try {
+        speechRecognition = new SpeechRec();
+        speechRecognition.continuous = true;
+        speechRecognition.interimResults = false;
+        speechRecognition.lang = 'en-US';
+        speechRecognition.onresult = (event) => {
+          if (isMuted) return;
+          const last = event.results[event.results.length - 1];
+          if (last && last.isFinal) {
+            const transcript = (last[0]?.transcript || '').trim();
+            if (transcript) {
+              dispatchUserPrompt(transcript);
+            }
+          }
+        };
+        speechRecognition.onerror = () => {};
+        speechRecognition.start();
+      } catch (_) {}
+    }
+
+    if (pendingPrompt) {
+      const p = pendingPrompt;
+      pendingPrompt = null;
+      await queryServerlessVoiceAgent(p);
     }
   }
 
@@ -346,6 +464,13 @@ export function initVoiceAgent() {
     if (room) {
       try { room.disconnect(); } catch (e) {}
       room = null;
+    }
+    if (speechRecognition) {
+      try { speechRecognition.stop(); } catch (_) {}
+      speechRecognition = null;
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try { window.speechSynthesis.cancel(); } catch (_) {}
     }
     if (micStream) {
       micStream.getTracks().forEach(t => t.stop());
@@ -355,6 +480,7 @@ export function initVoiceAgent() {
     if (existingAudio) existingAudio.remove();
 
     isConnected = false;
+    isServerlessVoiceMode = false;
     isMuted = false;
     updateUIState('disconnected');
     addTranscript('System', 'Call disconnected.');
@@ -362,9 +488,11 @@ export function initVoiceAgent() {
 
   // Toggle Mute
   async function toggleMute() {
-    if (!room || !isConnected) return;
+    if (!isConnected) return;
     isMuted = !isMuted;
-    await room.localParticipant.setMicrophoneEnabled(!isMuted);
+    if (room && room.localParticipant) {
+      await room.localParticipant.setMicrophoneEnabled(!isMuted);
+    }
 
     if (isMuted) {
       btnMic.classList.add('muted');
@@ -426,10 +554,16 @@ export function initVoiceAgent() {
     if (orbStatus) orbStatus.textContent = 'Thinking...';
     if (orbSub) orbSub.textContent = `Query: "${promptText.substring(0, 32)}..."`;
 
-    if (!isConnected || !room || !room.localParticipant) {
-      pendingPrompt = promptText;
-      console.log('Voice session not connected yet. Saved pending prompt and connecting...', promptText);
-      await connectCall();
+    if (!isConnected) {
+      // Directly execute via serverless voice endpoint so suggestion chips & text queries respond immediately
+      // even if a WebRTC call hasn't been initiated yet.
+      await queryServerlessVoiceAgent(promptText);
+      return;
+    }
+
+    const hasRemoteWorker = room && room.remoteParticipants && room.remoteParticipants.size > 0;
+    if (isServerlessVoiceMode || !hasRemoteWorker || !room || !room.localParticipant) {
+      await queryServerlessVoiceAgent(promptText);
       return;
     }
 
@@ -444,8 +578,8 @@ export function initVoiceAgent() {
       await room.localParticipant.publishData(data, { reliable: true, topic: 'user_prompt' });
       console.log('Successfully published prompt data to LiveKit room:', promptText);
     } catch (err) {
-      console.error('Failed to publish data to LiveKit room:', err);
-      addTranscript('System', `Could not send prompt to agent: ${err.message}`);
+      console.warn('LiveKit data publish failed, falling back to serverless voice endpoint:', err);
+      await queryServerlessVoiceAgent(promptText);
     }
   }
 
@@ -461,6 +595,26 @@ export function initVoiceAgent() {
       await dispatchUserPrompt(prompt);
     });
   });
+
+  // Text prompt input bar in Voice Agent tab
+  function submitTextPrompt() {
+    const val = (promptInput?.value || '').trim();
+    if (!val) return;
+    if (promptInput) promptInput.value = '';
+    dispatchUserPrompt(val);
+  }
+
+  if (btnSendPrompt) {
+    btnSendPrompt.addEventListener('click', submitTextPrompt);
+  }
+  if (promptInput) {
+    promptInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submitTextPrompt();
+      }
+    });
+  }
 
   // Tour Agent quick jump button
   const jumpBtn = document.getElementById('btn-jump-voice-agent');

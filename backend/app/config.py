@@ -73,8 +73,8 @@ class Settings(BaseSettings):
         o.strip()
         for o in os.getenv(
             "PORTFOLIO_CORS_ORIGINS",
-            "http://localhost:3000,http://localhost:8000,"
-            "http://127.0.0.1:3000,http://127.0.0.1:8000,"
+            "http://localhost:3000,http://localhost:8000,http://localhost:8050,"
+            "http://127.0.0.1:3000,http://127.0.0.1:8000,http://127.0.0.1:8050,"
             "https://portfolio-agent-ai.vercel.app,"
             "https://sushovan-ai-portfolio.vercel.app,"
             "https://ambidextrous-portfolio.vercel.app",
@@ -176,8 +176,7 @@ class Settings(BaseSettings):
         except Exception:
             return "postgresql://****:****@masked"
 
-    class Config:
-        case_sensitive = True
+    model_config = {"case_sensitive": True}
 
 
 settings = Settings()

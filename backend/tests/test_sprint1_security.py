@@ -250,3 +250,86 @@ def test_voice_status_hides_url_from_anon(client: TestClient):
     r = client.get("/api/voice/status")
     assert r.status_code == 200
     assert r.json()["livekit_url"] is None
+
+
+# ── S2: Tour query parser, Stock & Cluster resilience, Agent session_id ──────
+def test_tour_parse_trip_query_extracts_clean_destinations():
+    from backend.app.api.endpoints.tour import parse_trip_query
+
+    cases = [
+        ("Find beachfront Airbnb in Goa under ₹5000/night with live availability", "Goa", 3),
+        ("5 days scenic Switzerland itinerary with weather forecast & train routes", "Switzerland", 5),
+        ("Tokyo 3-day cultural exploration with Airbnb accommodations and budget breakdown", "Tokyo", 3),
+        ("4 days weekend getaway to Manali for 2 adults with Airbnb stays", "Manali", 4),
+    ]
+    for query, expected_loc, expected_days in cases:
+        loc, checkin, checkout, duration = parse_trip_query(query)
+        assert loc == expected_loc, f"Failed for {query!r}: got {loc!r}"
+        assert duration == expected_days
+
+
+def test_harry_ask_preserves_session_id_and_blocks_foreign_thread(client: TestClient):
+    alice_tok = register_and_login(client, "hp_alice@example.com")
+    r = client.post(
+        "/api/harry/ask",
+        json={"query": "hello", "session_id": "hp-custom-thread-1"},
+        headers=auth_headers(alice_tok),
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["thread_id"] == "hp-custom-thread-1"
+
+    # Saved under the caller's session_id so history lookup succeeds
+    hist = client.get("/api/chat/threads/hp-custom-thread-1/history", headers=auth_headers(alice_tok))
+    assert hist.status_code == 200
+    assert hist.json()["message_count"] == 2
+    assert hist.json()["messages"][0]["role"] == "user"
+    assert hist.json()["messages"][1]["role"] == "assistant"
+
+    # Another user cannot hijack Alice's session_id via REST fallback
+    bob_tok = register_and_login(client, "hp_bob@example.com")
+    r_forbidden = client.post(
+        "/api/harry/ask",
+        json={"query": "hello", "session_id": "hp-custom-thread-1"},
+        headers=auth_headers(bob_tok),
+    )
+    assert r_forbidden.status_code == 403
+
+
+def test_stock_scan_and_technical_indicators_nan_resilience(client: TestClient):
+    import numpy as np
+    import pandas as pd
+
+    from backend.app.api.endpoints.stock import compute_technical_indicators
+
+    # DataFrame containing NaNs in Volume and flat Close prices (0 loss -> infinite RS)
+    df = pd.DataFrame({
+        "Close": [100.0 + i * 0.5 for i in range(25)],
+        "Volume": [np.nan if i == 24 else 10000 for i in range(25)],
+    })
+    indicators = compute_technical_indicators(df)
+    assert indicators["Close"] == 112.0
+    assert indicators["Volume"] == 0
+    assert not np.isnan(indicators["RSI"])
+
+    # Fast cache-backed screener modes
+    for mode in ("multibagger", "highest_eps", "low_debt", "profit_jump"):
+        res = client.post("/api/stock/scan", json={"universe": "nifty500", "mode": mode, "limit": 5})
+        assert res.status_code == 200, res.text
+        assert "stocks" in res.json()
+
+
+def test_cluster_endpoints_and_synthetic_datasets(client: TestClient):
+    r_ds = client.get("/api/cluster/dataset")
+    assert r_ds.status_code == 200
+    assert r_ds.json()["total_points"] == 2300
+
+    r_km = client.post("/api/cluster/run", json={"algorithm": "kmeans", "n_clusters": 3})
+    assert r_km.status_code == 200
+    body = r_km.json()
+    assert body["num_clusters"] == 3
+    assert body["centroids"] and len(body["centroids"]) == 3
+    assert body["silhouette_score"] is not None
+
+    r_kd = client.get("/api/cluster/kdist?k=4")
+    assert r_kd.status_code == 200
+    assert len(r_kd.json()["y"]) == 2300

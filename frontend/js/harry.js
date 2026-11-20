@@ -5,7 +5,7 @@
  */
 
 import { streamAgent, apiGetChatHistory, apiClearChatHistory, getAuthToken } from "./api.js";
-import { renderSafeMarkdown } from "./markdown.js";
+import { renderSafeMarkdown, escapeHtml } from "./markdown.js";
 
 export function initHarryScholar() {
   const workspace = document.getElementById("harry-workspace");
@@ -29,6 +29,22 @@ export function initHarryScholar() {
   const btnClearHistory = document.getElementById("harry-btn-clear-history");
 
   if (!chatHistory || !heroInput) return;
+
+  let activeStream = null;
+  let activeTimer = null;
+
+  function stopActiveStream() {
+    if (activeTimer) {
+      clearInterval(activeTimer);
+      activeTimer = null;
+    }
+    if (activeStream && typeof activeStream.abort === "function") {
+      activeStream.abort();
+      activeStream = null;
+    }
+    if (heroSendBtn) heroSendBtn.disabled = false;
+    if (bottomSendBtn) bottomSendBtn.disabled = false;
+  }
 
   // Stable or stored Thread/Session ID
   let currentThreadId = localStorage.getItem("portfolio_hp_thread_id");
@@ -78,14 +94,15 @@ export function initHarryScholar() {
         setHeroState(false);
         chatHistory.innerHTML = "";
         res.messages.forEach((msg) => {
-          const isUser = msg.type === "human" || msg.type === "user";
+          const role = (msg.role || msg.type || "").toLowerCase();
+          const isUser = role === "user" || role === "human";
           const msgDiv = document.createElement("div");
           msgDiv.className = `st-chat-message ${isUser ? "user" : "assistant"}`;
           msgDiv.innerHTML = `
             <div class="st-chat-avatar">${isUser ? "👤" : "🪄"}</div>
             <div class="st-chat-content">
               <strong>${isUser ? "You" : "Lore Scholar"}</strong><br>
-              ${isUser ? escapeHtml(msg.content) : renderSafeMarkdown(msg.content)}
+              ${isUser ? escapeHtml(msg.content) : `<div class="st-markdown-body">${renderSafeMarkdown(msg.content)}</div>`}
             </div>
           `;
           chatHistory.appendChild(msgDiv);
@@ -105,6 +122,7 @@ export function initHarryScholar() {
 
   // Start fresh thread
   function startNewChat() {
+    stopActiveStream();
     currentThreadId = "hp-" + Math.random().toString(36).substring(2, 9);
     localStorage.setItem("portfolio_hp_thread_id", currentThreadId);
     updateThreadUI();
@@ -118,6 +136,7 @@ export function initHarryScholar() {
   // Cross-view events
   window.addEventListener("portfolio:reload_harry_history", (e) => {
     if (e.detail?.threadId) {
+      stopActiveStream();
       currentThreadId = e.detail.threadId;
       localStorage.setItem("portfolio_hp_thread_id", currentThreadId);
       updateThreadUI();
@@ -142,12 +161,16 @@ export function initHarryScholar() {
 
   // Clear History Handler
   btnClearHistory?.addEventListener("click", async () => {
-    if (!confirm("Are you sure you want to clear chat history for this thread in PostgreSQL?")) return;
     try {
       await apiClearChatHistory(currentThreadId);
       setHeroState(true);
+      window.dispatchEvent(new CustomEvent("portfolio:toast", {
+        detail: { message: "Conversation history cleared.", type: "info" }
+      }));
     } catch (err) {
-      alert("Failed to clear history: " + err.message);
+      window.dispatchEvent(new CustomEvent("portfolio:toast", {
+        detail: { message: "Failed to clear history: " + err.message, type: "error" }
+      }));
     }
   });
 
@@ -251,20 +274,34 @@ export function initHarryScholar() {
     const toolsLog = assistantMsg.querySelector(".st-tools-log");
     const markdownBody = assistantMsg.querySelector(".st-markdown-body");
 
+    stopActiveStream();
+    if (heroSendBtn) heroSendBtn.disabled = true;
+    if (bottomSendBtn) bottomSendBtn.disabled = true;
+
+    const reqStartMs = Date.now();
+    let currentStepLabel = "🚀 Starting Harry & Mythology Multi-Agent Workflow...";
+    activeTimer = setInterval(() => {
+      if (statusLabel) {
+        const sec = ((Date.now() - reqStartMs) / 1000).toFixed(1);
+        statusLabel.textContent = `${currentStepLabel} (${sec}s)`;
+      }
+    }, 100);
+
     // 3. Connect via streamAgent with current thread session_id
-    streamAgent("harry", query, {
+    activeStream = streamAgent("harry", query, {
       sessionId: currentThreadId,
       onStatus: (data) => {
+        currentStepLabel = data.message || "Processing...";
         if (statusLabel) {
-          const msg = data.message || "Processing...";
-          const elapsed = data.elapsed != null ? ` (${data.elapsed}s)` : "";
-          statusLabel.textContent = `${msg}${elapsed}`;
+          const sec = data.elapsed != null ? data.elapsed : ((Date.now() - reqStartMs) / 1000).toFixed(1);
+          statusLabel.textContent = `${currentStepLabel} (${sec}s)`;
         }
       },
       onToolCall: (toolName, args) => {
+        const safeId = `tool-${String(toolName).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
         const card = document.createElement("div");
         card.className = "st-tool-call-card";
-        card.id = `tool-${toolName}`;
+        card.id = safeId;
         card.innerHTML = `
           <div class="st-tool-header">🌲 ${escapeHtml(toolName)}</div>
           ${args ? `<div class="st-tool-body">Query: ${escapeHtml(typeof args === 'string' ? args : JSON.stringify(args, null, 2))}</div>` : ""}
@@ -272,17 +309,18 @@ export function initHarryScholar() {
         toolsLog.appendChild(card);
       },
       onToolResult: (toolName, result) => {
-        let card = toolsLog.querySelector(`#tool-${toolName}`);
+        const safeId = `tool-${String(toolName).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+        let card = toolsLog.querySelector(`#${safeId}`);
         if (!card) {
           card = document.createElement("div");
           card.className = "st-tool-call-card";
-          card.id = `tool-${toolName}`;
+          card.id = safeId;
           card.innerHTML = `<div class="st-tool-header">🌲 ${escapeHtml(toolName)}</div>`;
           toolsLog.appendChild(card);
         }
         const resEl = document.createElement("div");
         resEl.style.marginTop = "4px";
-        resEl.style.color = "#00A854";
+        resEl.style.color = "var(--sage-700)";
         resEl.style.fontSize = "0.85rem";
         resEl.innerHTML = `<strong>Result:</strong> ${escapeHtml(typeof result === 'string' ? result : JSON.stringify(result))}`;
         card.appendChild(resEl);
@@ -291,6 +329,11 @@ export function initHarryScholar() {
         // Suppress intermediate drafting so verified final synthesis is presented
       },
       onDone: (data) => {
+        if (activeTimer) {
+          clearInterval(activeTimer);
+          activeTimer = null;
+        }
+        activeStream = null;
         if (statusBadge) statusBadge.style.display = "none";
         if (heroSendBtn) heroSendBtn.disabled = false;
         if (bottomSendBtn) bottomSendBtn.disabled = false;
@@ -300,22 +343,17 @@ export function initHarryScholar() {
         }
       },
       onError: (err) => {
+        if (activeTimer) {
+          clearInterval(activeTimer);
+          activeTimer = null;
+        }
+        activeStream = null;
         if (statusBadge) statusBadge.style.display = "none";
         const errMsg = err?.message || (typeof err === "string" ? err : JSON.stringify(err)) || "An unexpected error occurred.";
-        markdownBody.innerHTML = `<div style="color: #D32F2F; padding: 0.5rem; background: #FDE8E8; border-radius: 4px;">⚠️ Error: ${escapeHtml(errMsg)}</div>`;
+        markdownBody.innerHTML = `<div style="color: var(--terracotta-700); padding: 0.75rem 1rem; background: var(--terracotta-50); border: 1px solid var(--terracotta-200); border-radius: var(--st-radius-sm);">⚠️ Error: ${escapeHtml(errMsg)}</div>`;
         if (heroSendBtn) heroSendBtn.disabled = false;
         if (bottomSendBtn) bottomSendBtn.disabled = false;
       }
     });
-  }
-
-  function escapeHtml(str) {
-    if (!str) return "";
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
   }
 }

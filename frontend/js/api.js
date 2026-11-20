@@ -21,10 +21,10 @@ export function getAPIBase() {
   } catch (_) {}
 
   if (isLocal) {
-    if (window.location.port === "8000" || window.location.port === "80") {
+    if (window.location.port === "8000" || window.location.port === "8050" || window.location.port === "80") {
       return "/api";
     }
-    return "http://localhost:8000/api";
+    return `http://${window.location.hostname}:8050/api`;
   }
 
   // Cloud deployment (Vercel) defaults to /api (uses Vercel rewrites proxy)
@@ -119,11 +119,11 @@ export function getWebSocketURL(path) {
                   window.location.hostname === "127.0.0.1" ||
                   window.location.hostname.startsWith("192.168.");
 
-  if (!isLocal || window.location.port === "8000" || window.location.port === "80") {
+  if (!isLocal || window.location.port === "8000" || window.location.port === "8050" || window.location.port === "80") {
     return `${wsProtocol}//${window.location.host}/ws${cleanPath}${tokenQuery}`;
   } else {
-    // External local dev server (port 3000, 5173, etc.) fallback to FastAPI port 8000
-    return `${wsProtocol}//${window.location.hostname}:8000/ws${cleanPath}${tokenQuery}`;
+    // External local dev server (port 3000, 5173, etc.) fallback to FastAPI port 8050
+    return `${wsProtocol}//${window.location.hostname}:8050/ws${cleanPath}${tokenQuery}`;
   }
 }
 

@@ -37,7 +37,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-}
       - POSTGRES_DATABASE=${POSTGRES_DATABASE:-}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-portfolio-super-secret-jwt-key-2026-production}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/system/health"]
       interval: 30s

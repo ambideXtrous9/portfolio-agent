@@ -9,10 +9,12 @@ class TourPlanRequest(BaseModel):
     query: str = Field(..., description="Travel query, e.g. '3 days trip to Munnar from tomorrow'")
     destination: Optional[str] = None
     duration: Optional[int] = 3
+    session_id: Optional[str] = Field(default=None, description="Optional thread/session ID for conversation continuity")
 
 
 class TourPlanResponse(BaseModel):
     query: str
+    thread_id: Optional[str] = None
     destination: str
     duration_days: int
     checkin: str

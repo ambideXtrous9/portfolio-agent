@@ -5,7 +5,7 @@
  */
 
 import { streamAgent, apiGetChatHistory, apiClearChatHistory, getAuthToken } from "./api.js";
-import { renderSafeMarkdown } from "./markdown.js";
+import { renderSafeMarkdown, escapeHtml } from "./markdown.js";
 
 export function initTourAgent() {
   const workspace = document.getElementById("tour-workspace");
@@ -29,6 +29,22 @@ export function initTourAgent() {
   const btnClearHistory = document.getElementById("tour-btn-clear-history");
 
   if (!chatHistory || !heroInput) return;
+
+  let activeStream = null;
+  let activeTimer = null;
+
+  function stopActiveStream() {
+    if (activeTimer) {
+      clearInterval(activeTimer);
+      activeTimer = null;
+    }
+    if (activeStream && typeof activeStream.abort === "function") {
+      activeStream.abort();
+      activeStream = null;
+    }
+    if (heroSendBtn) heroSendBtn.disabled = false;
+    if (bottomSendBtn) bottomSendBtn.disabled = false;
+  }
 
   // Stable or stored Thread/Session ID
   let currentThreadId = localStorage.getItem("portfolio_tour_thread_id");
@@ -78,14 +94,15 @@ export function initTourAgent() {
         setHeroState(false);
         chatHistory.innerHTML = "";
         res.messages.forEach((msg) => {
-          const isUser = msg.type === "human" || msg.type === "user";
+          const role = (msg.role || msg.type || "").toLowerCase();
+          const isUser = role === "user" || role === "human";
           const msgDiv = document.createElement("div");
           msgDiv.className = `st-chat-message ${isUser ? "user" : "assistant"}`;
           msgDiv.innerHTML = `
             <div class="st-chat-avatar">${isUser ? "👤" : "🏡"}</div>
             <div class="st-chat-content">
               <strong>${isUser ? "You" : "Travel Agent"}</strong><br>
-              ${isUser ? escapeHtml(msg.content) : renderSafeMarkdown(msg.content)}
+              ${isUser ? escapeHtml(msg.content) : `<div class="st-markdown-body">${renderSafeMarkdown(msg.content)}</div>`}
             </div>
           `;
           chatHistory.appendChild(msgDiv);
@@ -105,6 +122,7 @@ export function initTourAgent() {
 
   // Start fresh thread
   function startNewChat() {
+    stopActiveStream();
     currentThreadId = "tour-" + Math.random().toString(36).substring(2, 9);
     localStorage.setItem("portfolio_tour_thread_id", currentThreadId);
     updateThreadUI();
@@ -118,6 +136,7 @@ export function initTourAgent() {
   // Cross-view events
   window.addEventListener("portfolio:reload_tour_history", (e) => {
     if (e.detail?.threadId) {
+      stopActiveStream();
       currentThreadId = e.detail.threadId;
       localStorage.setItem("portfolio_tour_thread_id", currentThreadId);
       updateThreadUI();
@@ -142,12 +161,16 @@ export function initTourAgent() {
 
   // Clear History Handler
   btnClearHistory?.addEventListener("click", async () => {
-    if (!confirm("Are you sure you want to clear chat history for this thread in PostgreSQL?")) return;
     try {
       await apiClearChatHistory(currentThreadId);
       setHeroState(true);
+      window.dispatchEvent(new CustomEvent("portfolio:toast", {
+        detail: { message: "Conversation history cleared.", type: "info" }
+      }));
     } catch (err) {
-      alert("Failed to clear history: " + err.message);
+      window.dispatchEvent(new CustomEvent("portfolio:toast", {
+        detail: { message: "Failed to clear history: " + err.message, type: "error" }
+      }));
     }
   });
 
@@ -253,20 +276,34 @@ export function initTourAgent() {
 
     let fullMarkdown = "";
 
+    stopActiveStream();
+    if (heroSendBtn) heroSendBtn.disabled = true;
+    if (bottomSendBtn) bottomSendBtn.disabled = true;
+
+    const reqStartMs = Date.now();
+    let currentStepLabel = "🚀 Processing Tour Guide Request...";
+    activeTimer = setInterval(() => {
+      if (statusLabel) {
+        const sec = ((Date.now() - reqStartMs) / 1000).toFixed(1);
+        statusLabel.textContent = `${currentStepLabel} (${sec}s)`;
+      }
+    }, 100);
+
     // 3. Connect via streamAgent with current thread session_id
-    streamAgent("tour", query, {
+    activeStream = streamAgent("tour", query, {
       sessionId: currentThreadId,
       onStatus: (data) => {
+        currentStepLabel = data.message || "Processing...";
         if (statusLabel) {
-          const msg = data.message || "Processing...";
-          const elapsed = data.elapsed != null ? ` (${data.elapsed}s)` : "";
-          statusLabel.textContent = `${msg}${elapsed}`;
+          const sec = data.elapsed != null ? data.elapsed : ((Date.now() - reqStartMs) / 1000).toFixed(1);
+          statusLabel.textContent = `${currentStepLabel} (${sec}s)`;
         }
       },
       onToolCall: (toolName, args) => {
+        const safeId = `tool-${String(toolName).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
         const card = document.createElement("div");
         card.className = "st-tool-call-card";
-        card.id = `tool-${toolName}`;
+        card.id = safeId;
         card.innerHTML = `
           <div class="st-tool-header">🛠️ ${escapeHtml(toolName)}</div>
           ${args ? `<div class="st-tool-body">Input: ${escapeHtml(typeof args === 'string' ? args : JSON.stringify(args, null, 2))}</div>` : ""}
@@ -274,17 +311,18 @@ export function initTourAgent() {
         toolsLog.appendChild(card);
       },
       onToolResult: (toolName, result) => {
-        let card = toolsLog.querySelector(`#tool-${toolName}`);
+        const safeId = `tool-${String(toolName).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+        let card = toolsLog.querySelector(`#${safeId}`);
         if (!card) {
           card = document.createElement("div");
           card.className = "st-tool-call-card";
-          card.id = `tool-${toolName}`;
+          card.id = safeId;
           card.innerHTML = `<div class="st-tool-header">🛠️ ${escapeHtml(toolName)}</div>`;
           toolsLog.appendChild(card);
         }
         const resEl = document.createElement("div");
         resEl.style.marginTop = "4px";
-        resEl.style.color = "#00A854";
+        resEl.style.color = "var(--sage-700)";
         resEl.style.fontSize = "0.85rem";
         resEl.innerHTML = `<strong>Result:</strong> ${escapeHtml(typeof result === 'string' ? result : JSON.stringify(result))}`;
         card.appendChild(resEl);
@@ -294,6 +332,11 @@ export function initTourAgent() {
         // Suppress intermediate drafting so verified final itinerary is presented only upon completion
       },
       onDone: (data) => {
+        if (activeTimer) {
+          clearInterval(activeTimer);
+          activeTimer = null;
+        }
+        activeStream = null;
         if (statusBadge) statusBadge.style.display = "none";
         if (heroSendBtn) heroSendBtn.disabled = false;
         if (bottomSendBtn) bottomSendBtn.disabled = false;
@@ -303,22 +346,17 @@ export function initTourAgent() {
         }
       },
       onError: (err) => {
+        if (activeTimer) {
+          clearInterval(activeTimer);
+          activeTimer = null;
+        }
+        activeStream = null;
         if (statusBadge) statusBadge.style.display = "none";
         const errMsg = err?.message || (typeof err === "string" ? err : JSON.stringify(err)) || "An unexpected error occurred.";
-        markdownBody.innerHTML = `<div style="color: #D32F2F; padding: 0.5rem; background: #FDE8E8; border-radius: 4px;">⚠️ Error: ${escapeHtml(errMsg)}</div>`;
+        markdownBody.innerHTML = `<div style="color: var(--terracotta-700); padding: 0.75rem 1rem; background: var(--terracotta-50); border: 1px solid var(--terracotta-200); border-radius: var(--st-radius-sm);">⚠️ Error: ${escapeHtml(errMsg)}</div>`;
         if (heroSendBtn) heroSendBtn.disabled = false;
         if (bottomSendBtn) bottomSendBtn.disabled = false;
       }
     });
-  }
-
-  function escapeHtml(str) {
-    if (!str) return "";
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
   }
 }

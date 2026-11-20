@@ -368,7 +368,8 @@ async def scan_stocks(
                         gain = (delta.where(delta > 0, 0)).rolling(14, min_periods=5).mean()
                         loss = (-delta.where(delta < 0, 0)).rolling(14, min_periods=5).mean()
                         rs = gain / loss
-                        rsi_val = round(float(100 - (100 / (1 + rs.iloc[-1]))), 2) if not rs.empty else 50.0
+                        last_rs = float(rs.iloc[-1]) if (not rs.empty and not pd.isna(rs.iloc[-1])) else 1.0
+                        rsi_val = 100.0 if np.isinf(last_rs) else round(float(100 - (100 / (1 + last_rs))), 2)
 
                         high_20 = float(stock_df["High"].tail(20).max())
                         is_breakout = curr_price >= (high_20 * 0.98) and vol_ratio >= request.min_volume_ratio
@@ -681,12 +682,23 @@ def scrape_screener_in(clean_ticker: str):
         return None, None
 
 
+def _safe_round(val: Any, ndigits: int = 2, default: Any = "N/A") -> Any:
+    try:
+        f = float(val)
+        if np.isnan(f) or np.isinf(f):
+            return default
+        return round(f, ndigits)
+    except Exception:
+        return default
+
+
 def compute_technical_indicators(hist_df: pd.DataFrame) -> Dict[str, Any]:
     """Computes EMA, SMA, RSI, MACD on 1Y historical price action."""
-    if hist_df.empty or len(hist_df) < 20:
+    if hist_df is None or hist_df.empty or len(hist_df) < 20:
         return {}
-    data = hist_df.copy()
-    data.dropna(inplace=True)
+    data = hist_df.dropna(subset=["Close"]).copy()
+    if len(data) < 5:
+        return {}
 
     closes = data["Close"]
     data["EMA_10"] = closes.ewm(span=10, adjust=False).mean()
@@ -710,18 +722,20 @@ def compute_technical_indicators(hist_df: pd.DataFrame) -> Dict[str, Any]:
     data["MACD_Diff"] = data["MACD"] - data["MACD_Signal"]
 
     latest = data.iloc[-1]
+    vol_raw = latest.get("Volume", 0)
+    vol_int = 0 if pd.isna(vol_raw) else int(vol_raw)
     return {
-        "Close": round(float(latest["Close"]), 2),
-        "Volume": int(latest["Volume"]),
-        "EMA_10": round(float(latest["EMA_10"]), 2),
-        "EMA_20": round(float(latest["EMA_20"]), 2),
-        "SMA_50": round(float(latest["SMA_50"]), 2) if not np.isnan(latest["SMA_50"]) else "N/A",
-        "SMA_100": round(float(latest["SMA_100"]), 2) if not np.isnan(latest["SMA_100"]) else "N/A",
-        "SMA_200": round(float(latest["SMA_200"]), 2) if not np.isnan(latest["SMA_200"]) else "N/A",
-        "RSI": round(float(latest["RSI"]), 2) if not np.isnan(latest["RSI"]) else 55.0,
-        "MACD": round(float(latest["MACD"]), 2),
-        "MACD_Signal": round(float(latest["MACD_Signal"]), 2),
-        "MACD_Diff": round(float(latest["MACD_Diff"]), 2),
+        "Close": _safe_round(latest["Close"], 2, 0.0),
+        "Volume": vol_int,
+        "EMA_10": _safe_round(latest["EMA_10"], 2, "N/A"),
+        "EMA_20": _safe_round(latest["EMA_20"], 2, "N/A"),
+        "SMA_50": _safe_round(latest["SMA_50"], 2, "N/A"),
+        "SMA_100": _safe_round(latest["SMA_100"], 2, "N/A"),
+        "SMA_200": _safe_round(latest["SMA_200"], 2, "N/A"),
+        "RSI": _safe_round(latest["RSI"], 2, 55.0),
+        "MACD": _safe_round(latest["MACD"], 2, 0.0),
+        "MACD_Signal": _safe_round(latest["MACD_Signal"], 2, 0.0),
+        "MACD_Diff": _safe_round(latest["MACD_Diff"], 2, 0.0),
     }
 
 
@@ -775,27 +789,58 @@ async def get_stock_analysis(
     # 1. Scrape screener.in or prepare fallback (network I/O -> worker thread)
     fundainfo, shareholdnres = await asyncio.to_thread(scrape_screener_in, clean_sym)
 
-    # 2. Fetch yfinance data (network I/O -> worker thread)
+    # Real local fundamentals cache entry (750 NSE stocks) for resilience against yfinance rate limits
+    cache_item = get_fundamentals_cache().get(sym) or {}
+    catalog_name = None
+    catalog_industry = None
+    try:
+        all_df = load_all_companies_df()
+        match_rows = all_df[all_df["YFSYMBOL"] == sym]
+        if not match_rows.empty:
+            catalog_name = str(match_rows.iloc[0].get("Company Name", "")).strip() or None
+            catalog_industry = str(match_rows.iloc[0].get("Industry", "")).strip() or None
+    except Exception:
+        pass
+
+    # 2. Fetch yfinance data safely (network I/O -> worker thread)
     tick = yf.Ticker(sym)
-    info = await asyncio.to_thread(lambda: tick.info or {})
+    try:
+        info = await asyncio.to_thread(lambda: tick.info or {})
+    except Exception as e:
+        print(f"yfinance info note for {sym}: {e}")
+        info = {}
 
     company_name = (
         (fundainfo.get("Company Name") if fundainfo else None)
         or info.get("longName")
         or info.get("shortName")
+        or catalog_name
         or clean_sym
     )
 
-    curr_p = info.get("currentPrice") or info.get("previousClose") or 0.0
+    curr_p = info.get("currentPrice") or info.get("previousClose") or cache_item.get("current_price") or 0.0
     mcap_num = info.get("marketCap") or 0
-    mcap_str = f"₹{mcap_num / 1e7:,.0f} Cr" if mcap_num else (fundainfo.get("Market Cap", "N/A") if fundainfo else "N/A")
+    if mcap_num:
+        mcap_str = f"₹{mcap_num / 1e7:,.0f} Cr"
+    elif cache_item.get("market_cap"):
+        mcap_str = f"₹{float(cache_item['market_cap']):,.0f} Cr"
+    else:
+        mcap_str = fundainfo.get("Market Cap", "N/A") if fundainfo else "N/A"
 
-    sector = info.get("sector") or "Diversified"
-    industry = info.get("industry") or "Equities"
-    about = (fundainfo.get("About") if fundainfo and fundainfo.get("About") else None) or info.get("longBusinessSummary") or "Leading publicly traded company on the National Stock Exchange of India."
+    sector = info.get("sector") or catalog_industry or "Diversified"
+    industry = info.get("industry") or catalog_industry or "Equities"
+    about = (
+        (fundainfo.get("About") if fundainfo and fundainfo.get("About") else None)
+        or info.get("longBusinessSummary")
+        or f"{company_name} ({sym}) is a publicly traded company listed on the National Stock Exchange of India in the {industry} sector."
+    )
 
-    pe_str = f"{info.get('trailingPE', 0):.2f}" if info.get("trailingPE") else (fundainfo.get("PE", "N/A") if fundainfo else "N/A")
+    pe_num = info.get("trailingPE") or cache_item.get("pe")
+    pe_str = f"{float(pe_num):.2f}" if pe_num else (fundainfo.get("PE", "N/A") if fundainfo else "N/A")
+
     roe_num = info.get("returnOnEquity")
+    if roe_num is None and cache_item.get("roe") is not None:
+        roe_num = float(cache_item["roe"])
     if roe_num is None and fundainfo and fundainfo.get("ROE"):
         try:
             roe_num = float(str(fundainfo["ROE"]).replace("%", "").strip()) / 100.0
@@ -816,18 +861,27 @@ async def get_stock_analysis(
     avg_vol_str = f"{info.get('averageVolume', 0):,}" if info.get("averageVolume") else "N/A"
 
     # 3. 1Y Candlestick History (network I/O -> worker thread)
-    hist = await asyncio.to_thread(tick.history, period="1y", interval="1d")
+    try:
+        hist = await asyncio.to_thread(tick.history, period="1y", interval="1d")
+    except Exception as e:
+        print(f"yfinance history note for {sym}: {e}")
+        hist = pd.DataFrame()
+
     candlestick_data = CandlestickData(dates=[], open=[], high=[], low=[], close=[], volume=[])
-    if not hist.empty:
-        hist = hist.reset_index()
-        candlestick_data = CandlestickData(
-            dates=[d.strftime("%Y-%m-%d") for d in hist["Date"]],
-            open=[round(float(v), 2) for v in hist["Open"]],
-            high=[round(float(v), 2) for v in hist["High"]],
-            low=[round(float(v), 2) for v in hist["Low"]],
-            close=[round(float(v), 2) for v in hist["Close"]],
-            volume=[int(v) for v in hist["Volume"]],
-        )
+    if hist is not None and not hist.empty:
+        hist_clean = hist.dropna(subset=["Open", "High", "Low", "Close"]).reset_index()
+        if not hist_clean.empty:
+            date_col = "Date" if "Date" in hist_clean.columns else hist_clean.columns[0]
+            candlestick_data = CandlestickData(
+                dates=[pd.to_datetime(d).strftime("%Y-%m-%d") for d in hist_clean[date_col]],
+                open=[round(float(v), 2) for v in hist_clean["Open"]],
+                high=[round(float(v), 2) for v in hist_clean["High"]],
+                low=[round(float(v), 2) for v in hist_clean["Low"]],
+                close=[round(float(v), 2) for v in hist_clean["Close"]],
+                volume=[0 if pd.isna(v) else int(v) for v in hist_clean.get("Volume", pd.Series([0] * len(hist_clean)))],
+            )
+            if not curr_p and candlestick_data.close:
+                curr_p = candlestick_data.close[-1]
 
     # 4. Technical Indicators
     tech_indicators = compute_technical_indicators(hist)
@@ -850,18 +904,31 @@ async def get_stock_analysis(
             q_inc = await asyncio.to_thread(lambda: tick.quarterly_income_stmt)
             y_inc = await asyncio.to_thread(lambda: tick.income_stmt)
             q_vals = (
-                [round(float(x) / 1e7, 1) for x in q_inc.loc["Net Income"].iloc[::-1].tolist()]
+                [round(float(x) / 1e7, 1) for x in q_inc.loc["Net Income"].dropna().iloc[::-1].tolist()]
                 if q_inc is not None and not q_inc.empty and "Net Income" in q_inc.index
                 else []
             )
             y_vals = (
-                [round(float(x) / 1e7, 1) for x in y_inc.loc["Net Income"].iloc[::-1].tolist()]
+                [round(float(x) / 1e7, 1) for x in y_inc.loc["Net Income"].dropna().iloc[::-1].tolist()]
                 if y_inc is not None and not y_inc.empty and "Net Income" in y_inc.index
                 else []
             )
-            series_dict = {"Quarter": q_vals, "Yearly": y_vals}
+            if not q_vals and cache_item.get("prev_q") is not None and cache_item.get("latest_q") is not None:
+                q_vals = [
+                    round(float(cache_item["prev_q"]) / 1e7, 1),
+                    round(float(cache_item["latest_q"]) / 1e7, 1),
+                ]
+            series_dict = {k: v for k, v in {"Quarter": q_vals, "Yearly": y_vals}.items() if v}
         except Exception:
-            series_dict = {}
+            if cache_item.get("prev_q") is not None and cache_item.get("latest_q") is not None:
+                series_dict = {
+                    "Quarter": [
+                        round(float(cache_item["prev_q"]) / 1e7, 1),
+                        round(float(cache_item["latest_q"]) / 1e7, 1),
+                    ]
+                }
+            else:
+                series_dict = {}
 
     # Status badges
     financial_status = FinancialStatus(
@@ -874,52 +941,81 @@ async def get_stock_analysis(
     )
 
     # 6. Deep Dive Sections: Valuation, Financials, Growth, Multibagger
+    peg_num = info.get("pegRatio") if info.get("pegRatio") is not None else cache_item.get("peg_ratio")
+    de_raw = info.get("debtToEquity")
+    if de_raw is not None:
+        # yfinance debtToEquity is often reported as a percentage (e.g. 42.0 -> 0.42)
+        de_num = float(de_raw) / 100.0 if float(de_raw) > 5.0 else float(de_raw)
+    elif cache_item.get("debt_to_equity") is not None:
+        de_num = float(cache_item["debt_to_equity"])
+    else:
+        de_num = None
+
+    cr_num = info.get("currentRatio") if info.get("currentRatio") is not None else cache_item.get("current_ratio")
+    rev_g_num = info.get("revenueGrowth") if info.get("revenueGrowth") is not None else cache_item.get("revenue_growth")
+    earn_g_num = info.get("earningsGrowth") if info.get("earningsGrowth") is not None else cache_item.get("earnings_growth")
+    ebitda_m_num = info.get("ebitdaMargins") if info.get("ebitdaMargins") is not None else cache_item.get("ebitda_margin")
+    net_m_num = info.get("profitMargins") if info.get("profitMargins") is not None else cache_item.get("net_margin")
+    fcf_num = info.get("freeCashflow")
+
     valuation = {
         "P/E (TTM)": pe_str,
         "Forward P/E": f"{info.get('forwardPE', 0):.2f}" if info.get("forwardPE") else "N/A",
-        "PEG Ratio": f"{info.get('pegRatio', 0):.2f}" if info.get("pegRatio") else "N/A",
+        "PEG Ratio": f"{float(peg_num):.2f}" if peg_num is not None else "N/A",
         "Price/Book": f"{info.get('priceToBook', 0):.2f}" if info.get("priceToBook") else "N/A",
         "Price/Sales": f"{info.get('priceToSalesTrailing12Months', 0):.2f}" if info.get("priceToSalesTrailing12Months") else "N/A",
+        "Price/FCF": f"{(mcap_num / fcf_num):.2f}" if (mcap_num and fcf_num and fcf_num > 0) else "N/A",
+        "EV/EBITDA": f"{info.get('enterpriseToEbitda', 0):.2f}" if info.get("enterpriseToEbitda") else "N/A",
         "Enterprise Value (Cr)": f"₹{info.get('enterpriseValue', 0) / 1e7:,.0f}" if info.get("enterpriseValue") else "N/A",
     }
 
+    div_yield = info.get("dividendYield")
+    payout_ratio = info.get("payoutRatio")
+    roa_num = info.get("returnOnAssets")
+    if roa_num is None and all(k in info for k in ["netIncomeToCommon", "totalAssets"]) and info["totalAssets"]:
+        roa_num = info.get("netIncomeToCommon", 0) / info.get("totalAssets", 1)
+
     financials = {
         "ROE": roe_str,
-        "ROA": f"{(info.get('netIncomeToCommon', 0) / info.get('totalAssets', 1) * 100):.2f}%" if all(k in info for k in ["netIncomeToCommon", "totalAssets"]) and info["totalAssets"] else "N/A",
-        "Debt/Equity": f"{info.get('debtToEquity', 0):.2f}" if info.get("debtToEquity") else "N/A",
-        "Current Ratio": f"{info.get('currentRatio', 0):.2f}" if info.get("currentRatio") else "N/A",
+        "ROA": f"{float(roa_num) * 100:.2f}%" if roa_num is not None else "N/A",
+        "ROIC": roce_str,
+        "Debt/Equity": f"{de_num:.2f}" if de_num is not None else "N/A",
+        "Current Ratio": f"{float(cr_num):.2f}" if cr_num is not None else "N/A",
         "Quick Ratio": f"{info.get('quickRatio', 0):.2f}" if info.get("quickRatio") else "N/A",
         "Interest Coverage": f"{info.get('interestCoverage', 0):.2f}" if info.get("interestCoverage") else "N/A",
+        "Dividend Yield": f"{float(div_yield) * 100 if float(div_yield) < 1 else float(div_yield):.2f}%" if div_yield else "N/A",
+        "Payout Ratio": f"{float(payout_ratio) * 100:.1f}%" if payout_ratio else "N/A",
     }
 
     growth = {
-        "Revenue Growth (YoY)": f"{info.get('revenueGrowth', 0) * 100:.2f}%" if info.get("revenueGrowth") else "N/A",
-        "Earnings Growth (YoY)": f"{info.get('earningsGrowth', 0) * 100:.2f}%" if info.get("earningsGrowth") else "N/A",
-        "EBITDA Margin": f"{info.get('ebitdaMargins', 0) * 100:.2f}%" if info.get("ebitdaMargins") else "N/A",
+        "Revenue Growth (YoY)": f"{float(rev_g_num) * 100:.2f}%" if rev_g_num is not None else "N/A",
+        "Earnings Growth (YoY)": f"{float(earn_g_num) * 100:.2f}%" if earn_g_num is not None else "N/A",
+        "EBITDA Margin": f"{float(ebitda_m_num) * 100:.2f}%" if ebitda_m_num is not None else "N/A",
         "Operating Margin": f"{info.get('operatingMargins', 0) * 100:.2f}%" if info.get("operatingMargins") else "N/A",
-        "Net Margin": f"{info.get('profitMargins', 0) * 100:.2f}%" if info.get("profitMargins") else "N/A",
-        "Free Cash Flow (Cr)": f"₹{info.get('freeCashflow', 0) / 1e7:,.0f}" if info.get("freeCashflow") else "N/A",
+        "Net Margin": f"{float(net_m_num) * 100:.2f}%" if net_m_num is not None else "N/A",
+        "Free Cash Flow (Cr)": f"₹{fcf_num / 1e7:,.0f}" if fcf_num else "N/A",
+        "FCF Growth (YoY)": f"₹{fcf_num / 1e7:,.0f} Cr" if fcf_num else "N/A",
     }
 
     multibagger = {
         "Earnings Growth (5Y Target)": "15-25%+",
         "Revenue Growth (YoY)": growth["Revenue Growth (YoY)"],
-        "Debt/Equity": f"{info.get('debtToEquity', 0):.2f} (Target: <0.5)" if info.get("debtToEquity") else "< 0.5 Target",
-        "Free Cash Flow": "Positive" if (info.get("freeCashflow", 0) or 0) > 0 else "Neutral",
+        "Debt/Equity": f"{de_num:.2f} (Target: <0.5)" if de_num is not None else "< 0.5 Target",
+        "Free Cash Flow": "Positive" if (fcf_num or 0) > 0 else "Neutral",
         "Return on Equity (ROE)": f"{roe_str} (Target: >15-20%)",
         "P/E Ratio": f"{pe_str} (Target: <15-20)",
         "PEG Ratio": f"{valuation['PEG Ratio']} (Target: <1.0)",
         "Net Margin": growth["Net Margin"],
     }
 
-    # EPS metrics from yfinance
-    eps_ttm_val = info.get("trailingEps")
+    # EPS metrics from yfinance or local fundamentals cache
+    eps_ttm_val = info.get("trailingEps") if info.get("trailingEps") is not None else cache_item.get("eps")
     eps_ttm = f"₹{float(eps_ttm_val):.2f}" if eps_ttm_val is not None else "N/A"
 
     eps_forward_val = info.get("forwardEps")
     eps_forward = f"₹{float(eps_forward_val):.2f}" if eps_forward_val is not None else "N/A"
 
-    eps_growth_val = info.get("earningsQuarterlyGrowth")
+    eps_growth_val = info.get("earningsQuarterlyGrowth") if info.get("earningsQuarterlyGrowth") is not None else earn_g_num
     eps_growth = f"{float(eps_growth_val) * 100:.1f}%" if eps_growth_val is not None else "N/A"
 
     # Key company executives
@@ -932,61 +1028,70 @@ async def get_stock_analysis(
             ))
 
     # Multibagger potential analysis table (exact match to render_multibagger_tab in screener.py)
+    pe_eval = float(pe_num) if pe_num else 50.0
+    peg_eval = float(peg_num) if peg_num is not None else 2.0
+    de_eval = float(de_num) if de_num is not None else 1.0
+    cr_eval = float(cr_num) if cr_num is not None else 0.0
+    rev_g_eval = float(rev_g_num) if rev_g_num is not None else 0.0
+    earn_g_eval = float(earn_g_num) if earn_g_num is not None else 0.0
+    ebitda_eval = float(ebitda_m_num) if ebitda_m_num is not None else 0.0
+    net_m_eval = float(net_m_num) if net_m_num is not None else 0.0
+
     multibagger_rows = [
         MultibaggerTableRow(
             parameter="Revenue Growth (YoY)",
             your_value=growth["Revenue Growth (YoY)"],
             target="25%+ sustained",
-            verdict="✅ Strong" if (info.get("revenueGrowth", 0) or 0) >= 0.20 else "⚠️ Needs Improvement",
-            verdict_type="positive" if (info.get("revenueGrowth", 0) or 0) >= 0.20 else "warning",
+            verdict="✅ Strong" if rev_g_eval >= 0.20 else "⚠️ Needs Improvement",
+            verdict_type="positive" if rev_g_eval >= 0.20 else "warning",
             why_it_matters="Top-line growth is the engine of future earnings"
         ),
         MultibaggerTableRow(
             parameter="Earnings Growth (YoY)",
             your_value=growth["Earnings Growth (YoY)"],
             target="30%+ sustained",
-            verdict="✅ Strong" if (info.get("earningsGrowth", 0) or 0) >= 0.25 else "⚠️ Needs Improvement",
-            verdict_type="positive" if (info.get("earningsGrowth", 0) or 0) >= 0.25 else "warning",
+            verdict="✅ Strong" if earn_g_eval >= 0.25 else "⚠️ Needs Improvement",
+            verdict_type="positive" if earn_g_eval >= 0.25 else "warning",
             why_it_matters="Shows operating leverage and margin expansion"
         ),
         MultibaggerTableRow(
             parameter="EBITDA Margin",
             your_value=growth["EBITDA Margin"],
             target="15%+ and rising",
-            verdict="✅ Strong" if (info.get("ebitdaMargins", 0) or 0) >= 0.15 else "⚠️ Needs Improvement",
-            verdict_type="positive" if (info.get("ebitdaMargins", 0) or 0) >= 0.15 else "warning",
+            verdict="✅ Strong" if ebitda_eval >= 0.15 else "⚠️ Needs Improvement",
+            verdict_type="positive" if ebitda_eval >= 0.15 else "warning",
             why_it_matters="High & scalable margins = profit compounding machine"
         ),
         MultibaggerTableRow(
             parameter="Net Margin",
             your_value=growth["Net Margin"],
             target="12%+ and rising",
-            verdict="✅ Strong" if (info.get("profitMargins", 0) or 0) >= 0.12 else "⚠️ Needs Improvement",
-            verdict_type="positive" if (info.get("profitMargins", 0) or 0) >= 0.12 else "warning",
+            verdict="✅ Strong" if net_m_eval >= 0.12 else "⚠️ Needs Improvement",
+            verdict_type="positive" if net_m_eval >= 0.12 else "warning",
             why_it_matters="Converts revenue into shareholder profit efficiently"
         ),
         MultibaggerTableRow(
             parameter="P/E (TTM)",
             your_value=pe_str,
             target="< 25 or PEG < 1.0",
-            verdict="✅ Good" if (info.get("trailingPE", 50) or 50) <= 25 else "⚠️ High",
-            verdict_type="positive" if (info.get("trailingPE", 50) or 50) <= 25 else "warning",
+            verdict="✅ Good" if (0 < pe_eval <= 25) else "⚠️ High",
+            verdict_type="positive" if (0 < pe_eval <= 25) else "warning",
             why_it_matters="Valuation multiple - lower is better"
         ),
         MultibaggerTableRow(
             parameter="PEG Ratio",
             your_value=valuation["PEG Ratio"],
             target="< 1.0",
-            verdict="✅ Good" if (info.get("pegRatio", 2) or 2) <= 1.0 else "⚠️ High",
-            verdict_type="positive" if (info.get("pegRatio", 2) or 2) <= 1.0 else "warning",
+            verdict="✅ Good" if (0 < peg_eval <= 1.0) else "⚠️ High",
+            verdict_type="positive" if (0 < peg_eval <= 1.0) else "warning",
             why_it_matters="Growth at reasonable price indicator"
         ),
         MultibaggerTableRow(
             parameter="Debt/Equity",
             your_value=financials["Debt/Equity"],
             target="<= 0.5",
-            verdict="✅ Good" if (info.get("debtToEquity", 1) or 1) <= 0.5 else "⚠️ High",
-            verdict_type="positive" if (info.get("debtToEquity", 1) or 1) <= 0.5 else "warning",
+            verdict="✅ Good" if de_eval <= 0.5 else "⚠️ High",
+            verdict_type="positive" if de_eval <= 0.5 else "warning",
             why_it_matters="Financial leverage and risk indicator"
         ),
         MultibaggerTableRow(
@@ -1001,8 +1106,8 @@ async def get_stock_analysis(
             parameter="Current Ratio",
             your_value=financials["Current Ratio"],
             target=">= 1.5",
-            verdict="✅ Strong" if (info.get("currentRatio", 0) or 0) >= 1.5 else "⚠️ Needs Improvement",
-            verdict_type="positive" if (info.get("currentRatio", 0) or 0) >= 1.5 else "warning",
+            verdict="✅ Strong" if cr_eval >= 1.5 else "⚠️ Needs Improvement",
+            verdict_type="positive" if cr_eval >= 1.5 else "warning",
             why_it_matters="Short-term liquidity and solvency buffer"
         ),
     ]

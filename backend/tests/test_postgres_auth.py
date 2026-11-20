@@ -39,11 +39,10 @@ async def run_tests():
         print("✅ 3. Protected endpoint /api/chat/threads/{id}/history returns 401 Unauthorized without token.")
 
 
-        # Guest voice token verification
+        # Unauthenticated voice token request must be rejected with 401
         res = await client.get("/api/voice/token")
-        assert res.status_code == 200, f"Expected 200 for guest voice token, got {res.status_code}"
-        assert "token" in res.json()
-        print("✅ 4. Guest access to /api/voice/token succeeds with ephemeral guest identity.")
+        assert res.status_code == 401, f"Expected 401 for unauthenticated voice token, got {res.status_code}"
+        print("✅ 4. Unauthenticated access to /api/voice/token is rejected with 401 Unauthorized.")
 
 
         # Test C: Verify non-existent / unregistered login returns 401

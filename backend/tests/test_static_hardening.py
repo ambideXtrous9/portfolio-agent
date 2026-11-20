@@ -78,3 +78,16 @@ def test_agent_sockets_require_handshake_auth():
     for name in ("harry.py", "tour.py"):
         src = (ROOT / f"backend/app/api/endpoints/{name}").read_text()
         assert "close(code=4401)" in src, f"{name} WS must reject unauthenticated handshakes"
+
+
+def test_chat_history_restoration_checks_role_field():
+    for name in ("harry.js", "tour.js"):
+        src = (FRONTEND / "js" / name).read_text()
+        assert "msg.role" in src, f"{name} must inspect msg.role returned by ChatMessageItem"
+
+
+def test_vision_uses_real_groq_vision_models():
+    vision_src = (ROOT / "backend/app/api/endpoints/vision.py").read_text()
+    assert "qwen/qwen3.8-27b" not in vision_src
+    assert "qwen/qwen3.6-27b" not in vision_src
+    assert "meta-llama/llama-4-scout-17b-16e-instruct" in vision_src

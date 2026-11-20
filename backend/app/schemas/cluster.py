@@ -18,6 +18,7 @@ class ClusterRequest(BaseModel):
     min_samples: Optional[int] = Field(default=5, ge=1, le=100)
     points: Optional[List[List[float]]] = None
     k: Optional[int] = None
+    dataset_type: Optional[str] = Field(default=None, description="Optional synthetic dataset type: 'blobs', 'moons', 'circles', 'aniso'")
 
 
 class ClusterResponse(BaseModel):
