@@ -43,6 +43,19 @@ class ArticleResponse(TypedDict):
 # ─────────────────────────────────────────────────────────────────────────────
 # 🎯 2. Query Parsing Helper (from tourAgent.py)
 # ─────────────────────────────────────────────────────────────────────────────
+_NON_LOCATION_WORDS = {
+    "find", "search", "plan", "create", "build", "make", "give", "show", "suggest",
+    "explore", "exploration", "cultural", "scenic", "beachfront", "beach", "mountain",
+    "weekend", "getaway", "retreat", "vacation", "holiday", "trip", "tour", "guide",
+    "itinerary", "travel", "days", "day", "night", "nights", "week", "tomorrow",
+    "next", "from", "for", "with", "under", "above", "around", "near", "into",
+    "stay", "stays", "hotel", "hotels", "airbnb", "accommodations", "accommodation",
+    "booking", "cheap", "best", "luxury", "budget", "breakdown", "live", "availability",
+    "weather", "forecast", "train", "trains", "routes", "route", "adults", "adult",
+    "kids", "children", "guests", "couple", "family", "solo", "and", "the", "per",
+}
+
+
 def parse_trip_query(query: str):
     """
     Parses user query to extract location name, checkin date, checkout date, and stay duration.
@@ -51,14 +64,44 @@ def parse_trip_query(query: str):
     today = datetime.date.today()
     checkin = today + datetime.timedelta(days=1)
 
-    days_match = re.search(r'(\d+)\s*days?', query, re.IGNORECASE)
-    duration = int(days_match.group(1)) if days_match else 3
+    days_match = re.search(r'(\d+)\s*[-\s]?days?', query, re.IGNORECASE)
+    if days_match:
+        duration = max(1, min(14, int(days_match.group(1))))
+    elif re.search(r'\bweekend\b', query, re.IGNORECASE):
+        duration = 3
+    else:
+        duration = 3
     checkout = checkin + datetime.timedelta(days=duration)
 
-    stop_words = r'(?i)\b(\d+\s*days?|trip|itinerary|to|from|tomorrow|next|week|for|in|stay|hotel|airbnb|booking|cheap|best)\b'
-    cleaned = re.sub(stop_words, ' ', query)
-    words = [w.strip().capitalize() for w in cleaned.split() if len(w.strip()) > 2]
-    location = ' '.join(words) if words else 'Munnar'
+    # 1. Try prepositional match first: "in Goa", "to Switzerland", "near Manali", "in New York"
+    prep_match = re.search(
+        r'\b(?:in|to|near|at|visit|visiting|around)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)',
+        query,
+    )
+    location = ""
+    if prep_match:
+        cand_words = [
+            w for w in prep_match.group(1).split()
+            if w.lower() not in _NON_LOCATION_WORDS
+        ]
+        if cand_words:
+            location = " ".join(cand_words)
+
+    # 2. Fallback: extract capitalized proper nouns that aren't stop/action words
+    if not location:
+        tokens = re.findall(r'[A-Za-z]+', query)
+        cap_candidates = [
+            t for t in tokens
+            if len(t) > 2 and t[0].isupper() and t.lower() not in _NON_LOCATION_WORDS
+        ]
+        if cap_candidates:
+            location = " ".join(cap_candidates[:2])
+        else:
+            remaining = [
+                t.capitalize() for t in tokens
+                if len(t) > 2 and t.lower() not in _NON_LOCATION_WORDS
+            ]
+            location = " ".join(remaining[:2]) if remaining else "Munnar"
 
     return location, checkin.strftime('%Y-%m-%d'), checkout.strftime('%Y-%m-%d'), duration
 
@@ -99,20 +142,33 @@ def extract_weather(data: dict) -> str:
 def fetch_open_meteo_fallback(location: str, days: int = 3) -> str:
     """Fallback weather retriever using geocoding and Open-Meteo API (free, no key required)."""
     try:
-        geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={location}&count=1&language=en&format=json"
-        res = requests.get(geo_url, timeout=8)
-        geo_data = res.json()
-        if not geo_data.get("results"):
+        candidates = [location.strip()]
+        for part in location.split():
+            if len(part) > 2 and part not in candidates:
+                candidates.append(part)
+
+        place = None
+        for cand in candidates:
+            if not cand:
+                continue
+            geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={requests.utils.quote(cand)}&count=1&language=en&format=json"
+            res = requests.get(geo_url, timeout=8)
+            geo_data = res.json()
+            if geo_data.get("results"):
+                place = geo_data["results"][0]
+                break
+
+        if not place:
             print(f"Open-Meteo fallback: no geocoding results for {location!r}")
             return f"Weather forecast unavailable for {location} (location could not be resolved)."
-        place = geo_data["results"][0]
+
         lat, lon = place["latitude"], place["longitude"]
         resolved_name = f"{place.get('name', location)}, {place.get('country', '')}".strip(", ")
         w_url = (
             f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
             f"&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m"
             f"&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max"
-            f"&timezone=auto&forecast_days={days}"
+            f"&timezone=auto&forecast_days={max(1, min(14, int(days)))}"
         )
         w_res = requests.get(w_url, timeout=8).json()
         current = w_res.get("current", {})
@@ -129,8 +185,10 @@ def fetch_open_meteo_fallback(location: str, days: int = 3) -> str:
         times = daily.get("time", [])
         max_temps = daily.get("temperature_2m_max", [])
         min_temps = daily.get("temperature_2m_min", [])
+        precip_probs = daily.get("precipitation_probability_max", [])
         for i in range(len(times)):
-            lines.append(f"  Date: {times[i]} | Max: {max_temps[i]}°C | Min: {min_temps[i]}°C")
+            p_str = f" | Rain Prob: {precip_probs[i]}%" if i < len(precip_probs) and precip_probs[i] is not None else ""
+            lines.append(f"  Date: {times[i]} | Max: {max_temps[i]}°C | Min: {min_temps[i]}°C{p_str}")
             lines.append("-" * 40)
         return "\n".join(lines)
     except Exception as e:
@@ -351,10 +409,18 @@ def build_tour_graph(checkpointer=None):
     return graph.compile(checkpointer=checkpointer)
 
 
-# Global graph factory supporting active PostgreSQL checkpointer
+_compiled_tour_graph: Any = None
+_compiled_tour_checkpointer: Any = None
+
+
+# Global graph factory supporting active PostgreSQL checkpointer (cached per checkpointer instance)
 def get_tour_agent_graph():
+    global _compiled_tour_graph, _compiled_tour_checkpointer
     checkpointer = getattr(db_manager, "checkpointer", None) or InMemorySaver()
-    return build_tour_graph(checkpointer=checkpointer)
+    if _compiled_tour_graph is None or _compiled_tour_checkpointer is not checkpointer:
+        _compiled_tour_graph = build_tour_graph(checkpointer=checkpointer)
+        _compiled_tour_checkpointer = checkpointer
+    return _compiled_tour_graph
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -372,12 +438,16 @@ async def generate_tour_plan(
     start_time = time.time()
     query = request.query
     location, checkin, checkout, duration = parse_trip_query(query)
-    thread_id = str(uuid.uuid4())
+    thread_id = (request.session_id or "").strip() or str(uuid.uuid4())
+    try:
+        await db_manager.ensure_thread_access(thread_id, current_user.id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail="Session belongs to another user.") from exc
+
     config = {
         "configurable": {"thread_id": thread_id},
         "metadata": {"user_id": current_user.id, "email": current_user.email},
     }
-    await db_manager.ensure_thread_access(thread_id, current_user.id)
 
     graph = get_tour_agent_graph()
     final_state = await graph.ainvoke(
@@ -400,6 +470,7 @@ async def generate_tour_plan(
 
     return TourPlanResponse(
         query=query,
+        thread_id=thread_id,
         destination=location,
         duration_days=duration,
         checkin=checkin,
@@ -603,6 +674,23 @@ async def stream_tour_sse(
                     yield {
                         "event": "status",
                         "data": json.dumps({"node": node, "message": label, "elapsed": round(time.time() - start_time, 1)})
+                    }
+
+                if event_type == "on_tool_start":
+                    t_name = event.get("name", "travel_tool")
+                    t_input = event.get("data", {}).get("input")
+                    yield {
+                        "event": "tool_call",
+                        "data": json.dumps({"tool": t_name, "input": t_input})
+                    }
+
+                if event_type == "on_tool_end":
+                    t_name = event.get("name", "travel_tool")
+                    t_out = event.get("data", {}).get("output")
+                    out_str = getattr(t_out, "content", str(t_out)) if t_out is not None else "Completed"
+                    yield {
+                        "event": "tool_result",
+                        "data": json.dumps({"tool": t_name, "output": str(out_str)[:240]})
                     }
 
                 if event_type == "on_chat_model_stream" and node == "tourAgent":

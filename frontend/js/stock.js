@@ -70,7 +70,7 @@ export function initStockScreener() {
         });
         renderScanResults(multiResults, res, "multi");
       } catch (err) {
-        multiResults.innerHTML = `<div style="color: #D32F2F;">⚠️ Scan error: ${err.message}</div>`;
+        multiResults.innerHTML = `<div style="color: var(--terracotta-700); padding: 0.75rem 1rem; background: var(--terracotta-50); border: 1px solid var(--terracotta-200); border-radius: var(--st-radius);">⚠️ Scan error: ${escapeHtml(err.message)}</div>`;
       } finally {
         btnMultiScan.disabled = false;
         btnMultiScan.innerHTML = "Run Multibagger Scan";
@@ -101,7 +101,7 @@ export function initStockScreener() {
         });
         renderScanResults(volResults, res, "vol");
       } catch (err) {
-        volResults.innerHTML = `<div style="color: #D32F2F;">⚠️ Scan error: ${err.message}</div>`;
+        volResults.innerHTML = `<div style="color: var(--terracotta-700); padding: 0.75rem 1rem; background: var(--terracotta-50); border: 1px solid var(--terracotta-200); border-radius: var(--st-radius);">⚠️ Scan error: ${escapeHtml(err.message)}</div>`;
       } finally {
         btnVolScan.disabled = false;
         btnVolScan.innerHTML = "Run Scan";
@@ -146,7 +146,7 @@ export function initStockScreener() {
         });
         renderScanResults(container, res, prefix);
       } catch (err) {
-        container.innerHTML = `<div style="color: #D32F2F;">⚠️ Scan error: ${err.message}</div>`;
+        container.innerHTML = `<div style="color: var(--terracotta-700); padding: 0.75rem 1rem; background: var(--terracotta-50); border: 1px solid var(--terracotta-200); border-radius: var(--st-radius);">⚠️ Scan error: ${escapeHtml(err.message)}</div>`;
       } finally {
         btn.disabled = false;
         btn.innerHTML = "Run Scan";
@@ -304,28 +304,46 @@ export function initStockScreener() {
   ];
 
   let isFetchingCompanies = false;
+  let allCatalogCompanies = [...FALLBACK_STOCKS];
+  let activeAnalysisReqId = 0;
 
-  function populateDropdownOptions(selectEl, companies) {
+  function populateDropdownOptions(selectEl, companies, filterQuery = "") {
     if (!selectEl || !Array.isArray(companies) || companies.length === 0) return;
+    allCatalogCompanies = companies;
     const currentVal = selectEl.value;
-    const sorted = [...companies].sort((a, b) => {
+    const q = (filterQuery || "").trim().toLowerCase();
+
+    const filtered = q
+      ? companies.filter((c) => {
+          const name = (c.company_name || "").toLowerCase();
+          const sym = (c.symbol || "").toLowerCase();
+          return name.includes(q) || sym.includes(q);
+        })
+      : companies;
+
+    const sorted = [...filtered].sort((a, b) => {
       const nameA = (a.company_name || a.symbol || "").toLowerCase();
       const nameB = (b.company_name || b.symbol || "").toLowerCase();
       return nameA.localeCompare(nameB);
     });
 
     const optsHtml = [
-      `<option value="">Select the Stock (${sorted.length} companies)</option>`,
-      ...sorted.map((c) => `<option value="${c.symbol}">${c.company_name || c.symbol} (${c.symbol})</option>`)
+      `<option value="">Select the Stock (${sorted.length} ${q ? "matching " : ""}companies)</option>`,
+      ...sorted.map((c) => `<option value="${escapeHtml(c.symbol)}">${escapeHtml(c.company_name || c.symbol)} (${escapeHtml(c.symbol)})</option>`)
     ].join("");
 
     selectEl.innerHTML = optsHtml;
-    if (currentVal) selectEl.value = currentVal;
+    if (currentVal && sorted.some((c) => c.symbol === currentVal)) {
+      selectEl.value = currentVal;
+    } else if (q && sorted.length === 1) {
+      selectEl.value = sorted[0].symbol;
+    }
   }
 
   // Subtab 6: Load full company catalog for individual search
   async function initStocksAnalysisDropdown(forceRefresh = false) {
     const analysisSelect = document.getElementById("analysis-company-select");
+    const analysisFilter = document.getElementById("analysis-company-filter");
     const selectedDisplay = document.getElementById("analysis-selected-display");
     if (!analysisSelect) return;
 
@@ -340,6 +358,26 @@ export function initStockScreener() {
           renderInlineStockAnalysis(sym);
         }
       });
+
+      if (analysisFilter) {
+        analysisFilter.addEventListener("input", () => {
+          populateDropdownOptions(analysisSelect, allCatalogCompanies, analysisFilter.value);
+        });
+        analysisFilter.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const sym = analysisSelect.value || (analysisSelect.options.length > 1 ? analysisSelect.options[1].value : "");
+            if (sym) {
+              analysisSelect.value = sym;
+              if (selectedDisplay && analysisSelect.selectedIndex >= 0) {
+                selectedDisplay.innerText = `You selected: ${analysisSelect.options[analysisSelect.selectedIndex].text}`;
+              }
+              renderInlineStockAnalysis(sym);
+            }
+          }
+        });
+      }
+
       analysisSelect.dataset.listenerAttached = "true";
     }
 
@@ -400,6 +438,7 @@ export function initStockScreener() {
   async function renderInlineStockAnalysis(symbol) {
     if (!inlineContainer) return;
 
+    const reqId = ++activeAnalysisReqId;
     inlineContainer.scrollIntoView({ behavior: "smooth", block: "start" });
     inlineContainer.innerHTML = `
       <div style="padding: 2.5rem 1rem; text-align: center; border-top: 2px solid var(--st-border-color); margin-top: 2rem;">
@@ -411,11 +450,13 @@ export function initStockScreener() {
     `;
 
     try {
-      const data = await fetchAPI(`/stock/analysis/${symbol}`);
+      const data = await fetchAPI(`/stock/analysis/${encodeURIComponent(symbol)}`);
+      if (reqId !== activeAnalysisReqId) return;
       renderAnalysisDashboard(data);
     } catch (err) {
+      if (reqId !== activeAnalysisReqId) return;
       inlineContainer.innerHTML = `
-        <div style="padding: 1.5rem; background: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB; border-radius: var(--st-radius); margin-top: 2rem;">
+        <div style="padding: 1.5rem; background: var(--terracotta-50); color: var(--terracotta-700); border: 1px solid var(--terracotta-200); border-radius: var(--st-radius); margin-top: 2rem;">
           <strong>Error fetching stock analysis:</strong> ${escapeHtml(err.message)}
         </div>
       `;
@@ -446,11 +487,11 @@ export function initStockScreener() {
       const r = valRight[i] || ["", ""];
       valTableRows += `
         <tr>
-          <td class="metric-col">${l[0]}</td>
-          <td class="value-col">${l[1]}</td>
+          <td class="metric-col">${escapeHtml(l[0])}</td>
+          <td class="value-col">${escapeHtml(l[1])}</td>
           <td class="spacer-col"></td>
-          <td class="metric-col">${r[0]}</td>
-          <td class="value-col">${r[1]}</td>
+          <td class="metric-col">${escapeHtml(r[0])}</td>
+          <td class="value-col">${escapeHtml(r[1])}</td>
         </tr>
       `;
     }
@@ -481,11 +522,11 @@ export function initStockScreener() {
       const r = finRight[i] || ["", ""];
       finTableRows += `
         <tr>
-          <td class="metric-col">${l[0]}</td>
-          <td class="value-col">${l[1]}</td>
+          <td class="metric-col">${escapeHtml(l[0])}</td>
+          <td class="value-col">${escapeHtml(l[1])}</td>
           <td class="spacer-col"></td>
-          <td class="metric-col">${r[0]}</td>
-          <td class="value-col">${r[1]}</td>
+          <td class="metric-col">${escapeHtml(r[0])}</td>
+          <td class="value-col">${escapeHtml(r[1])}</td>
         </tr>
       `;
     }
@@ -509,11 +550,11 @@ export function initStockScreener() {
             <tbody>
               ${mRows.map(row => `
                 <tr>
-                  <td><strong>${row.parameter}</strong></td>
-                  <td style="font-weight: 600;">${row.your_value}</td>
-                  <td>${row.target}</td>
-                  <td><span class="verdict-badge ${row.verdict_type}">${row.verdict}</span></td>
-                  <td style="color: #555; font-size: 0.9rem;">${row.why_it_matters}</td>
+                  <td><strong>${escapeHtml(row.parameter)}</strong></td>
+                  <td style="font-weight: 600;">${escapeHtml(row.your_value)}</td>
+                  <td>${escapeHtml(row.target)}</td>
+                  <td><span class="verdict-badge ${escapeHtml(row.verdict_type)}">${escapeHtml(row.verdict)}</span></td>
+                  <td style="color: #555; font-size: 0.9rem;">${escapeHtml(row.why_it_matters)}</td>
                 </tr>
               `).join("")}
             </tbody>
@@ -576,10 +617,10 @@ export function initStockScreener() {
         <!-- Tab 1: Overview -->
         <div class="deepdive-pane" id="tab-funda-overview" style="display: block;">
           <h3 style="font-size: 1.2rem; margin-top: 1rem;">Company Information</h3>
-          <div style="margin: 0.5rem 0 1rem; font-size: 0.95rem;"><strong>Industry:</strong> ${data.industry}</div>
+          <div style="margin: 0.5rem 0 1rem; font-size: 0.95rem;"><strong>Industry:</strong> ${escapeHtml(data.industry)}</div>
           <div style="background: rgba(255, 255, 255, 0.8); border-left: 3px solid var(--terracotta-500); padding: 1.15rem 1.35rem; border-radius: 0 var(--st-radius) var(--st-radius) 0; font-size: 0.96rem; line-height: 1.7; color: var(--sand-800); border-top: 1px solid var(--sand-200); border-right: 1px solid var(--sand-200); border-bottom: 1px solid var(--sand-200);">
             <h4 style="margin: 0 0 0.5rem 0;">About</h4>
-            <em>${data.about}</em>
+            <em>${escapeHtml(data.about)}</em>
           </div>
           ${officersHtml}
         </div>
@@ -703,7 +744,7 @@ export function initStockScreener() {
 
         <!-- Latest News on Company (CompanyNews) -->
         <div style="margin: 2.5rem 0;">
-          <h3 style="font-size: 1.25rem; margin-bottom: 1rem;">📰 Latest News on ${data.company_name}</h3>
+          <h3 style="font-size: 1.25rem; margin-bottom: 1rem;">📰 Latest News on ${escapeHtml(data.company_name)}</h3>
           <div style="background: #FFFFFF; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 1.25rem 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
             ${(data.news && data.news.length > 0) ? `
               <ul style="margin: 0; padding-left: 1.25rem; line-height: 2.2;">
@@ -719,8 +760,8 @@ export function initStockScreener() {
         </div>
 
         <!-- AI Research Report Button & Output (reportGenerator) -->
-        <div style="margin: 3.5rem 0; padding: 2.5rem; background: #F8F9FA; border-radius: var(--st-radius); border: 1px solid var(--st-border-input); text-align: center;">
-          <button class="st-btn st-btn-primary" id="btn-generate-ai-report" style="font-size: 1.2rem; padding: 0.85rem 2.5rem; font-weight: 700; box-shadow: 0 4px 12px rgba(30,136,229,0.25);">
+        <div style="margin: 3.5rem 0; padding: 2.5rem; background: var(--sand-100); border-radius: var(--st-radius-lg); border: 1px solid var(--sand-200); text-align: center;">
+          <button class="st-btn st-btn-primary" id="btn-generate-ai-report" style="font-size: 1.15rem; padding: 0.85rem 2.5rem; font-weight: 700; box-shadow: 0 4px 14px rgba(35, 32, 27, 0.16);">
             🤖 AI Research Report
           </button>
           <div style="font-size: 0.95rem; color: var(--st-text-muted); margin-top: 10px;">
@@ -791,22 +832,22 @@ export function initStockScreener() {
 
           aiReportContainer.innerHTML = `
             <div style="margin-top: 1.5rem;">
-              <h2 style="display: flex; align-items: center; gap: 8px; font-size: 1.6rem; color: #2C3E50;">
-                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Rocket.png" alt="Rocket" width="40" height="40" />
+              <h2 class="serif-heading" style="display: flex; align-items: center; gap: 10px; font-size: 1.65rem; color: var(--sand-900);">
+                <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Rocket.png" alt="Rocket" width="38" height="38" />
                 AI Financial Research Report
               </h2>
 
               <!-- Expandable Reasoning Box (Click to Expand) matching with st.expander("🧠 Agent Reasoning") -->
-              <div class="st-expander" style="margin: 1.25rem 0; border: 1px solid #90CAF9; background: #F0F7FF; border-radius: var(--st-radius);">
-                <div class="st-expander-header" id="reasoning-toggle" style="background: #E3F2FD; color: #0D47A1; cursor: pointer; padding: 0.85rem 1.25rem; font-weight: 600; display: flex; justify-content: space-between;">
+              <div class="st-expander" style="margin: 1.25rem 0; border: 1px solid var(--sage-200); background: var(--sage-50); border-radius: var(--st-radius-lg);">
+                <div class="st-expander-header" id="reasoning-toggle" style="background: var(--sage-100); color: var(--sage-800); cursor: pointer; padding: 0.85rem 1.25rem; font-weight: 600; display: flex; justify-content: space-between;">
                   <span>🧠 Agent Reasoning (Click to Expand)</span>
                   <span id="reasoning-arrow">▼</span>
                 </div>
-                <div class="st-expander-content" id="reasoning-body" style="display: none; padding: 1.25rem; background: #FAFCFF; font-family: monospace; font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; border-top: 1px solid #BBDEFB;">${escapeHtml(thinkingPart)}</div>
+                <div class="st-expander-content" id="reasoning-body" style="display: none; padding: 1.25rem; background: #FFFFFF; font-family: var(--st-font-mono); font-size: 0.88rem; line-height: 1.6; white-space: pre-wrap; border-top: 1px solid var(--sage-200);">${escapeHtml(thinkingPart)}</div>
               </div>
 
               <!-- Main Report Output -->
-              <div style="background: #FFFFFF; padding: 2.25rem; border-radius: var(--st-radius); border: 1px solid var(--st-border-input); line-height: 1.8; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+              <div class="st-markdown-body" style="background: #FFFFFF; padding: 2.25rem; border-radius: var(--st-radius-lg); border: 1px solid var(--sand-200); line-height: 1.8; box-shadow: 0 4px 16px rgba(60, 50, 40, 0.04);">
                 ${reportHtml}
               </div>
             </div>
@@ -1020,40 +1061,6 @@ export function initStockScreener() {
     };
 
     window.Plotly.newPlot("stock-technical-chart", [candleTrace, sma20Trace, sma50Trace, sma200Trace, volumeTrace, rsiTrace], layout, {
-      responsive: true,
-      displayModeBar: false,
-    });
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Interactive Candlestick Chart (plotChart(option))
-  // ─────────────────────────────────────────────────────────────────────────
-  function renderCandlestickChart(data) {
-    if (!window.Plotly || !data.candlestick || !data.candlestick.dates.length) return;
-    const c = data.candlestick;
-    const trace = {
-      x: c.dates,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-      type: "candlestick",
-      name: data.symbol,
-      increasing: { line: { color: "#26A69A" } },
-      decreasing: { line: { color: "#EF5350" } },
-    };
-
-    const layout = {
-      margin: { t: 30, r: 30, b: 35, l: 50 },
-      height: 440,
-      xaxis: { rangeslider: { visible: true } },
-      yaxis: { title: "Price (₹)" },
-      template: "plotly_white",
-      paper_bgcolor: "rgba(250, 248, 245, 0.6)",
-      plot_bgcolor: "rgba(250, 248, 245, 0.6)",
-    };
-
-    window.Plotly.newPlot("stock-candlestick-chart", [trace], layout, {
       responsive: true,
       displayModeBar: false,
     });

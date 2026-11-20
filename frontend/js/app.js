@@ -50,7 +50,6 @@ const PROTECTED_TABS = [
   "tab-voice",
   "tab-yolo",
   "tab-classifier",
-  "tab-social"
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -320,6 +319,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function closeAllModals() {
     document.querySelectorAll(".modal-backdrop").forEach((m) => m.classList.remove("is-open"));
+    document.querySelectorAll(".st-modal-overlay").forEach((m) => m.classList.remove("open"));
   }
 
   document.querySelectorAll("[data-modal-close]").forEach((btn) => {
@@ -330,6 +330,12 @@ document.addEventListener("DOMContentLoaded", () => {
     backdrop.addEventListener("click", (e) => {
       if (e.target === backdrop) closeAllModals();
     });
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeAllModals();
+    }
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -367,6 +373,11 @@ document.addEventListener("DOMContentLoaded", () => {
   if (tabModalLogin) tabModalLogin.addEventListener("click", () => setAuthModalView("login"));
   if (tabModalSignup) tabModalSignup.addEventListener("click", () => setAuthModalView("signup"));
   if (tabModalForgot) tabModalForgot.addEventListener("click", () => setAuthModalView("forgot"));
+
+  document.getElementById("btn-already-have-reset-token")?.addEventListener("click", () => {
+    closeAllModals();
+    openModal("reset-modal");
+  });
 
   // Modal Sign In form submit
   if (formModalLogin) {
@@ -736,15 +747,6 @@ document.addEventListener("DOMContentLoaded", () => {
         userRoleEl.textContent = role.toUpperCase();
         userRoleEl.className = `st-role-badge ${isAdmin ? 'st-role-admin' : 'st-role-user'}`;
       }
-      document.getElementById("btn-profile-logout")?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        closeModal("auth-modal");
-        handleLogout(e);
-      });
-      document.getElementById("btn-go-agents")?.addEventListener("click", () => {
-        navigateToTab("tab-harry", "harry");
-      });
 
     } else {
       // 1. Update Top Global Header
@@ -783,8 +785,44 @@ document.addEventListener("DOMContentLoaded", () => {
       if (loggedInContainer) loggedInContainer.style.display = "none";
       if (demoBanner) demoBanner.style.display = "none";
       if (loginContainer) loginContainer.style.display = "block";
+      if (signupContainer) signupContainer.style.display = "none";
     }
   }
+
+  // Bind static Login Tab buttons once (prevents duplicate listener stacking)
+  document.getElementById("btn-profile-logout")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    closeAllModals();
+    handleLogout(e);
+  });
+
+  document.getElementById("btn-go-agents")?.addEventListener("click", () => {
+    navigateToTab("tab-harry", "harry");
+  });
+
+  function setInPageAuthView(mode) {
+    const loginContainer = document.getElementById("auth-login-container");
+    const signupContainer = document.getElementById("auth-signup-container");
+    const btnShowLogin = document.getElementById("tab-btn-show-login");
+    const btnShowSignup = document.getElementById("tab-btn-show-signup");
+    if (mode === "signup") {
+      if (loginContainer) loginContainer.style.display = "none";
+      if (signupContainer) signupContainer.style.display = "block";
+      btnShowLogin?.classList.remove("active");
+      btnShowSignup?.classList.add("active");
+    } else {
+      if (loginContainer) loginContainer.style.display = "block";
+      if (signupContainer) signupContainer.style.display = "none";
+      btnShowLogin?.classList.add("active");
+      btnShowSignup?.classList.remove("active");
+    }
+  }
+
+  document.getElementById("tab-btn-show-login")?.addEventListener("click", () => setInPageAuthView("login"));
+  document.getElementById("tab-btn-show-signup")?.addEventListener("click", () => setInPageAuthView("signup"));
+  document.getElementById("btn-switch-to-signup")?.addEventListener("click", () => setInPageAuthView("signup"));
+  document.getElementById("btn-switch-to-login")?.addEventListener("click", () => setInPageAuthView("login"));
 
   async function handleLogout(e, reason = "Logged out.") {
     if (e) {
@@ -1015,16 +1053,24 @@ async function loadGitHubStats() {
   const reposEl = document.getElementById("gh-stats-repos");
   const followersEl = document.getElementById("gh-stats-followers");
   try {
+    const data = await fetchAPI("/portfolio/github");
+    if (data && data.public_repos > 0) {
+      if (reposEl) reposEl.innerHTML = `<strong>Public Repos:</strong> ${Number(data.public_repos)}`;
+      if (followersEl) followersEl.innerHTML = `<strong>Followers:</strong> ${Number(data.followers)} • <strong>Following:</strong> ${Number(data.following)}`;
+      return;
+    }
+  } catch (_) {}
+  try {
     const res = await fetch("https://api.github.com/users/ambideXtrous9");
     if (res.ok) {
       const data = await res.json();
-      if (reposEl) reposEl.innerHTML = `<strong>Public Repos:</strong> ${data.public_repos}`;
-      if (followersEl) followersEl.innerHTML = `<strong>Followers:</strong> ${data.followers} • <strong>Following:</strong> ${data.following}`;
+      if (reposEl) reposEl.innerHTML = `<strong>Public Repos:</strong> ${Number(data.public_repos)}`;
+      if (followersEl) followersEl.innerHTML = `<strong>Followers:</strong> ${Number(data.followers)} • <strong>Following:</strong> ${Number(data.following)}`;
+      return;
     }
-  } catch (err) {
-    if (reposEl) reposEl.innerHTML = "<strong>Public Repos:</strong> 35+";
-    if (followersEl) followersEl.innerHTML = "<strong>Followers:</strong> 50+";
-  }
+  } catch (_) {}
+  if (reposEl) reposEl.innerHTML = "<strong>Public Repos:</strong> — (GitHub API unavailable)";
+  if (followersEl) followersEl.innerHTML = "<strong>Followers:</strong> —";
 }
 
 // ── Agentic Architecture Visualizer Pop-up Controller ─────────────────────────

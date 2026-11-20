@@ -69,6 +69,12 @@ nodev22/
 # CI/CD and deployment
 .github/
 .gitlab-ci.yml
+.vercel/
+.agents/
+_uv/
+.ruff_cache/
+livekit-agent/
+AUDIT_REPORT.md
 
 # Jupyter notebooks
 *.ipynb

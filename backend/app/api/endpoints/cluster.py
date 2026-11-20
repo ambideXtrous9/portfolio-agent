@@ -9,25 +9,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.api.deps import get_optional_user
 from backend.app.schemas.auth import UserResponse
-
-try:
-    from sklearn.cluster import DBSCAN, KMeans
-    from sklearn.metrics import silhouette_score
-except ImportError:
-    KMeans = None
-    DBSCAN = None
-    silhouette_score = None
-
 from backend.app.schemas.cluster import ClusterRequest, ClusterResponse, Point
 
 router = APIRouter(prefix="/cluster", tags=["Clustering Sandbox"])
 
 
-def points_in_circum(r, n=100):
+def points_in_circum(r, n=100, rng=None):
+    rng = rng or np.random.RandomState(42)
     return [
         (
-            math.cos(2 * math.pi / n * x) * r + np.random.normal(-30, 30),
-            math.sin(2 * math.pi / n * x) * r + np.random.normal(-30, 30),
+            math.cos(2 * math.pi / n * x) * r + rng.normal(-30, 30),
+            math.sin(2 * math.pi / n * x) * r + rng.normal(-30, 30),
         )
         for x in range(1, n + 1)
     ]
@@ -35,11 +27,11 @@ def points_in_circum(r, n=100):
 
 def generate_cluster_dataset() -> pd.DataFrame:
     """Exact dataGen from Clustering/clusterapp.py: 3 concentric circles + 300 uniform noise points."""
-    np.random.seed(42)
-    df1 = pd.DataFrame(points_in_circum(500, 1000))
-    df2 = pd.DataFrame(points_in_circum(300, 700))
-    df3 = pd.DataFrame(points_in_circum(100, 300))
-    df_noise = pd.DataFrame([(np.random.randint(-600, 600), np.random.randint(-600, 600)) for _ in range(300)])
+    rng = np.random.RandomState(42)
+    df1 = pd.DataFrame(points_in_circum(500, 1000, rng))
+    df2 = pd.DataFrame(points_in_circum(300, 700, rng))
+    df3 = pd.DataFrame(points_in_circum(100, 300, rng))
+    df_noise = pd.DataFrame([(rng.randint(-600, 600), rng.randint(-600, 600)) for _ in range(300)])
 
     df = pd.concat([df1, df2, df3, df_noise], ignore_index=True)
     df.columns = ["x", "y"]
@@ -52,7 +44,7 @@ _cached_df = generate_cluster_dataset()
 
 def generate_synthetic_points(type_name: str, n_samples: int = 100, noise: float = 0.05) -> List[Point]:
     """Generates synthetic 2D datasets: blobs, moons, circles, aniso."""
-    np.random.seed(42)
+    rng = np.random.RandomState(42)
     type_name = type_name.lower()
     pts = []
 
@@ -60,40 +52,40 @@ def generate_synthetic_points(type_name: str, n_samples: int = 100, noise: float
         centers = [(2.0, 2.0), (-2.0, -2.0), (2.0, -2.0), (-2.0, 2.0)]
         for i in range(n_samples):
             c = centers[i % len(centers)]
-            x = c[0] + np.random.normal(0, max(0.1, noise * 5))
-            y = c[1] + np.random.normal(0, max(0.1, noise * 5))
+            x = c[0] + rng.normal(0, max(0.1, noise * 5))
+            y = c[1] + rng.normal(0, max(0.1, noise * 5))
             pts.append(Point(x=round(float(x), 2), y=round(float(y), 2), cluster=i % len(centers)))
 
     elif type_name == "moons":
         n_half = n_samples // 2
         for i in range(n_half):
             theta = math.pi * (i / max(1, n_half - 1))
-            x = math.cos(theta) + np.random.normal(0, noise)
-            y = math.sin(theta) + np.random.normal(0, noise)
+            x = math.cos(theta) + rng.normal(0, noise)
+            y = math.sin(theta) + rng.normal(0, noise)
             pts.append(Point(x=round(float(x), 2), y=round(float(y), 2), cluster=0))
         for i in range(n_samples - n_half):
             theta = math.pi * (i / max(1, n_samples - n_half - 1))
-            x = 1.0 - math.cos(theta) + np.random.normal(0, noise)
-            y = 1.0 - math.sin(theta) - 0.5 + np.random.normal(0, noise)
+            x = 1.0 - math.cos(theta) + rng.normal(0, noise)
+            y = 1.0 - math.sin(theta) - 0.5 + rng.normal(0, noise)
             pts.append(Point(x=round(float(x), 2), y=round(float(y), 2), cluster=1))
 
     elif type_name == "circles":
         n_half = n_samples // 2
         for i in range(n_half):
             theta = 2 * math.pi * (i / max(1, n_half))
-            r = 0.4 + np.random.normal(0, noise * 0.5)
+            r = 0.4 + rng.normal(0, noise * 0.5)
             pts.append(Point(x=round(float(r * math.cos(theta)), 2), y=round(float(r * math.sin(theta)), 2), cluster=0))
         for i in range(n_samples - n_half):
             theta = 2 * math.pi * (i / max(1, n_samples - n_half))
-            r = 0.8 + np.random.normal(0, noise * 0.5)
+            r = 0.8 + rng.normal(0, noise * 0.5)
             pts.append(Point(x=round(float(r * math.cos(theta)), 2), y=round(float(r * math.sin(theta)), 2), cluster=1))
 
     elif type_name == "aniso":
         centers = [(0.0, 0.0), (3.0, 3.0), (-3.0, 3.0)]
         for i in range(n_samples):
             c = centers[i % len(centers)]
-            raw_x = np.random.normal(0, 1.0)
-            raw_y = np.random.normal(0, 0.2)
+            raw_x = rng.normal(0, 1.0)
+            raw_y = rng.normal(0, 0.2)
             # Apply shear rotation
             x = c[0] + raw_x * 0.8 - raw_y * 0.6
             y = c[1] + raw_x * 0.3 + raw_y * 0.9
@@ -103,8 +95,8 @@ def generate_synthetic_points(type_name: str, n_samples: int = 100, noise: float
         # Fallback to random uniform
         for _ in range(n_samples):
             pts.append(Point(
-                x=round(float(np.random.uniform(-5, 5)), 2),
-                y=round(float(np.random.uniform(-5, 5)), 2),
+                x=round(float(rng.uniform(-5, 5)), 2),
+                y=round(float(rng.uniform(-5, 5)), 2),
                 cluster=0
             ))
 
@@ -138,8 +130,8 @@ async def get_raw_dataset(
 
 
 def _numpy_kmeans(X, n_clusters, max_iter=25):
-    np.random.seed(42)
-    indices = np.random.choice(len(X), n_clusters, replace=False)
+    rng = np.random.RandomState(42)
+    indices = rng.choice(len(X), n_clusters, replace=False)
     centroids = X[indices].copy()
     labels = np.zeros(len(X), dtype=int)
     for _ in range(max_iter):
@@ -252,6 +244,9 @@ async def run_clustering(
         if k > len(request.points):
             raise HTTPException(status_code=400, detail=f"k ({k}) cannot exceed number of points ({len(request.points)})")
         X = np.array(request.points, dtype=float)
+    elif request.dataset_type and request.dataset_type.lower() not in ("default", "benchmark", "concentric"):
+        syn_pts = generate_synthetic_points(request.dataset_type, n_samples=400, noise=0.06)
+        X = np.array([[p.x * 150.0, p.y * 150.0] for p in syn_pts], dtype=float)
     else:
         X = _cached_df[["x", "y"]].values
 

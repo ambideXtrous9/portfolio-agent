@@ -74,6 +74,12 @@ export function initImageClassifier() {
   if (!dropzone || !fileInput) return;
 
   dropzone.addEventListener("click", () => fileInput.click());
+  dropzone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
 
   dropzone.addEventListener("dragover", (e) => {
     e.preventDefault();
@@ -96,7 +102,9 @@ export function initImageClassifier() {
 
   async function handleClassifierFile(file) {
     if (!file.type.startsWith("image/")) {
-      alert("Please upload a valid image file (JPG, PNG, WEBP).");
+      window.dispatchEvent(new CustomEvent("portfolio:toast", {
+        detail: { message: "Please upload a valid image file (JPG, PNG, WEBP).", type: "error" }
+      }));
       return;
     }
 
@@ -123,13 +131,13 @@ export function initImageClassifier() {
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
-    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
     const apiBase = getAPIBase();
 
     try {
-      const res = await fetch(`${apiBase}/vision/classify-all${tokenParam}`, {
+      const res = await fetch(`${apiBase}/vision/classify-all`, {
         method: "POST",
         headers,
+        credentials: "include",
         body: formData
       });
 
@@ -188,13 +196,17 @@ export function initImageClassifier() {
       if (paramsEl) paramsEl.textContent = `${m.parameters_m.toFixed(2)} M`;
       if (classEl) {
         classEl.textContent = m.predicted_class;
-        classEl.style.color = (m.predicted_class && m.predicted_class !== "None") ? "#00A854" : "var(--st-text-color)";
+        classEl.style.color = (m.predicted_class && m.predicted_class !== "None") ? "var(--sage-700)" : "var(--st-text-color)";
       }
-      if (accEl) accEl.textContent = m.accuracy.toFixed(2);
+      if (accEl) accEl.textContent = m.status === "unavailable" ? "—" : m.accuracy.toFixed(2);
       if (timeEl) {
-        timeEl.textContent = m.status === "unavailable"
-          ? "— (model unavailable)"
-          : `${Number(timeVal).toFixed(4)} seconds`;
+        if (m.status === "unavailable") {
+          timeEl.textContent = "— (model unavailable)";
+        } else if (m.status === "cloud_vision") {
+          timeEl.textContent = `${Number(timeVal).toFixed(4)}s (Cloud Vision)`;
+        } else {
+          timeEl.textContent = `${Number(timeVal).toFixed(4)} seconds`;
+        }
       }
     });
   }
@@ -232,6 +244,12 @@ export function initYoloLogo() {
   if (!dropzone || !fileInput) return;
 
   dropzone.addEventListener("click", () => fileInput.click());
+  dropzone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
 
   dropzone.addEventListener("dragover", (e) => {
     e.preventDefault();
@@ -254,7 +272,9 @@ export function initYoloLogo() {
 
   async function handleYoloFile(file) {
     if (!file.type.startsWith("image/")) {
-      alert("Please upload a valid image file (JPG, PNG, WEBP).");
+      window.dispatchEvent(new CustomEvent("portfolio:toast", {
+        detail: { message: "Please upload a valid image file (JPG, PNG, WEBP).", type: "error" }
+      }));
       return;
     }
 
@@ -281,13 +301,13 @@ export function initYoloLogo() {
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
-    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
     const apiBase = getAPIBase();
 
     try {
-      const res = await fetch(`${apiBase}/vision/yolo${tokenParam}`, {
+      const res = await fetch(`${apiBase}/vision/yolo`, {
         method: "POST",
         headers,
+        credentials: "include",
         body: formData
       });
 

@@ -151,18 +151,37 @@ def get_cached_model(model_name: str):
             return None
 
         model_obj = None
-        if model_name == "Xception":
-            from Xception import XceptionNet
-            model_obj = XceptionNet(num_classes=27, lr=0.001)
-        elif model_name == "InceptionV3":
-            from InceptionV3 import InceptionV3
-            model_obj = InceptionV3(num_classes=27, lr=0.001)
-        elif model_name == "MobileNetV2":
-            from MobilenetV2 import MobileNetV2
-            model_obj = MobileNetV2(num_classes=27, lr=0.001)
-        elif model_name == "EfficientNet":
-            from EfficientNetB0 import EfficientNet
-            model_obj = EfficientNet(num_classes=27, lr=0.001)
+        timm_arch_map = {
+            "Xception": "xception",
+            "InceptionV3": "inception_v3",
+            "MobileNetV2": "mobilenetv2_100",
+            "EfficientNet": "efficientnet_b0",
+        }
+        try:
+            if model_name == "Xception":
+                from Xception import XceptionNet
+                model_obj = XceptionNet(num_classes=27, lr=0.001)
+            elif model_name == "InceptionV3":
+                from InceptionV3 import InceptionV3
+                model_obj = InceptionV3(num_classes=27, lr=0.001)
+            elif model_name == "MobileNetV2":
+                from MobilenetV2 import MobileNetV2
+                model_obj = MobileNetV2(num_classes=27, lr=0.001)
+            elif model_name == "EfficientNet":
+                from EfficientNetB0 import EfficientNet
+                model_obj = EfficientNet(num_classes=27, lr=0.001)
+        except ImportError:
+            arch = timm_arch_map.get(model_name)
+            if arch:
+                class _TimmTransferClassifier(torch.nn.Module):
+                    def __init__(self, arch_name: str, num_classes: int = 27):
+                        super().__init__()
+                        self.model = timm.create_model(arch_name, pretrained=False, num_classes=num_classes)
+
+                    def forward(self, x):
+                        return torch.nn.functional.log_softmax(self.model(x), dim=1)
+
+                model_obj = _TimmTransferClassifier(arch, num_classes=27)
 
         if model_obj:
             # weights_only=True: avoids full pickle deserialization (arbitrary code execution)
@@ -183,13 +202,15 @@ def detect_brand_and_bbox(image: Image.Image) -> Tuple[str, float, List[float]]:
     Identifies brand, visual confidence, and bounding box from image using Groq Vision.
     Dynamically accounts for image resolution, contrast, and visual distinctiveness.
     """
+    from backend.app.config import settings
+
     w, h = image.size
-    groq_api_key = os.getenv("GROQ_API_KEY")
+    groq_api_key = settings.GROQ_API_KEY or os.getenv("GROQ_API_KEY")
     if not groq_api_key:
         return ("None", 0.0, [w * 0.15, h * 0.15, w * 0.85, h * 0.85])
 
     brand = "None"
-    base_conf = 0.92
+    base_conf = 0.0
     bbox_coords = [w * 0.15, h * 0.15, w * 0.85, h * 0.85]
 
     try:
@@ -214,7 +235,11 @@ def detect_brand_and_bbox(image: Image.Image) -> Tuple[str, float, List[float]]:
             f"Return only JSON."
         )
 
-        for m_name in ["qwen/qwen3.8-27b", "qwen/qwen3.6-27b"]:
+        vision_models = [
+            "meta-llama/llama-4-scout-17b-16e-instruct",
+            "meta-llama/llama-4-maverick-17b-128e-instruct",
+        ]
+        for m_name in vision_models:
             try:
                 resp = client.chat.completions.create(
                     model=m_name,
@@ -239,8 +264,8 @@ def detect_brand_and_bbox(image: Image.Image) -> Tuple[str, float, List[float]]:
                             brand = b
                             break
 
-                    conf_val = float(parsed.get("confidence", 0.92))
-                    base_conf = max(0.60, min(0.99, conf_val))
+                    conf_val = float(parsed.get("confidence", 0.90))
+                    base_conf = max(0.60, min(0.99, conf_val)) if brand != "None" else 0.0
 
                     raw_box = parsed.get("bbox") or parsed.get("bbox_2d") or parsed.get("bbox_pct")
                     if isinstance(raw_box, list) and len(raw_box) == 4:
@@ -285,6 +310,7 @@ def run_single_inference(
     image: Image.Image,
     detected_brand: Optional[str] = None,
     detected_conf: float = 0.0,
+    vision_latency: float = 0.0,
 ) -> ModelEvaluationCard:
     """Runs prediction for a single model and formats output card."""
     spec = MODEL_SPECS[model_name]
@@ -293,11 +319,12 @@ def run_single_inference(
 
     predicted_class = "None"
     accuracy = 0.0
+    reported_time = 0.0
 
     model = None
     try:
         import torch
-        import torchvision.transforms as transforms
+        import torchvision.transforms as transforms  # noqa: F401
         model = get_cached_model(model_name)
     except Exception:
         model = None
@@ -328,9 +355,21 @@ def run_single_inference(
         reported_time = round(time.time() - start_time, 4)
 
     if model is None:
-        # Honest unavailability: without a loaded model we cannot measure real
-        # accuracy or latency, so we report an explicit unavailable card
-        # instead of fabricating deterministic "benchmark" numbers.
+        if detected_brand and detected_brand != "None" and detected_conf > 0:
+            # Real cloud vision detection succeeded when local PyTorch weights are absent (e.g. Vercel Serverless)
+            return ModelEvaluationCard(
+                model_name=model_name,
+                size_mb=size_mb,
+                parameters_m=params_m,
+                predicted_class=detected_brand,
+                accuracy=round(detected_conf, 2),
+                inference_time_seconds=round(vision_latency, 4),
+                inference_time=round(vision_latency, 4),
+                status="cloud_vision",
+                detail="Evaluated via Groq Llama-4 Vision (local PyTorch checkpoint unavailable on this runtime).",
+            )
+        # Honest unavailability: without a loaded model or cloud vision we cannot measure real
+        # accuracy or latency, so we report an explicit unavailable card.
         return ModelEvaluationCard(
             model_name=model_name,
             size_mb=size_mb,
@@ -351,8 +390,8 @@ def run_single_inference(
         accuracy=accuracy,
         inference_time_seconds=reported_time,
         inference_time=reported_time,
+        status="loaded",
     )
-
 
 
 @router.post("/classify-all", response_model=MultiModelComparisonResponse)
@@ -365,7 +404,7 @@ async def classify_all_models(
     Xception, InceptionV3, MobileNetV2, and EfficientNet.
     Matches the exact 4-column Streamlit 'Play with Image Classifier' comparison.
     """
-    if not file.content_type.startswith("image/"):
+    if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Uploaded file is not a valid image")
 
     contents = await file.read()
@@ -381,8 +420,10 @@ async def classify_all_models(
     thumb.save(buffered, format="JPEG", quality=85)
     img_b64 = f"data:image/jpeg;base64,{base64.b64encode(buffered.getvalue()).decode('utf-8')}"
 
-    # Detect brand via AI Vision if local weights are not on disk
-    detected_brand, detected_conf = detect_brand_via_vision(image)
+    # Detect brand via AI Vision off the event loop if local weights are not on disk
+    v_start = time.time()
+    detected_brand, detected_conf = await asyncio.to_thread(detect_brand_via_vision, image)
+    v_latency = round(time.time() - v_start, 4)
 
     # Evaluate all 4 models sequentially (torch forward passes run in a worker thread)
     models_to_run = ["Xception", "InceptionV3", "MobileNetV2", "EfficientNet"]
@@ -390,11 +431,16 @@ async def classify_all_models(
 
     for name in models_to_run:
         card = await asyncio.to_thread(
-            run_single_inference, name, image, detected_brand=detected_brand, detected_conf=detected_conf
+            run_single_inference,
+            name,
+            image,
+            detected_brand=detected_brand,
+            detected_conf=detected_conf,
+            vision_latency=v_latency,
         )
         model_cards.append(card)
 
-    available = [m for m in model_cards if m.status != "unavailable"]
+    available = [m for m in model_cards if m.status not in ("unavailable",)]
     fastest_model = (
         min(available, key=lambda m: m.inference_time_seconds).model_name if available else None
     )
@@ -433,7 +479,7 @@ async def detect_logo_yolo(
     current_user: Optional[UserResponse] = Depends(get_optional_user),
 ):
     """Runs YOLOv8.1 brand logo object detection with bounding box annotations."""
-    if not file.content_type.startswith("image/"):
+    if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File uploaded is not a valid image")
 
     contents = await file.read()
@@ -447,12 +493,12 @@ async def detect_logo_yolo(
 
     yolo_loaded = False
     try:
-        model = get_cached_yolo_model()
+        model = await asyncio.to_thread(get_cached_yolo_model)
         if model is not None:
-            results = model.predict(source=image, save=False, conf=0.25)
+            results = await asyncio.to_thread(model.predict, source=image, save=False, conf=0.25)
             res = results[0]
             names = model.model.names
-            
+
             for box in res.boxes:
                 cls_id = int(box.cls[0].item())
                 label = names.get(cls_id, f"Brand_{cls_id}")
@@ -463,7 +509,7 @@ async def detect_logo_yolo(
                     confidence=round(conf, 3),
                     box=coords
                 ))
-            
+
             plotted_array = res.plot()
             annotated_img = Image.fromarray(plotted_array)
             yolo_loaded = True
@@ -471,13 +517,12 @@ async def detect_logo_yolo(
         print(f"YOLO detection note ({type(e).__name__}): {e}")
 
     if not yolo_loaded:
-        # Visual bounding box fallback via Groq Vision. We report the
-        # confidence the vision model actually returned — no synthetic
-        # jitter/contrast inflation.
+        # Visual bounding box fallback via Groq Vision (off the event loop).
+        # We report the confidence the vision model actually returned.
         from PIL import ImageDraw
 
         w, h = image.size
-        detected_brand, conf, box = detect_brand_and_bbox(image)
+        detected_brand, conf, box = await asyncio.to_thread(detect_brand_and_bbox, image)
         if detected_brand and detected_brand != "None":
             draw = ImageDraw.Draw(annotated_img)
             final_conf = round(max(0.0, min(1.0, conf)), 3)

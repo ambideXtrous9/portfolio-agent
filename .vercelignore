@@ -8,6 +8,15 @@ __pycache__
 *.onnx
 *.log
 backend/models/
+backend/tests/
+livekit-agent/
+_uv/
+.agents/
+.pytest_cache/
+.ruff_cache/
+AUDIT_REPORT.md
+Dockerfile
+docker-compose.yml
 .env
 .env.local
 .env.*.local

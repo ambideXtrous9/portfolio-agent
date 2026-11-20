@@ -55,7 +55,7 @@ classifier_parser = PydanticOutputParser(pydantic_object=Classify)
 format_instructions = classifier_parser.get_format_instructions()
 
 
-def AgentClassifyNode(topic: str) -> Dict[str, str]:
+async def AgentClassifyNode(topic: str) -> Dict[str, str]:
     """Classifies topic into 'harry', 'generic', or 'exit' with conversational reply."""
     t_clean = topic.strip().lower()
     if t_clean in ["exit", "quit", "bye", "goodbye"]:
@@ -92,7 +92,7 @@ IMPORTANT: The output must be *only* the JSON object—no extra text or reasonin
 
     for _ in range(3):
         try:
-            response = llm_classifier.invoke([sys_prompt, user_msg])
+            response = await llm_classifier.ainvoke([sys_prompt, user_msg])
             article = classifier_parser.parse(response.content)
             return article.model_dump()
         except Exception:
@@ -103,13 +103,17 @@ IMPORTANT: The output must be *only* the JSON object—no extra text or reasonin
 
     # Fallback
     return {
-        "classification": "harry" if any(w in topic.lower() for w in ["harry", "potter", "voldemort", "ron", "dumbledore", "mythology", "rama", "arjuna"]) else "generic",
+        "classification": "harry" if any(w in topic.lower() for w in [
+            "harry", "potter", "voldemort", "ron", "dumbledore", "hermione", "snape",
+            "horcrux", "hallows", "hogwarts", "avada", "brahmastra", "lakshmana",
+            "samsara", "karma", "dharma", "mythology", "rama", "arjuna", "krishna",
+        ]) else "generic",
         "reply": "Harry Potter"
     }
 
 
-def classify_node(state: AgentState) -> AgentState:
-    res = AgentClassifyNode(state["topic"])
+async def classify_node(state: AgentState) -> AgentState:
+    res = await AgentClassifyNode(state["topic"])
     return {**state, "classification": res}
 
 
@@ -135,9 +139,18 @@ async def researcher_node(state: AgentState) -> AgentState:
             response = await agent.ainvoke({"messages": [{"role": "user", "content": query}]})
             research_text = response["messages"][-1].content
         else:
+            # Pinecone MCP tools unavailable on this runtime (e.g. serverless without npx);
+            # gather canonical literary references via LLM while transparently noting the source.
+            fallback_resp = await llm.ainvoke([
+                SystemMessage(content=(
+                    "You are a Harry Potter canon archivist. Summarize verified canonical facts, "
+                    "character arcs, spells, and book references from the 7 Harry Potter novels relevant to the user's query."
+                )),
+                HumanMessage(content=f"Provide canonical Harry Potter references for: {query}"),
+            ])
             research_text = (
-                f"⚠️ Lore retrieval is unavailable (Pinecone tools not connected), so no verified "
-                f"canonical research could be gathered for: {query}."
+                f"[Source: Canonical Literary Reference — Pinecone MCP vector server not connected on this runtime]\n\n"
+                f"{fallback_resp.content}"
             )
     except Exception as e:
         print(f"⚠️ Researcher node error ({type(e).__name__}): {e}")
@@ -151,7 +164,7 @@ async def researcher_node(state: AgentState) -> AgentState:
 # ─────────────────────────────────────────────────────────────────────────────
 # 🕉️ 4. Mythology Agent: Indian Mythology & Epic Parallels (from HpAgent.py)
 # ─────────────────────────────────────────────────────────────────────────────
-def mythology_node(state: AgentState) -> AgentState:
+async def mythology_node(state: AgentState) -> AgentState:
     llm = get_llm(temperature=0.7)
     prompt_content = (
         f"You are an expert in Indian ancient history, Hindu mythology, and the Harry Potter universe.\n"
@@ -160,7 +173,7 @@ def mythology_node(state: AgentState) -> AgentState:
         f"Analyze the narrative, symbolic, and philosophical parallels between Indian Mythology (e.g. Ramayana, Mahabharata, Puranas, Dharma, Karma, Maya, Astras) and the Harry Potter universe for this topic."
     )
     try:
-        response = llm.invoke([
+        response = await llm.ainvoke([
             SystemMessage(content="You are an expert mythologist and literary analyst."),
             HumanMessage(content=prompt_content)
         ])
@@ -174,7 +187,7 @@ def mythology_node(state: AgentState) -> AgentState:
 # ─────────────────────────────────────────────────────────────────────────────
 # ✍️ 5. Writer Agent: Comprehensive Comparative Article (from HpAgent.py)
 # ─────────────────────────────────────────────────────────────────────────────
-def writer_node(state: AgentState) -> AgentState:
+async def writer_node(state: AgentState) -> AgentState:
     llm = get_llm(temperature=0.7)
     writer_prompt = """
 You are an Expert Article Writer having deep knowledge in both **Indian ancient history and mythology** and the **Harry Potter Universe**.
@@ -207,7 +220,7 @@ Summarize key takeaways with a thought-provoking closing line.
         f"Write the complete comparative article now."
     )
     try:
-        response = llm.invoke([
+        response = await llm.ainvoke([
             SystemMessage(content=writer_prompt),
             HumanMessage(content=user_content)
         ])
@@ -221,10 +234,10 @@ Summarize key takeaways with a thought-provoking closing line.
 # ─────────────────────────────────────────────────────────────────────────────
 # 🧑‍⚖️ 6. Critic Agent: Accuracy & Critique Review (from HpAgent.py)
 # ─────────────────────────────────────────────────────────────────────────────
-def critic_node(state: AgentState) -> AgentState:
+async def critic_node(state: AgentState) -> AgentState:
     llm = get_llm(temperature=0.1)
     try:
-        response = llm.invoke([
+        response = await llm.ainvoke([
             SystemMessage(content="You are a critical reviewer of literary comparisons."),
             HumanMessage(content=f"Briefly critique this article in 2 sentences:\n\n{state.get('draft', '')[:1000]}")
         ])
@@ -284,10 +297,18 @@ def build_hp_graph(checkpointer=None):
     return graph.compile(checkpointer=checkpointer)
 
 
-# Global graph factory supporting active PostgreSQL checkpointer
+_compiled_hp_graph: Any = None
+_compiled_hp_checkpointer: Any = None
+
+
+# Global graph factory supporting active PostgreSQL checkpointer (cached per checkpointer instance)
 def get_hp_agent_graph():
+    global _compiled_hp_graph, _compiled_hp_checkpointer
     checkpointer = getattr(db_manager, "checkpointer", None) or MemorySaver()
-    return build_hp_graph(checkpointer=checkpointer)
+    if _compiled_hp_graph is None or _compiled_hp_checkpointer is not checkpointer:
+        _compiled_hp_graph = build_hp_graph(checkpointer=checkpointer)
+        _compiled_hp_checkpointer = checkpointer
+    return _compiled_hp_graph
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -303,12 +324,16 @@ async def ask_harry_agent(
         raise HTTPException(status_code=400, detail="Query cannot be empty or whitespace.")
 
     start_time = time.time()
-    thread_id = str(uuid.uuid4())
+    thread_id = (request.session_id or "").strip() or str(uuid.uuid4())
+    try:
+        await db_manager.ensure_thread_access(thread_id, current_user.id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail="Session belongs to another user.") from exc
+
     config = {
         "configurable": {"thread_id": thread_id},
         "metadata": {"user_id": current_user.id, "email": current_user.email},
     }
-    await db_manager.ensure_thread_access(thread_id, current_user.id)
 
     graph = get_hp_agent_graph()
     final_state = await graph.ainvoke(
@@ -333,6 +358,7 @@ async def ask_harry_agent(
     elapsed = round(time.time() - start_time, 2)
     return HarryAskResponse(
         query=request.query,
+        thread_id=thread_id,
         classification=cls_info.get("classification", "harry"),
         research=final_state.get("research"),
         mythology=final_state.get("mythology"),
@@ -557,6 +583,23 @@ async def stream_harry_sse(
                     yield {
                         "event": "status",
                         "data": json.dumps({"node": node, "message": label, "elapsed": round(time.time() - start_time, 1)})
+                    }
+
+                if event_type == "on_tool_start":
+                    t_name = event.get("name", "pinecone_search")
+                    t_input = event.get("data", {}).get("input")
+                    yield {
+                        "event": "tool_call",
+                        "data": json.dumps({"tool": t_name, "input": t_input})
+                    }
+
+                if event_type == "on_tool_end":
+                    t_name = event.get("name", "pinecone_search")
+                    t_out = event.get("data", {}).get("output")
+                    out_str = getattr(t_out, "content", str(t_out)) if t_out is not None else "Completed"
+                    yield {
+                        "event": "tool_result",
+                        "data": json.dumps({"tool": t_name, "output": str(out_str)[:240]})
                     }
 
                 if event_type == "on_chain_end" and node:

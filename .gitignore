@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.egg-info/
+build/
+dist/
 
 # Virtual Environments
 .venv/
@@ -64,7 +67,6 @@ TXT.txt
 .qwen
 .rp360
 .vercel
-.env*
 _uv/
 .agents/
 skills-lock.json
