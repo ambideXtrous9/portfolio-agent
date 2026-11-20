@@ -356,6 +356,19 @@ class DatabaseManager:
         except Exception as e:
             logger.warning("Thread ownership delete note: %s", e)
 
+    async def delete_checkpoints(self, thread_id: str) -> None:
+        """Purges LangGraph checkpoint state for a deleted conversation.
+
+        Graph invocations use the raw thread id (not the normalized chat-history
+        UUID), so this must be called with the original client thread id.
+        """
+        if not self.checkpointer or not hasattr(self.checkpointer, "adelete_thread"):
+            return
+        try:
+            await self.checkpointer.adelete_thread(thread_id)
+        except Exception as e:
+            logger.warning("Checkpoint purge note: %s", e)
+
     @property
     def is_in_memory(self) -> bool:
         """Returns True if running in in-memory fallback mode."""

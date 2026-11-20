@@ -72,15 +72,21 @@ async def validate_token_and_get_user(token: str) -> UserResponse:
     )
 
 
-def _extract_raw_token(request: Request, token: Optional[str], query_token: Optional[str]) -> Optional[str]:
-    """Resolves the JWT from (1) OAuth2 header, (2) query param, (3) httpOnly cookie."""
-    raw_token = token or query_token
-    if raw_token:
-        return raw_token
+def extract_candidate_tokens(request: Request, token: Optional[str], query_token: Optional[str]) -> list[str]:
+    """Collects unique candidate JWTs in priority order: OAuth2 header, query param, httpOnly cookie."""
+    candidates: list[str] = []
+    for t in (token, query_token):
+        if t and t.strip() and t.strip() not in candidates:
+            candidates.append(t.strip())
     auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
     if auth_header and auth_header.startswith("Bearer "):
-        return auth_header.split(" ", 1)[1].strip()
-    return request.cookies.get("access_token")
+        h_tok = auth_header.split(" ", 1)[1].strip()
+        if h_tok and h_tok not in candidates:
+            candidates.append(h_tok)
+    cookie_tok = request.cookies.get("access_token")
+    if cookie_tok and cookie_tok.strip() and cookie_tok.strip() not in candidates:
+        candidates.append(cookie_tok.strip())
+    return candidates
 
 
 async def get_current_user(
@@ -90,17 +96,30 @@ async def get_current_user(
 ) -> UserResponse:
     """
     Decodes JWT Bearer token from header, query parameter, or httpOnly cookie,
-    verifies revocation, and fetches user profile.
+    verifies revocation, and fetches user profile. If multiple token sources
+    are present (e.g. fresh header + stale cookie), tries each candidate.
     """
-    raw_token = _extract_raw_token(request, token, query_token)
-    if not raw_token:
+    candidates = extract_candidate_tokens(request, token, query_token)
+    if not candidates:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required. Please log in to access this AI feature.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return await validate_token_and_get_user(raw_token)
+    last_exc: Optional[HTTPException] = None
+    for raw_token in candidates:
+        try:
+            return await validate_token_and_get_user(raw_token)
+        except HTTPException as exc:
+            last_exc = exc
+            continue
+
+    raise last_exc or HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required. Please log in to access this AI feature.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_current_active_user(
@@ -121,14 +140,12 @@ async def get_optional_user(
     query_token: Optional[str] = Query(None, alias="token"),
 ) -> Optional[UserResponse]:
     """Optional user dependency that returns None if no token or invalid token."""
-    raw_token = _extract_raw_token(request, token, query_token)
-    if not raw_token:
-        return None
-
-    try:
-        return await validate_token_and_get_user(raw_token)
-    except Exception:
-        return None
+    for raw_token in extract_candidate_tokens(request, token, query_token):
+        try:
+            return await validate_token_and_get_user(raw_token)
+        except Exception:
+            continue
+    return None
 
 
 def require_role(*allowed_roles: str) -> Callable:

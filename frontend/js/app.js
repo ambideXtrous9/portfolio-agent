@@ -22,6 +22,7 @@ import {
   apiResetPassword,
   apiGetChatHistory,
   apiClearChatHistory,
+  refreshAuthIfNeeded,
 } from "./api.js";
 import { initTourAgent } from "./tour.js";
 import { initHarryScholar } from "./harry.js";
@@ -60,8 +61,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const tabViews = document.querySelectorAll(".st-tab-view");
   const authContainer = document.querySelector(".st-sidebar-auth");
 
-  // 1-Hour Inactivity Timeout Threshold (3,600,000 milliseconds)
-  const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000;
+  // Session expires only after 7 days without any activity. Tokens rotate
+  // automatically while the tab is in use, so normal sessions never drop.
+  const INACTIVITY_TIMEOUT_MS = 7 * 24 * 60 * 60 * 1000;
 
   function recordUserActivity() {
     if (!getAuthToken()) return;
@@ -94,17 +96,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const lastActivity = lastActivityStr ? parseInt(lastActivityStr, 10) : 0;
   const now = Date.now();
 
-  // Validate existing session token on load with 1-hour inactivity enforcement
+  // Validate existing session token on load with the inactivity deadline
   if (token) {
-    if (!lastActivity || (now - lastActivity > INACTIVITY_TIMEOUT_MS)) {
-      console.warn("⏱️ Stored session expired due to > 1 hour of inactivity. Clearing credentials.");
+    if (lastActivity && (now - lastActivity > INACTIVITY_TIMEOUT_MS)) {
+      console.warn("⏱️ Stored session expired after prolonged inactivity. Clearing credentials.");
       clearAuthToken();
       clearAuthUser();
       try { localStorage.removeItem("portfolio_last_activity"); } catch (_) {}
       token = null;
       currentUser = null;
       isLoggedIn = false;
-      showToast("Session expired due to 1 hour of inactivity. Please sign in again.", "info");
+      showToast("Session expired after prolonged inactivity. Please sign in again.", "info");
       updateAuthUI();
     } else {
       isLoggedIn = true;
@@ -117,17 +119,18 @@ document.addEventListener("DOMContentLoaded", () => {
           setAuthUser(user);
           isLoggedIn = true;
           updateAuthUI();
+          return refreshAuthIfNeeded();
         })
-        .catch(() => {
-          clearAuthToken();
-          clearAuthUser();
-          try { localStorage.removeItem("portfolio_last_activity"); } catch (_) {}
-          token = null;
-          currentUser = null;
-          isLoggedIn = false;
-          updateAuthUI();
-          // If loaded on a protected view without valid token, return to home
-          navigateToTab("tab-home", "boom");
+        .catch((err) => {
+          if (err?.status === 401) {
+            // fetchAPI already cleared local credentials and opened the
+            // sign-in prompt through portfolio:unauthorized.
+            navigateToTab("tab-home", "boom");
+            return;
+          }
+          // A cold start, proxy hiccup or backend 5xx must never destroy a
+          // still-valid local session. Keep the cached profile and retry later.
+          console.warn("Could not verify session right now; keeping cached session.", err);
         });
     }
   } else {
@@ -136,30 +139,45 @@ document.addEventListener("DOMContentLoaded", () => {
     updateAuthUI();
   }
 
-  // Inactivity watchdog: periodically checks if session has been idle for > 1 hour
+  // Sliding session: rotate the access token before it expires so an active
+  // tab is never signed out by a 401 in the middle of a task.
+  setInterval(() => {
+    if (getAuthToken()) refreshAuthIfNeeded();
+  }, 30 * 60 * 1000);
+
+  // Inactivity watchdog: periodically checks the inactivity deadline
   setInterval(() => {
     const activeToken = getAuthToken();
     if (!activeToken) return;
     const actStr = localStorage.getItem("portfolio_last_activity");
     const act = actStr ? parseInt(actStr, 10) : 0;
-    if (!act || (Date.now() - act > INACTIVITY_TIMEOUT_MS)) {
-      console.warn("⏱️ Inactivity watchdog: idle > 1 hour. Triggering auto-logout.");
-      handleLogout(null, "Session expired due to 1 hour of inactivity.");
+    if (!act) {
+      recordUserActivity();
+      return;
+    }
+    if (Date.now() - act > INACTIVITY_TIMEOUT_MS) {
+      console.warn("⏱️ Inactivity watchdog: idle past deadline. Triggering auto-logout.");
+      handleLogout(null, "Session expired after prolonged inactivity.");
     }
   }, 30000);
 
-  // Auto-logout if user re-focuses tab after being inactive for > 1 hour
+  // Auto-logout if the user re-focuses the tab after the inactivity deadline
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       const activeToken = getAuthToken();
       if (!activeToken) return;
       const actStr = localStorage.getItem("portfolio_last_activity");
       const act = actStr ? parseInt(actStr, 10) : 0;
-      if (!act || (Date.now() - act > INACTIVITY_TIMEOUT_MS)) {
-        console.warn("⏱️ Tab visibility check: idle > 1 hour. Triggering auto-logout.");
-        handleLogout(null, "Session expired due to 1 hour of inactivity.");
+      if (!act) {
+        recordUserActivity();
+        return;
+      }
+      if (Date.now() - act > INACTIVITY_TIMEOUT_MS) {
+        console.warn("⏱️ Tab visibility check: idle past deadline. Triggering auto-logout.");
+        handleLogout(null, "Session expired after prolonged inactivity.");
       } else {
         recordUserActivity();
+        refreshAuthIfNeeded();
       }
     }
   });
@@ -173,6 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Listen for unauthorized 401 events: prompt user to sign in
+  let lastUnauthorizedNotice = 0;
   window.addEventListener("portfolio:unauthorized", (e) => {
     clearAuthToken();
     clearAuthUser();
@@ -181,7 +200,15 @@ document.addEventListener("DOMContentLoaded", () => {
     currentUser = null;
     isLoggedIn = false;
     updateAuthUI();
+
+    // Several parallel requests can 401 together after a deploy; show one
+    // prompt instead of stacking identical toasts.
+    const noticeNow = Date.now();
+    if (noticeNow - lastUnauthorizedNotice < 4000) return;
+    lastUnauthorizedNotice = noticeNow;
+
     activateView("tab-home", "boom");
+    closeAllModals();
     openModal("auth-modal");
     setAuthModalView("login");
     const feature = e?.detail?.feature || "this AI feature";
@@ -608,7 +635,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       showToast("Conversation & PostgreSQL checkpoints deleted.", "info");
     } catch (err) {
-      showToast("Error clearing chat history: " + err.message, "error");
+      // The unauthorized handler already opened the sign-in prompt.
+      if (err?.status !== 401) {
+        showToast("Error clearing chat history: " + err.message, "error");
+      }
     }
   });
 

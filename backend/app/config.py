@@ -60,11 +60,14 @@ class Settings(BaseSettings):
 
     # Security & Authentication (Argon2 / JWT)
     # NOTE: JWT_SECRET_KEY intentionally has NO insecure default.
-    # When unset, an ephemeral per-process secret is generated at startup (see below)
-    # with a loud warning so no two deployments share a public constant.
-    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "")
+    # When unset, a deterministic secret is derived from private deployment
+    # credentials (see below), so every serverless instance and restart shares
+    # the same signing key. Set JWT_SECRET_KEY explicitly to control rotation.
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "").strip()
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+    # Long-lived sessions: active tabs auto-refresh their token, while a full
+    # week of inactivity is the only thing that forces a fresh sign-in.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))
     RESET_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("RESET_TOKEN_EXPIRE_MINUTES", "15"))
 
     # CORS — explicit allowlist (comma-separated env override) + optional regex
@@ -182,15 +185,73 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # ── JWT secret safety net ─────────────────────────────────────────────────────
-# No hardcoded fallback is shipped. If the operator forgets the env var, an
-# ephemeral random secret is generated per process so tokens are never signed
-# with a public constant. Tokens will not survive restarts until the var is set.
+# No hardcoded fallback is shipped. If JWT_SECRET_KEY is not explicitly set,
+# derive a deterministic secret from the deployment's configured private
+# credentials so all serverless workers and restarts share the same signing key
+# and never invalidate active sessions mid-flight. A local key file is used
+# only when no private credentials exist (e.g. a fresh offline checkout).
 if not settings.JWT_SECRET_KEY:
+    import hashlib as _hashlib
     import secrets as _secrets
+    import tempfile as _tempfile
 
-    settings.JWT_SECRET_KEY = _secrets.token_urlsafe(64)
-    print(
-        "⚠️  JWT_SECRET_KEY is not set — generated an EPHEMERAL per-process secret. "
-        "Sessions will be invalidated on restart. Set JWT_SECRET_KEY in your environment for persistence."
-    )
+    _seed_parts = [
+        settings.effective_auth_db_uri,
+        settings.effective_db_uri,
+        settings.GROQ_API_KEY,
+        settings.OPENROUTER_API_KEY,
+        settings.PINECONE_API_KEY,
+        settings.LIVEKIT_API_SECRET,
+        settings.TELEGRAM_BOT_TOKEN,
+        settings.HF_TOKEN,
+    ]
+    _seed_material = "|".join(p.strip() for p in _seed_parts if p and p.strip())
+    if _seed_material:
+        settings.JWT_SECRET_KEY = _hashlib.sha256(
+            f"portfolio-jwt-kdf-v1|{_seed_material}".encode("utf-8")
+        ).hexdigest()
+        print(
+            "ℹ️  JWT_SECRET_KEY is not set — derived a stable signing key from private "
+            "deployment credentials. Set JWT_SECRET_KEY explicitly to control rotation."
+        )
+    else:
+        _key_file = os.path.join(_tempfile.gettempdir(), ".portfolio_jwt_secret")
+        try:
+            try:
+                os.chmod(_key_file, 0o600)
+            except OSError:
+                pass
+            try:
+                with open(_key_file, "r", encoding="utf-8") as _f:
+                    settings.JWT_SECRET_KEY = _f.read().strip()
+            except FileNotFoundError:
+                pass
+            if not settings.JWT_SECRET_KEY:
+                _new_secret = _secrets.token_urlsafe(64)
+                try:
+                    # Atomic create: concurrent workers share the winner's key.
+                    _fd = os.open(_key_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                    try:
+                        os.write(_fd, _new_secret.encode("utf-8"))
+                    finally:
+                        os.close(_fd)
+                    settings.JWT_SECRET_KEY = _new_secret
+                except FileExistsError:
+                    with open(_key_file, "r", encoding="utf-8") as _f:
+                        settings.JWT_SECRET_KEY = _f.read().strip()
+                    if not settings.JWT_SECRET_KEY:
+                        # Empty/corrupt key file left by an interrupted start.
+                        settings.JWT_SECRET_KEY = _new_secret
+                        with open(_key_file, "w", encoding="utf-8") as _f:
+                            _f.write(_new_secret)
+                        try:
+                            os.chmod(_key_file, 0o600)
+                        except OSError:
+                            pass
+        except Exception:
+            settings.JWT_SECRET_KEY = _secrets.token_urlsafe(64)
+        print(
+            "ℹ️  JWT_SECRET_KEY is not set — using a local persistent key file. "
+            "Set JWT_SECRET_KEY in production so every instance shares the same key."
+        )
 
