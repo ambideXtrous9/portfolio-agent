@@ -109,13 +109,26 @@ async def delete_thread_history(
     """Deletes all messages for the thread_id from the PostgreSQL database."""
     norm_id = _normalize_thread_id(thread_id)
 
-    # IDOR protection: only the owner may delete
+    # IDOR protection: if the thread is owned by another user, deny with 404
     owner = await db_manager.get_thread_owner(norm_id)
-    if owner is None or owner != current_user.id:
+    if owner is not None and owner != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found.")
+
+    if owner is None:
+        # Unclaimed thread: check if any messages exist; if none, allow clean local dismissal
+        history = await db_manager.get_chat_history(norm_id)
+        messages = await history.aget_messages()
+        if messages:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found.")
+        return DeleteThreadResponse(
+            thread_id=thread_id,
+            deleted=False,
+            message="Thread was empty or already deleted.",
+        )
 
     deleted = await db_manager.delete_chat_session(norm_id)
     await db_manager.delete_thread_ownership(norm_id)
+    await db_manager.delete_checkpoints(thread_id)
     return DeleteThreadResponse(
         thread_id=thread_id,
         deleted=deleted,

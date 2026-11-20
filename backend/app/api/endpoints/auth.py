@@ -6,7 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
-from backend.app.api.deps import get_current_active_user, oauth2_scheme
+from backend.app.api.deps import extract_candidate_tokens, get_current_active_user, oauth2_scheme
 from backend.app.config import settings
 from backend.app.core.auth_database import auth_db_manager
 from backend.app.core.notify import send_telegram_msg
@@ -38,14 +38,22 @@ AUTH_FAILURE_HEADERS = {"WWW-Authenticate": "Bearer"}
 COOKIE_NAME = "access_token"
 
 
-def _set_auth_cookie(response: Response, token: str) -> None:
+def _set_auth_cookie(response: Response, token: str, request: Optional[Request] = None) -> None:
     """Stores the JWT in an httpOnly cookie so the token is not exposed to JS."""
+    forwarded_proto = ""
+    if request is not None:
+        forwarded_proto = (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip()
+    is_https = (
+        forwarded_proto == "https"
+        or (request is not None and request.url.scheme == "https")
+        or os_is_https()
+    )
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,
         httponly=True,
         samesite="lax",
-        secure=str(response.headers.get("x-forwarded-proto", "")).lower() == "https" or os_is_https(),
+        secure=is_https,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
@@ -86,7 +94,7 @@ def _build_user_response(user_dict: dict) -> UserResponse:
     summary="Register a new user account",
     description="Registers a new user in PostgreSQL and immediately returns an authenticated JWT Bearer session.",
 )
-async def signup_endpoint(request: UserSignupRequest, response: Response):
+async def signup_endpoint(request: UserSignupRequest, response: Response, http_request: Request):
     """Registers a new user and issues an access token."""
     existing_user = await auth_db_manager.get_user_by_email(request.email)
     if existing_user:
@@ -123,7 +131,7 @@ async def signup_endpoint(request: UserSignupRequest, response: Response):
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
-    _set_auth_cookie(response, access_token)
+    _set_auth_cookie(response, access_token, http_request)
 
     logger.info(f"User registered successfully: {request.email} (ID: {user_dict['id']})")
     return TokenResponse(
@@ -199,7 +207,7 @@ async def login_endpoint(request: Request, response: Response):
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
-    _set_auth_cookie(response, access_token)
+    _set_auth_cookie(response, access_token, request)
 
     logger.info(f"User authenticated successfully: {email}")
     return TokenResponse(
@@ -227,7 +235,46 @@ async def get_me_endpoint(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 4. User Logout & Token Revocation
+# 4. Refresh Session (Sliding Token Rotation)
+# ──────────────────────────────────────────────────────────────────────────────
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    summary="Rotate the current JWT access token",
+    description=(
+        "Issues a fresh access token for an already-authenticated caller. "
+        "Active tabs call this before expiry so users are never signed out mid-session."
+    ),
+)
+async def refresh_endpoint(
+    request: Request,
+    response: Response,
+    current_user: UserResponse = Depends(get_current_active_user),
+):
+    """Rotates a valid session token without requiring the password again."""
+    rate_limit(request, "auth-refresh", max_attempts=60, window_seconds=300.0)
+
+    token_payload = {
+        "sub": current_user.email,
+        "user_id": current_user.id,
+        "role": current_user.role,
+    }
+    access_token = create_access_token(
+        data=token_payload,
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    _set_auth_cookie(response, access_token, request)
+
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+        user=current_user,
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 5. User Logout & Token Revocation
 # ──────────────────────────────────────────────────────────────────────────────
 @router.post(
     "/logout",
@@ -241,15 +288,10 @@ async def logout_endpoint(
     token: Optional[str] = Depends(oauth2_scheme),
     current_user: UserResponse = Depends(get_current_active_user),
 ):
-    """Revokes the current user's token."""
-    raw_token = token
-    if not raw_token:
-        auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            raw_token = auth_header.split(" ", 1)[1].strip()
-    raw_token = raw_token or request.cookies.get(COOKIE_NAME)
+    """Revokes every presented token and clears the auth cookie."""
+    raw_tokens = extract_candidate_tokens(request, token, None)
 
-    if raw_token:
+    for raw_token in raw_tokens:
         try:
             payload = decode_token(raw_token)
             token_jti = payload.get("jti")
@@ -274,7 +316,7 @@ async def logout_endpoint(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 5. Forgot Password (Initiate Reset Request)
+# 6. Forgot Password (Initiate Reset Request)
 # ──────────────────────────────────────────────────────────────────────────────
 RESET_REQUEST_NEUTRAL_MESSAGE = (
     "If this email address is registered, password reset instructions have been sent to the registered delivery channel."
@@ -343,7 +385,7 @@ async def forgot_password_endpoint(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 6. Reset Password (Update Credentials)
+# 7. Reset Password (Update Credentials)
 # ──────────────────────────────────────────────────────────────────────────────
 @router.post(
     "/reset-password",

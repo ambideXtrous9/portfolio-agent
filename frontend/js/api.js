@@ -55,6 +55,30 @@ export function getAuthToken() {
   }
 }
 
+/**
+ * Decodes a JWT payload without verifying it (client-side scheduling only).
+ * Returns null for malformed tokens.
+ */
+export function getTokenPayload(token) {
+  try {
+    const part = String(token || "").split(".")[1];
+    if (!part) return null;
+    const normalized = part.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const bytes = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Milliseconds until the stored token expires (Infinity when unknown). */
+export function getTokenRemainingMs(token = getAuthToken()) {
+  const payload = getTokenPayload(token);
+  if (!payload || !payload.exp) return Infinity;
+  return payload.exp * 1000 - Date.now();
+}
+
 export function setAuthToken(token) {
   try {
     if (token) {
@@ -167,6 +191,11 @@ export async function fetchAPI(endpoint, options = {}) {
     throw new Error("Authentication required. Please sign in to access this feature.");
   }
 
+  const isAuthAction = endpoint.includes("/auth/login") ||
+                       endpoint.includes("/auth/signup") ||
+                       endpoint.includes("/auth/forgot-password") ||
+                       endpoint.includes("/auth/reset-password");
+
   const headers = {
     'Accept': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -175,7 +204,8 @@ export async function fetchAPI(endpoint, options = {}) {
   try {
     const response = await fetch(url, {
       ...options,
-      headers
+      headers,
+      credentials: options.credentials || "include"
     });
 
     if (!response.ok) {
@@ -185,15 +215,20 @@ export async function fetchAPI(endpoint, options = {}) {
         errDetail = errJson.detail || errJson.message || JSON.stringify(errJson);
       } catch (_) {}
 
-      // If unauthorized, clear invalid token and broadcast auth event
-      if (response.status === 401) {
+      // A 401 on a protected endpoint means the token is dead; clear it once.
+      // Failed login/signup/password attempts are expected 401s and must never
+      // look like a session expiry.
+      if (response.status === 401 && token && !isAuthAction) {
         clearAuthToken();
         clearAuthUser();
         try { localStorage.removeItem("portfolio_last_activity"); } catch (_) {}
         window.dispatchEvent(new CustomEvent("portfolio:unauthorized", { detail: { endpoint } }));
       }
 
-      throw new Error(`API Error (${response.status}): ${errDetail}`);
+      const error = new Error(`API Error (${response.status}): ${errDetail}`);
+      error.status = response.status;
+      error.endpoint = endpoint;
+      throw error;
     }
     const resData = await response.json();
     if (token) {
@@ -493,6 +528,9 @@ export async function apiLogin(email, password) {
 }
 
 export async function apiLogout() {
+  // Capture the token before wiping local state so the backend can revoke it.
+  const token = getAuthToken();
+
   // 1. Immediately wipe local state synchronously
   clearAuthToken();
   clearAuthUser();
@@ -510,9 +548,42 @@ export async function apiLogout() {
     const base = getAPIBase();
     fetch(`${base}/auth/logout`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      },
+      credentials: "include",
+      keepalive: true,
     }).catch(() => {});
   } catch (_) {}
+}
+
+/** Rotates the current access token and stores the fresh one. */
+export async function apiRefreshToken() {
+  const data = await fetchAPI("/auth/refresh", { method: "POST" });
+  if (data.access_token) {
+    setAuthToken(data.access_token);
+    if (data.user) setAuthUser(data.user);
+  }
+  return data;
+}
+
+/**
+ * Refreshes the token only when it is close to expiry (default: 24h left).
+ * Safe to call on load, on focus, and from a periodic timer.
+ */
+export async function refreshAuthIfNeeded(thresholdMs = 24 * 60 * 60 * 1000) {
+  const token = getAuthToken();
+  if (!token) return false;
+  if (getTokenRemainingMs(token) > thresholdMs) return true;
+  try {
+    await apiRefreshToken();
+    return true;
+  } catch (err) {
+    // Network hiccups should not sign the user out; a real 401 already did.
+    console.warn("Token refresh deferred:", err?.message || err);
+    return false;
+  }
 }
 
 export async function apiGetMe() {
