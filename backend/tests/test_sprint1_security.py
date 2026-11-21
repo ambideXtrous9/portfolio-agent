@@ -24,18 +24,41 @@ def test_lifespan_initializes_without_nameerror():
         assert hasattr(m.app.state, "db_pool")
 
 
-# ── S1.2: forgot-password does not leak reset tokens ─────────────────────────
-def test_forgot_password_never_returns_token(client: TestClient):
+# ── S1.2: forgot-password + reset-password 2-step flow ──────────────────────
+def test_forgot_and_reset_password_full_flow(client: TestClient):
     tok = register_and_login(client, "owner1@example.com")
     assert tok
+
+    # Unknown email returns 404 so the UI does not open an empty Step-2 reset modal
+    r_ghost = client.post("/api/auth/forgot-password", json={"email": "ghost@example.com"})
+    assert r_ghost.status_code == 404
+
+    # Registered email issues a 15-minute cryptographic reset token
     r = client.post("/api/auth/forgot-password", json={"email": "owner1@example.com"})
     assert r.status_code == 200, r.text
     body = r.json()
-    assert "reset_token" not in body
-    # Unknown email must produce an identical (enumeration-safe) response
-    r2 = client.post("/api/auth/forgot-password", json={"email": "ghost@example.com"})
-    assert r2.status_code == 200
-    assert r2.json() == body
+    assert body.get("reset_token")
+    reset_token = body["reset_token"]
+
+    # Consume the reset token to set a new password
+    r_reset = client.post(
+        "/api/auth/reset-password",
+        json={"token": reset_token, "new_password": "NewStrongPassword!99"},
+    )
+    assert r_reset.status_code == 200, r_reset.text
+
+    # Reusing a consumed reset token is rejected
+    r_reuse = client.post(
+        "/api/auth/reset-password",
+        json={"token": reset_token, "new_password": "AnotherPassword!99"},
+    )
+    assert r_reuse.status_code == 400
+
+    # Old password no longer works; new password succeeds
+    r_old = client.post("/api/auth/login", json={"email": "owner1@example.com", "password": "Sup3rSecret!x"})
+    assert r_old.status_code == 401
+    r_new = client.post("/api/auth/login", json={"email": "owner1@example.com", "password": "NewStrongPassword!99"})
+    assert r_new.status_code == 200
 
 
 # ── S1.2/9: uniform login failure (no user enumeration) ──────────────────────

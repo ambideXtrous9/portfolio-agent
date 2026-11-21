@@ -401,9 +401,30 @@ document.addEventListener("DOMContentLoaded", () => {
   if (tabModalSignup) tabModalSignup.addEventListener("click", () => setAuthModalView("signup"));
   if (tabModalForgot) tabModalForgot.addEventListener("click", () => setAuthModalView("forgot"));
 
+  document.getElementById("btn-modal-forgot-link")?.addEventListener("click", () => {
+    const loginEmail = document.getElementById("modal-login-email")?.value?.trim();
+    const forgotEmailInput = document.getElementById("modal-forgot-email");
+    if (forgotEmailInput && loginEmail) forgotEmailInput.value = loginEmail;
+    setAuthModalView("forgot");
+  });
+
+  document.getElementById("btn-inpage-forgot-password")?.addEventListener("click", () => {
+    const inpageEmail = document.getElementById("auth-username")?.value?.trim();
+    const forgotEmailInput = document.getElementById("modal-forgot-email");
+    if (forgotEmailInput && inpageEmail) forgotEmailInput.value = inpageEmail;
+    openModal("auth-modal");
+    setAuthModalView("forgot");
+  });
+
   document.getElementById("btn-already-have-reset-token")?.addEventListener("click", () => {
     closeAllModals();
     openModal("reset-modal");
+  });
+
+  document.getElementById("btn-reset-back-to-login")?.addEventListener("click", () => {
+    closeAllModals();
+    openModal("auth-modal");
+    setAuthModalView("login");
   });
 
   // Modal Sign In form submit
@@ -489,13 +510,29 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const res = await apiForgotPassword(email);
         const resetToken = res.reset_token;
+        if (!resetToken) {
+          showToast(res.message || "Could not generate reset token for this email.", "error");
+          return;
+        }
         closeAllModals();
         openModal("reset-modal");
         const tokenInput = document.getElementById("modal-reset-token");
-        if (tokenInput && resetToken) tokenInput.value = resetToken;
-        showToast(res.message || "Reset token generated. Set your new password.", "info");
+        if (tokenInput) tokenInput.value = resetToken;
+        const newPassInput = document.getElementById("modal-reset-new-password");
+        const confirmPassInput = document.getElementById("modal-reset-confirm-password");
+        if (newPassInput) {
+          newPassInput.value = "";
+          setTimeout(() => newPassInput.focus(), 50);
+        }
+        if (confirmPassInput) confirmPassInput.value = "";
+        const subEl = document.getElementById("modal-reset-subtitle");
+        if (subEl) {
+          subEl.textContent = `15-minute cryptographic token generated for ${res.email || email}. Enter your new password below.`;
+        }
+        showToast(res.message || "Reset token generated. Set your new password.", "success");
       } catch (err) {
-        showToast(err.message, "error");
+        const cleanMsg = (err.message || "Failed to generate reset token.").replace(/^API Error \(\d+\):\s*/i, "");
+        showToast(cleanMsg, "error");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
       }
@@ -506,20 +543,45 @@ document.addEventListener("DOMContentLoaded", () => {
   if (formModalReset) {
     formModalReset.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const rToken = document.getElementById("modal-reset-token")?.value?.trim();
-      const newPassword = document.getElementById("modal-reset-new-password")?.value?.trim();
+      const tokenInput = document.getElementById("modal-reset-token");
+      const newPassInput = document.getElementById("modal-reset-new-password");
+      const confirmPassInput = document.getElementById("modal-reset-confirm-password");
+      const rToken = tokenInput?.value?.trim();
+      const newPassword = newPassInput?.value?.trim();
+      const confirmPassword = confirmPassInput?.value?.trim();
       const submitBtn = document.getElementById("modal-reset-submit");
       if (!rToken || !newPassword) return;
+
+      if (newPassword.length < 8) {
+        showToast("New password must be at least 8 characters long.", "error");
+        return;
+      }
+      if (confirmPassInput && confirmPassword !== newPassword) {
+        showToast("Passwords do not match. Please retype your new password.", "error");
+        return;
+      }
 
       if (submitBtn) submitBtn.disabled = true;
       try {
         const res = await apiResetPassword(rToken, newPassword);
+        const forgotEmail = document.getElementById("modal-forgot-email")?.value?.trim();
+        if (tokenInput) tokenInput.value = "";
+        if (newPassInput) newPassInput.value = "";
+        if (confirmPassInput) confirmPassInput.value = "";
         closeAllModals();
         openModal("auth-modal");
         setAuthModalView("login");
+        const loginEmailInput = document.getElementById("modal-login-email");
+        const loginPassInput = document.getElementById("modal-login-password");
+        if (loginEmailInput && forgotEmail) loginEmailInput.value = forgotEmail;
+        if (loginPassInput) {
+          loginPassInput.value = "";
+          setTimeout(() => loginPassInput.focus(), 50);
+        }
         showToast(res.message || "Password updated successfully! Please sign in.", "success");
       } catch (err) {
-        showToast(err.message, "error");
+        const cleanMsg = (err.message || "Password reset failed.").replace(/^API Error \(\d+\):\s*/i, "");
+        showToast(cleanMsg, "error");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
       }

@@ -90,6 +90,7 @@ class AuthDatabaseManager:
                 timeout=settings.DB_POOL_TIMEOUT,
                 max_lifetime=300.0,
                 max_idle=60.0,
+                check=AsyncConnectionPool.check_connection,
                 kwargs=connection_kwargs,
                 open=False,
             )
@@ -189,26 +190,29 @@ class AuthDatabaseManager:
             await self._ensure_connected()
 
         if not self._is_in_memory and self.pool:
-            try:
-                async with self.pool.connection() as conn:
-                    async with conn.cursor() as cur:
-                        await cur.execute(
-                            "SELECT id, email, full_name, hashed_password, is_active, is_superuser, role, created_at, updated_at "
-                            "FROM users WHERE LOWER(email) = %s",
-                            (normalized,),
-                        )
-                        row = await cur.fetchone()
-                        if row:
-                            row_dict = dict(row)
-                            row_dict["id"] = str(row_dict["id"])
-                            return row_dict
-                        return None
-            except Exception as e:
-                self.last_error = f"{type(e).__name__}: {str(e)}"
-                logger.warning(f"Error querying user by email in PostgreSQL: {e}.")
-                if not settings.effective_auth_db_uri:
-                    return self._in_memory_users.get(normalized)
-                return None
+            for attempt in range(2):
+                try:
+                    async with self.pool.connection() as conn:
+                        async with conn.cursor() as cur:
+                            await cur.execute(
+                                "SELECT id, email, full_name, hashed_password, is_active, is_superuser, role, created_at, updated_at "
+                                "FROM users WHERE LOWER(email) = %s",
+                                (normalized,),
+                            )
+                            row = await cur.fetchone()
+                            if row:
+                                row_dict = dict(row)
+                                row_dict["id"] = str(row_dict["id"])
+                                return row_dict
+                            return None
+                except Exception as e:
+                    self.last_error = f"{type(e).__name__}: {str(e)}"
+                    logger.warning(f"Error querying user by email in PostgreSQL (attempt {attempt + 1}): {e}.")
+                    if attempt == 0:
+                        continue
+                    if not settings.effective_auth_db_uri:
+                        return self._in_memory_users.get(normalized)
+                    return None
 
         return self._in_memory_users.get(normalized)
 
@@ -220,28 +224,31 @@ class AuthDatabaseManager:
             await self._ensure_connected()
 
         if not self._is_in_memory and self.pool:
-            try:
-                async with self.pool.connection() as conn:
-                    async with conn.cursor() as cur:
-                        await cur.execute(
-                            "SELECT id, email, full_name, hashed_password, is_active, is_superuser, role, created_at, updated_at "
-                            "FROM users WHERE id::text = %s",
-                            (str_id,),
-                        )
-                        row = await cur.fetchone()
-                        if row:
-                            row_dict = dict(row)
-                            row_dict["id"] = str(row_dict["id"])
-                            return row_dict
-                        return None
-            except Exception as e:
-                self.last_error = f"{type(e).__name__}: {str(e)}"
-                logger.warning(f"Error querying user by id in PostgreSQL: {e}.")
-                if not settings.effective_auth_db_uri:
-                    for u in self._in_memory_users.values():
-                        if str(u.get("id")) == str_id:
-                            return u
-                return None
+            for attempt in range(2):
+                try:
+                    async with self.pool.connection() as conn:
+                        async with conn.cursor() as cur:
+                            await cur.execute(
+                                "SELECT id, email, full_name, hashed_password, is_active, is_superuser, role, created_at, updated_at "
+                                "FROM users WHERE id::text = %s",
+                                (str_id,),
+                            )
+                            row = await cur.fetchone()
+                            if row:
+                                row_dict = dict(row)
+                                row_dict["id"] = str(row_dict["id"])
+                                return row_dict
+                            return None
+                except Exception as e:
+                    self.last_error = f"{type(e).__name__}: {str(e)}"
+                    logger.warning(f"Error querying user by id in PostgreSQL (attempt {attempt + 1}): {e}.")
+                    if attempt == 0:
+                        continue
+                    if not settings.effective_auth_db_uri:
+                        for u in self._in_memory_users.values():
+                            if str(u.get("id")) == str_id:
+                                return u
+                    return None
 
         for u in self._in_memory_users.values():
             if str(u.get("id")) == str_id:
@@ -308,34 +315,54 @@ class AuthDatabaseManager:
         self._in_memory_users[email_normalized] = user_record
         return user_record
 
-    async def update_user_password(self, user_id: str, new_hashed_password: str) -> bool:
+    async def update_user_password(
+        self,
+        user_id: str,
+        new_hashed_password: str,
+        email: Optional[str] = None,
+    ) -> bool:
         """Updates user password and timestamp."""
         now = datetime.now(timezone.utc)
+        norm_email = email.strip().lower() if email else None
+
+        # Keep in-memory cache synchronized if present
+        updated_mem = False
+        for u in self._in_memory_users.values():
+            if str(u.get("id")) == str(user_id) or (norm_email and u.get("email", "").lower() == norm_email):
+                u["hashed_password"] = new_hashed_password
+                u["updated_at"] = now
+                updated_mem = True
 
         if settings.effective_auth_db_uri and (self._is_in_memory or not self.pool):
             await self._ensure_connected()
 
         if not self._is_in_memory and self.pool:
-            try:
-                async with self.pool.connection() as conn:
-                    async with conn.cursor() as cur:
-                        await cur.execute(
-                            "UPDATE users SET hashed_password = %s, updated_at = %s WHERE id::text = %s",
-                            (new_hashed_password, now, str(user_id)),
-                        )
-                        return cur.rowcount > 0
-            except Exception as e:
-                self.last_error = f"{type(e).__name__}: {str(e)}"
-                logger.warning(f"Error updating password in PostgreSQL: {e}")
-                return False
+            for attempt in range(2):
+                try:
+                    async with self.pool.connection() as conn:
+                        async with conn.cursor() as cur:
+                            await cur.execute(
+                                "UPDATE users SET hashed_password = %s, updated_at = %s WHERE id::text = %s",
+                                (new_hashed_password, now, str(user_id)),
+                            )
+                            if cur.rowcount > 0:
+                                return True
+                            if norm_email:
+                                await cur.execute(
+                                    "UPDATE users SET hashed_password = %s, updated_at = %s WHERE LOWER(email) = %s",
+                                    (new_hashed_password, now, norm_email),
+                                )
+                                if cur.rowcount > 0:
+                                    return True
+                            return updated_mem
+                except Exception as e:
+                    self.last_error = f"{type(e).__name__}: {str(e)}"
+                    logger.warning(f"Error updating password in PostgreSQL (attempt {attempt + 1}): {e}")
+                    if attempt == 0:
+                        continue
+                    return updated_mem
 
-        # Update in-memory
-        for u in self._in_memory_users.values():
-            if str(u.get("id")) == str(user_id):
-                u["hashed_password"] = new_hashed_password
-                u["updated_at"] = now
-                return True
-        return False
+        return updated_mem
 
     # --------------------------------------------------------------------------
     # Token Blacklist Operations (Logout / Revocation)
@@ -353,20 +380,22 @@ class AuthDatabaseManager:
             await self._ensure_connected()
 
         if not self._is_in_memory and self.pool:
-            try:
-                async with self.pool.connection() as conn:
-                    async with conn.cursor() as cur:
-                        await cur.execute(
-                            """
-                            INSERT INTO token_blacklist (token_jti, user_id, expires_at)
-                            VALUES (%s, %s, %s)
-                            ON CONFLICT (token_jti) DO NOTHING
-                            """,
-                            (token_jti, user_id, expires_at),
-                        )
-            except Exception as e:
-                self.last_error = f"{type(e).__name__}: {str(e)}"
-                logger.warning(f"Error blacklisting token in PostgreSQL: {e}")
+            for attempt in range(2):
+                try:
+                    async with self.pool.connection() as conn:
+                        async with conn.cursor() as cur:
+                            await cur.execute(
+                                """
+                                INSERT INTO token_blacklist (token_jti, user_id, expires_at)
+                                VALUES (%s, %s, %s)
+                                ON CONFLICT (token_jti) DO NOTHING
+                                """,
+                                (token_jti, user_id, expires_at),
+                            )
+                    break
+                except Exception as e:
+                    self.last_error = f"{type(e).__name__}: {str(e)}"
+                    logger.warning(f"Error blacklisting token in PostgreSQL (attempt {attempt + 1}): {e}")
 
     async def is_token_blacklisted(self, token_jti: str) -> bool:
         """Checks if token jti is revoked."""
@@ -377,17 +406,18 @@ class AuthDatabaseManager:
             await self._ensure_connected()
 
         if not self._is_in_memory and self.pool:
-            try:
-                async with self.pool.connection() as conn:
-                    async with conn.cursor() as cur:
-                        await cur.execute(
-                            "SELECT 1 FROM token_blacklist WHERE token_jti = %s",
-                            (token_jti,),
-                        )
-                        return (await cur.fetchone()) is not None
-            except Exception as e:
-                self.last_error = f"{type(e).__name__}: {str(e)}"
-                logger.warning(f"Error checking token blacklist in PostgreSQL: {e}")
+            for attempt in range(2):
+                try:
+                    async with self.pool.connection() as conn:
+                        async with conn.cursor() as cur:
+                            await cur.execute(
+                                "SELECT 1 FROM token_blacklist WHERE token_jti = %s",
+                                (token_jti,),
+                            )
+                            return (await cur.fetchone()) is not None
+                except Exception as e:
+                    self.last_error = f"{type(e).__name__}: {str(e)}"
+                    logger.warning(f"Error checking token blacklist in PostgreSQL (attempt {attempt + 1}): {e}")
 
         return False
 
@@ -412,19 +442,22 @@ class AuthDatabaseManager:
             await self._ensure_connected()
 
         if not self._is_in_memory and self.pool:
-            try:
-                async with self.pool.connection() as conn:
-                    async with conn.cursor() as cur:
-                        await cur.execute(
-                            """
-                            INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, is_used)
-                            VALUES (%s, %s, %s, FALSE)
-                            """,
-                            (user_id, token_hash, expires_at),
-                        )
-            except Exception as e:
-                self.last_error = f"{type(e).__name__}: {str(e)}"
-                logger.warning(f"Error storing reset token in PostgreSQL: {e}")
+            for attempt in range(2):
+                try:
+                    async with self.pool.connection() as conn:
+                        async with conn.cursor() as cur:
+                            await cur.execute(
+                                """
+                                INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, is_used)
+                                VALUES (%s, %s, %s, FALSE)
+                                ON CONFLICT (token_hash) DO NOTHING
+                                """,
+                                (user_id, token_hash, expires_at),
+                            )
+                    break
+                except Exception as e:
+                    self.last_error = f"{type(e).__name__}: {str(e)}"
+                    logger.warning(f"Error storing reset token in PostgreSQL (attempt {attempt + 1}): {e}")
 
     async def verify_and_consume_reset_token(self, token_str: str) -> Optional[str]:
         """Validates and marks password reset token as used, returning user_id."""
@@ -435,33 +468,37 @@ class AuthDatabaseManager:
             await self._ensure_connected()
 
         if not self._is_in_memory and self.pool:
-            try:
-                async with self.pool.connection() as conn:
-                    async with conn.cursor() as cur:
-                        await cur.execute(
-                            """
-                            SELECT user_id, expires_at, is_used
-                            FROM password_reset_tokens
-                            WHERE token_hash = %s
-                            """,
-                            (token_hash,),
-                        )
-                        row = await cur.fetchone()
-                        if not row:
-                            return None
+            for attempt in range(2):
+                try:
+                    async with self.pool.connection() as conn:
+                        async with conn.cursor() as cur:
+                            await cur.execute(
+                                """
+                                SELECT user_id, expires_at, is_used
+                                FROM password_reset_tokens
+                                WHERE token_hash = %s
+                                """,
+                                (token_hash,),
+                            )
+                            row = await cur.fetchone()
+                            if row:
+                                if row["is_used"] or row["expires_at"] <= now:
+                                    return None
 
-                        if row["is_used"] or row["expires_at"] <= now:
-                            return None
-
-                        # Mark as used
-                        await cur.execute(
-                            "UPDATE password_reset_tokens SET is_used = TRUE WHERE token_hash = %s",
-                            (token_hash,),
-                        )
-                        return str(row["user_id"])
-            except Exception as e:
-                self.last_error = f"{type(e).__name__}: {str(e)}"
-                logger.warning(f"Error consuming reset token in PostgreSQL: {e}")
+                                await cur.execute(
+                                    "UPDATE password_reset_tokens SET is_used = TRUE WHERE token_hash = %s",
+                                    (token_hash,),
+                                )
+                                rec = self._in_memory_reset_tokens.get(token_hash)
+                                if rec:
+                                    rec["is_used"] = True
+                                return str(row["user_id"])
+                            break
+                except Exception as e:
+                    self.last_error = f"{type(e).__name__}: {str(e)}"
+                    logger.warning(f"Error consuming reset token in PostgreSQL (attempt {attempt + 1}): {e}")
+                    if attempt == 0:
+                        continue
 
         rec = self._in_memory_reset_tokens.get(token_hash)
         if rec and not rec["is_used"] and rec["expires_at"] > now:

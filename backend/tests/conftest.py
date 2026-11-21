@@ -45,6 +45,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 import backend.app.core.auth_database as authdb  # noqa: E402
 import backend.app.core.database as chatdb  # noqa: E402
+import backend.app.core.ratelimit as ratelimit  # noqa: E402
 import backend.app.main as app_main  # noqa: E402
 
 
@@ -55,6 +56,7 @@ def _reset_memory_state() -> None:
     authdb.auth_db_manager._in_memory_users.clear()
     authdb.auth_db_manager._in_memory_blacklist.clear()
     authdb.auth_db_manager._in_memory_reset_tokens.clear()
+    ratelimit._BUCKETS.clear()
     chatdb.db_manager._is_in_memory = True
     authdb.auth_db_manager._initialized = True
     authdb.auth_db_manager._in_memory = True

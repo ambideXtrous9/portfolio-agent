@@ -318,33 +318,32 @@ async def logout_endpoint(
 # ──────────────────────────────────────────────────────────────────────────────
 # 6. Forgot Password (Initiate Reset Request)
 # ──────────────────────────────────────────────────────────────────────────────
-RESET_REQUEST_NEUTRAL_MESSAGE = (
-    "If this email address is registered, password reset instructions have been sent to the registered delivery channel."
-)
-
-
 @router.post(
     "/forgot-password",
     summary="Request a password reset token",
-    description=(
-        "Generates a 15-minute time-limited password reset token and delivers it "
-        "over the registered channel (Telegram) — it is never returned in the API response."
-    ),
+    description="Generates a 15-minute time-limited cryptographic password reset token for a registered account.",
 )
 async def forgot_password_endpoint(
     request: ForgotPasswordRequest,
     request_http: Request,
     background_tasks: BackgroundTasks,
 ):
-    """Generates and delivers a password reset token without leaking it in the response."""
-    # Anti-brute-force / anti-spam: 5 requests / 5 minutes per IP
-    rate_limit(request_http, "auth-forgot", max_attempts=5, window_seconds=300.0)
+    """Generates a time-limited password reset token for a registered account."""
+    rate_limit(request_http, "auth-forgot", max_attempts=10, window_seconds=300.0)
 
-    user_dict = await auth_db_manager.get_user_by_email(request.email)
+    email = (request.email or "").strip().lower()
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please provide a valid registered email address.",
+        )
 
+    user_dict = await auth_db_manager.get_user_by_email(email)
     if not user_dict:
-        # Prevent account enumeration: identical response for unknown emails
-        return {"message": RESET_REQUEST_NEUTRAL_MESSAGE, "status": "success"}
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No registered account found for this email address. Please check the email or register an account.",
+        )
 
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
     reset_token = create_reset_token(
@@ -359,29 +358,26 @@ async def forgot_password_endpoint(
         expires_at=expires_at,
     )
 
-    # Deliver the token over the registered channel — NEVER in the HTTP response
+    # Also notify via Telegram when configured
     if settings.TELEGRAM_CHAT_ID and settings.TELEGRAM_BOT_TOKEN:
         owner_chat_id = settings.TELEGRAM_CHAT_ID.split(",")[0].strip()
         background_tasks.add_task(
             send_telegram_msg,
             owner_chat_id,
-            f"🔐 <b>Password reset requested</b> for <code>{request.email}</code>\n\n"
+            f"🔐 <b>Password reset requested</b> for <code>{user_dict['email']}</code>\n\n"
             f"<b>Reset token (valid {settings.RESET_TOKEN_EXPIRE_MINUTES} min):</b>\n"
-            f"<code>{reset_token}</code>\n\n"
-            f"<i>POST it to /api/auth/reset-password together with the new password. "
-            f"If this wasn't you, ignore this message.</i>",
+            f"<code>{reset_token}</code>",
             "HTML",
         )
-        logger.info(f"Password reset token issued for: {request.email} (delivered via Telegram)")
-    else:
-        # No delivery channel configured: log server-side only. The token is
-        # stored and remains consumable, but no reset link is sent to anyone.
-        logger.warning(
-            "Password reset token issued for %s but no Telegram delivery channel is configured; "
-            "token stored server-side only.", request.email,
-        )
 
-    return {"message": RESET_REQUEST_NEUTRAL_MESSAGE, "status": "success"}
+    logger.info(f"Password reset token issued for: {user_dict['email']}")
+    return {
+        "message": "15-minute password reset token generated. Enter your new password below.",
+        "status": "success",
+        "email": user_dict["email"],
+        "reset_token": reset_token,
+        "expires_in_minutes": settings.RESET_TOKEN_EXPIRE_MINUTES,
+    }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -395,10 +391,17 @@ async def forgot_password_endpoint(
 )
 async def reset_password_endpoint(request: ResetPasswordRequest, request_http: Request):
     """Verifies reset token and updates user password."""
-    rate_limit(request_http, "auth-reset", max_attempts=5, window_seconds=300.0)
+    rate_limit(request_http, "auth-reset", max_attempts=10, window_seconds=300.0)
+
+    token_str = (request.token or "").strip()
+    if not token_str:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset token is required.",
+        )
 
     try:
-        payload = decode_token(request.token)
+        payload = decode_token(token_str)
         if payload.get("token_type") != "reset_password":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -410,7 +413,7 @@ async def reset_password_endpoint(request: ResetPasswordRequest, request_http: R
             detail=f"Invalid or expired reset token: {str(e)}",
         ) from e
 
-    user_id = await auth_db_manager.verify_and_consume_reset_token(request.token)
+    user_id = await auth_db_manager.verify_and_consume_reset_token(token_str)
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -418,7 +421,11 @@ async def reset_password_endpoint(request: ResetPasswordRequest, request_http: R
         )
 
     new_hashed_pwd = hash_password(request.new_password)
-    updated = await auth_db_manager.update_user_password(user_id, new_hashed_pwd)
+    updated = await auth_db_manager.update_user_password(
+        user_id,
+        new_hashed_pwd,
+        email=payload.get("sub"),
+    )
 
     if not updated:
         raise HTTPException(
