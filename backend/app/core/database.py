@@ -153,6 +153,7 @@ class DatabaseManager:
                 timeout=settings.DB_POOL_TIMEOUT,
                 max_lifetime=300.0,
                 max_idle=60.0,
+                check=AsyncConnectionPool.check_connection,
                 kwargs=connection_kwargs,
                 open=False,
             )

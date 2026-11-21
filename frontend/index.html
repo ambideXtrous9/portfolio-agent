@@ -1096,9 +1096,10 @@
                 <label style="display: block; font-weight: 600; margin-bottom: 6px;">Password</label>
                 <input type="password" id="auth-password" class="st-chat-input-field" style="width: 100%; border: 1px solid var(--st-border-input); border-radius: var(--st-radius); padding: 0.6rem 0.85rem;" placeholder="Enter your password" required />
               </div>
-              <div style="display: flex; gap: 12px; align-items: center;">
+              <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <button type="submit" id="auth-login-submit-btn" class="st-btn st-btn-primary" style="padding: 0.6rem 1.8rem; font-weight: 600;">Sign In</button>
                 <button type="button" class="st-btn" id="btn-switch-to-signup" style="padding: 0.6rem 1rem;">Create Account</button>
+                <button type="button" class="st-btn" id="btn-inpage-forgot-password" style="padding: 0.6rem 1rem; font-size: 0.85rem;">Forgot Password?</button>
               </div>
             </form>
           </div>
@@ -1186,9 +1187,12 @@
           <input type="password" class="field-input" id="modal-login-password" required placeholder="••••••••••••" />
         </div>
 
-        <div style="display: flex; gap: 10px; align-items: center; margin-top: 18px;">
+        <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-top: 18px;">
           <button type="submit" class="st-btn st-btn-primary" id="modal-login-submit" style="padding: 0.65rem 1.6rem; font-weight: 600;">
             Sign In &rarr;
+          </button>
+          <button type="button" class="st-btn" id="btn-modal-forgot-link" style="padding: 0.55rem 1rem; font-size: 0.84rem;">
+            Forgot Password?
           </button>
         </div>
       </form>
@@ -1250,7 +1254,7 @@
       <button type="button" class="modal-close" id="reset-modal-close" data-modal-close>&times;</button>
       <form id="modal-form-reset">
         <h3 style="font-size: 1.25rem; margin: 0 0 4px 0; color: var(--st-text-color);">Update Password</h3>
-        <p style="font-size: 0.84rem; color: var(--st-text-muted); margin: 0 0 16px 0;">Submit the reset token and new credentials.</p>
+        <p id="modal-reset-subtitle" style="font-size: 0.84rem; color: var(--st-text-muted); margin: 0 0 16px 0;">Submit the reset token and new credentials.</p>
 
         <div class="field">
           <label class="field-label" for="modal-reset-token">Reset Token</label>
@@ -1262,9 +1266,19 @@
           <input type="password" class="field-input" id="modal-reset-new-password" required minlength="8" placeholder="••••••••••••" />
         </div>
 
-        <button type="submit" class="st-btn st-btn-primary" id="modal-reset-submit" style="margin-top: 14px; padding: 0.65rem 1.6rem; font-weight: 600;">
-          Confirm Reset &rarr;
-        </button>
+        <div class="field">
+          <label class="field-label" for="modal-reset-confirm-password">Confirm New Password</label>
+          <input type="password" class="field-input" id="modal-reset-confirm-password" required minlength="8" placeholder="••••••••••••" />
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px;">
+          <button type="submit" class="st-btn st-btn-primary" id="modal-reset-submit" style="padding: 0.65rem 1.6rem; font-weight: 600;">
+            Confirm Reset &rarr;
+          </button>
+          <button type="button" class="st-btn" id="btn-reset-back-to-login" style="padding: 0.6rem 1.1rem; font-size: 0.84rem;">
+            &larr; Back to Sign In
+          </button>
+        </div>
       </form>
     </div>
   </div>
