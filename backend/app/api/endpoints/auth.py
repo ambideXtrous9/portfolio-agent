@@ -9,7 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from backend.app.api.deps import extract_candidate_tokens, get_current_active_user, oauth2_scheme
 from backend.app.config import settings
 from backend.app.core.auth_database import auth_db_manager
-from backend.app.core.notify import send_telegram_msg
+from backend.app.core.notify import send_reset_email, send_telegram_msg
 from backend.app.core.ratelimit import rate_limit
 from backend.app.core.security import (
     create_access_token,
@@ -358,6 +358,15 @@ async def forgot_password_endpoint(
         expires_at=expires_at,
     )
 
+    # Deliver via SMTP email when configured
+    email_sent = False
+    if settings.SMTP_USER and settings.SMTP_PASSWORD:
+        email_sent = await send_reset_email(
+            to_email=user_dict["email"],
+            reset_token=reset_token,
+            expires_minutes=settings.RESET_TOKEN_EXPIRE_MINUTES,
+        )
+
     # Also notify via Telegram when configured
     if settings.TELEGRAM_CHAT_ID and settings.TELEGRAM_BOT_TOKEN:
         owner_chat_id = settings.TELEGRAM_CHAT_ID.split(",")[0].strip()
@@ -370,11 +379,16 @@ async def forgot_password_endpoint(
             "HTML",
         )
 
-    logger.info(f"Password reset token issued for: {user_dict['email']}")
+    logger.info(f"Password reset token issued for: {user_dict['email']} (email_sent={email_sent})")
     return {
-        "message": "15-minute password reset token generated. Enter your new password below.",
+        "message": (
+            "15-minute reset token generated, auto-applied below, and emailed to your inbox."
+            if email_sent
+            else "15-minute reset token generated and auto-applied below. Enter your new password to complete the reset."
+        ),
         "status": "success",
         "email": user_dict["email"],
+        "email_sent": email_sent,
         "reset_token": reset_token,
         "expires_in_minutes": settings.RESET_TOKEN_EXPIRE_MINUTES,
     }

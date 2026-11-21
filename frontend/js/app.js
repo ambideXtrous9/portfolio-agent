@@ -498,6 +498,53 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  let latestGeneratedResetToken = "";
+
+  function applyGeneratedResetToken(resetToken, targetEmail, emailSent = false) {
+    latestGeneratedResetToken = resetToken || "";
+    const tokenInput = document.getElementById("modal-reset-token");
+    const bannerEl = document.getElementById("modal-reset-token-banner");
+    const bannerNoteEl = document.getElementById("modal-reset-token-banner-note");
+    const subEl = document.getElementById("modal-reset-subtitle");
+
+    const setFieldVal = () => {
+      if (tokenInput && latestGeneratedResetToken) {
+        tokenInput.value = latestGeneratedResetToken;
+        tokenInput.setAttribute("value", latestGeneratedResetToken);
+      }
+    };
+    setFieldVal();
+    setTimeout(setFieldVal, 60);
+    setTimeout(setFieldVal, 250);
+
+    if (bannerEl) {
+      bannerEl.style.display = latestGeneratedResetToken ? "block" : "none";
+    }
+    if (bannerNoteEl) {
+      bannerNoteEl.textContent = emailSent
+        ? `Token auto-applied below and sent to ${targetEmail}. Simply enter your new password below.`
+        : `Instant in-app token verification is active for ${targetEmail} — no email copy-paste required. Simply enter your new password below.`;
+    }
+    if (subEl && targetEmail) {
+      subEl.textContent = `15-minute cryptographic token generated for ${targetEmail}. Enter your new password below.`;
+    }
+  }
+
+  document.getElementById("btn-copy-reset-token")?.addEventListener("click", async () => {
+    const tokenInput = document.getElementById("modal-reset-token");
+    const tok = tokenInput?.value?.trim() || latestGeneratedResetToken;
+    if (!tok) return;
+    try {
+      await navigator.clipboard.writeText(tok);
+      showToast("Reset token copied to clipboard.", "success");
+    } catch (_) {
+      if (tokenInput) {
+        tokenInput.select();
+        showToast("Token selected — press Ctrl+C to copy.", "info");
+      }
+    }
+  });
+
   // Modal Forgot Password form submit
   if (formModalForgot) {
     formModalForgot.addEventListener("submit", async (e) => {
@@ -516,20 +563,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         closeAllModals();
         openModal("reset-modal");
-        const tokenInput = document.getElementById("modal-reset-token");
-        if (tokenInput) tokenInput.value = resetToken;
+        applyGeneratedResetToken(resetToken, res.email || email, Boolean(res.email_sent));
         const newPassInput = document.getElementById("modal-reset-new-password");
         const confirmPassInput = document.getElementById("modal-reset-confirm-password");
         if (newPassInput) {
           newPassInput.value = "";
-          setTimeout(() => newPassInput.focus(), 50);
+          setTimeout(() => newPassInput.focus(), 80);
         }
         if (confirmPassInput) confirmPassInput.value = "";
-        const subEl = document.getElementById("modal-reset-subtitle");
-        if (subEl) {
-          subEl.textContent = `15-minute cryptographic token generated for ${res.email || email}. Enter your new password below.`;
-        }
-        showToast(res.message || "Reset token generated. Set your new password.", "success");
+        showToast(res.message || "Reset token generated and auto-applied. Enter your new password.", "success");
       } catch (err) {
         const cleanMsg = (err.message || "Failed to generate reset token.").replace(/^API Error \(\d+\):\s*/i, "");
         showToast(cleanMsg, "error");
@@ -546,11 +588,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const tokenInput = document.getElementById("modal-reset-token");
       const newPassInput = document.getElementById("modal-reset-new-password");
       const confirmPassInput = document.getElementById("modal-reset-confirm-password");
-      const rToken = tokenInput?.value?.trim();
+      const rToken = tokenInput?.value?.trim() || latestGeneratedResetToken;
       const newPassword = newPassInput?.value?.trim();
       const confirmPassword = confirmPassInput?.value?.trim();
       const submitBtn = document.getElementById("modal-reset-submit");
-      if (!rToken || !newPassword) return;
+      if (!rToken) {
+        showToast("Please generate a reset token first or paste an existing token.", "error");
+        return;
+      }
+      if (!newPassword) return;
 
       if (newPassword.length < 8) {
         showToast("New password must be at least 8 characters long.", "error");
@@ -565,7 +611,13 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const res = await apiResetPassword(rToken, newPassword);
         const forgotEmail = document.getElementById("modal-forgot-email")?.value?.trim();
-        if (tokenInput) tokenInput.value = "";
+        latestGeneratedResetToken = "";
+        if (tokenInput) {
+          tokenInput.value = "";
+          tokenInput.removeAttribute("value");
+        }
+        const bannerEl = document.getElementById("modal-reset-token-banner");
+        if (bannerEl) bannerEl.style.display = "none";
         if (newPassInput) newPassInput.value = "";
         if (confirmPassInput) confirmPassInput.value = "";
         closeAllModals();
