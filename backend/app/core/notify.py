@@ -40,3 +40,50 @@ async def send_telegram_msg(chat_id: str | int, text: str, parse_mode: str = "HT
     except Exception as exc:
         logger.error("Failed sending Telegram message: %s", exc)
         return False
+
+
+def _send_smtp_email_sync(to_email: str, reset_token: str, expires_minutes: int) -> bool:
+    """Sends a password reset token email via SMTP when SMTP_USER and SMTP_PASSWORD are set."""
+    import smtplib
+    from email.message import EmailMessage
+
+    smtp_user = (settings.SMTP_USER or "").strip()
+    smtp_password = (settings.SMTP_PASSWORD or "").strip()
+    if not smtp_user or not smtp_password:
+        return False
+
+    from_addr = (settings.SMTP_FROM_EMAIL or smtp_user).strip()
+    msg = EmailMessage()
+    msg["Subject"] = "ambideXtrous AI Portfolio — Your 15-Minute Password Reset Token"
+    msg["From"] = from_addr
+    msg["To"] = to_email
+    msg.set_content(
+        f"Hello,\n\n"
+        f"A password reset was requested for your ambideXtrous AI Portfolio account ({to_email}).\n\n"
+        f"Your 15-minute cryptographic reset token is:\n\n"
+        f"{reset_token}\n\n"
+        f"This token has also been auto-applied in your open browser window. "
+        f"It expires in {expires_minutes} minutes and can only be used once.\n\n"
+        f"If you did not request this reset, you can safely ignore this email.\n"
+    )
+
+    try:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+        return True
+    except Exception as exc:
+        logger.warning("SMTP password reset email delivery failed: %s", exc)
+        return False
+
+
+async def send_reset_email(to_email: str, reset_token: str, expires_minutes: int = 15) -> bool:
+    """Async wrapper for sending password reset emails off the event loop."""
+    import asyncio
+
+    if not (settings.SMTP_USER and settings.SMTP_PASSWORD):
+        return False
+    return await asyncio.to_thread(_send_smtp_email_sync, to_email, reset_token, expires_minutes)

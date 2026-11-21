@@ -1229,7 +1229,7 @@
       <!-- Forgot Password Form -->
       <form id="modal-form-forgot" style="display: none;">
         <h3 style="font-size: 1.25rem; margin: 0 0 4px 0; color: var(--st-text-color);">Reset Password</h3>
-        <p style="font-size: 0.84rem; color: var(--st-text-muted); margin: 0 0 16px 0;">Generates a 15-minute time-limited cryptographic token.</p>
+        <p style="font-size: 0.84rem; color: var(--st-text-muted); margin: 0 0 16px 0;">Verifies your registered account and generates a 15-minute cryptographic reset token right here (auto-applied in Step 2).</p>
 
         <div class="field">
           <label class="field-label" for="modal-forgot-email">Registered Email</label>
@@ -1238,7 +1238,7 @@
 
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px;">
           <button type="submit" class="st-btn st-btn-primary" id="modal-forgot-submit" style="padding: 0.65rem 1.6rem; font-weight: 600;">
-            Send Reset Token &rarr;
+            Generate Reset Token &rarr;
           </button>
           <button type="button" class="st-btn" id="btn-already-have-reset-token" style="padding: 0.6rem 1.1rem; font-size: 0.84rem;">
             Have a token? Reset now
@@ -1252,23 +1252,33 @@
   <div class="modal-backdrop" id="reset-modal">
     <div class="modal" style="max-width: 460px;">
       <button type="button" class="modal-close" id="reset-modal-close" data-modal-close>&times;</button>
-      <form id="modal-form-reset">
+      <form id="modal-form-reset" autocomplete="off">
         <h3 style="font-size: 1.25rem; margin: 0 0 4px 0; color: var(--st-text-color);">Update Password</h3>
-        <p id="modal-reset-subtitle" style="font-size: 0.84rem; color: var(--st-text-muted); margin: 0 0 16px 0;">Submit the reset token and new credentials.</p>
+        <p id="modal-reset-subtitle" style="font-size: 0.84rem; color: var(--st-text-muted); margin: 0 0 14px 0;">Submit the reset token and new credentials.</p>
+
+        <div id="modal-reset-token-banner" style="display: none; background: rgba(46, 107, 78, 0.08); border: 1px solid rgba(46, 107, 78, 0.28); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 0.82rem; color: var(--st-text-color);">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px;">
+            <strong style="color: #2E6B4E;">✓ 15-Minute Reset Token Auto-Applied</strong>
+            <button type="button" id="btn-copy-reset-token" class="st-btn" style="padding: 2px 8px; font-size: 0.74rem;">Copy Token</button>
+          </div>
+          <div id="modal-reset-token-banner-note" style="color: var(--st-text-muted); font-size: 0.78rem; line-height: 1.35;">
+            Instant in-app token verification is active — no email copy-paste required. Just enter your new password below.
+          </div>
+        </div>
 
         <div class="field">
           <label class="field-label" for="modal-reset-token">Reset Token</label>
-          <input type="text" class="field-input" id="modal-reset-token" required placeholder="Paste reset token here" />
+          <input type="text" class="field-input" id="modal-reset-token" name="portfolio_reset_jwt" autocomplete="off" data-lpignore="true" data-1p-ignore="true" spellcheck="false" style="font-family: monospace; font-size: 0.8rem;" placeholder="Auto-filled when generated above (or paste token)" />
         </div>
 
         <div class="field">
           <label class="field-label" for="modal-reset-new-password">New Password (Minimum 8 chars)</label>
-          <input type="password" class="field-input" id="modal-reset-new-password" required minlength="8" placeholder="••••••••••••" />
+          <input type="password" class="field-input" id="modal-reset-new-password" name="portfolio_new_password" autocomplete="new-password" required minlength="8" placeholder="••••••••••••" />
         </div>
 
         <div class="field">
           <label class="field-label" for="modal-reset-confirm-password">Confirm New Password</label>
-          <input type="password" class="field-input" id="modal-reset-confirm-password" required minlength="8" placeholder="••••••••••••" />
+          <input type="password" class="field-input" id="modal-reset-confirm-password" name="portfolio_confirm_password" autocomplete="new-password" required minlength="8" placeholder="••••••••••••" />
         </div>
 
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px;">
@@ -1309,6 +1319,6 @@
   <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
   <!-- Client Application Scripts -->
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/app.js?v=4.3"></script>
 </body>
 </html>

@@ -41,13 +41,20 @@ class Settings(BaseSettings):
     LIVEKIT_API_SECRET: str = os.getenv("LIVEKIT_API_SECRET", "")
 
     # Telegram Bot & CI/CD Automation
-    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", os.getenv("TELEGRAM_TOKEN", ""))
     TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
     # Secret Telegram sends back on every webhook request (X-Telegram-Bot-Api-Secret-Token).
     # REQUIRED for webhook commands & /notify; set via setWebhook(secret_token=...) during setup.
     TELEGRAM_WEBHOOK_SECRET: str = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
     GITHUB_DISPATCH_TOKEN: str = os.getenv("GITHUB_DISPATCH_TOKEN", "")
     GITHUB_REPO: str = os.getenv("GITHUB_REPO", "ambideXtrous9/portfolio-agent")
+
+    # Optional SMTP Email Delivery (Password Reset Emails)
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", os.getenv("GMAIL_USER", ""))
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", os.getenv("GMAIL_APP_PASSWORD", ""))
+    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "")
     
     # PostgreSQL Database & LangGraph Checkpointing
     DATABASE_URL: str = os.getenv("DATABASE_URL", os.getenv("POSTGRES_URL", ""))
