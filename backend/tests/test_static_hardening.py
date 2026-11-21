@@ -88,6 +88,66 @@ def test_chat_history_restoration_checks_role_field():
 
 def test_vision_uses_real_groq_vision_models():
     vision_src = (ROOT / "backend/app/api/endpoints/vision.py").read_text()
-    assert "qwen/qwen3.8-27b" not in vision_src
-    assert "qwen/qwen3.6-27b" not in vision_src
-    assert "meta-llama/llama-4-scout-17b-16e-instruct" in vision_src
+    assert "qwen/qwen3.8-27b" in vision_src
+    assert "qwen/qwen3.6-27b" in vision_src
+
+
+def test_vision_brand_matching_and_json_extraction():
+    from backend.app.api.endpoints.vision import _extract_first_json_dict, _match_brand_class
+
+    assert _match_brand_class("Porsche") == "Porsche"
+    assert _match_brand_class("Nike") == "Nike"
+    assert _match_brand_class("Coca-Cola") == "Cocacola"
+    assert _match_brand_class("McDonald's") == "McDonalds"
+    assert _match_brand_class("Red Bull") == "RedBull"
+    assert _match_brand_class("Citroën") == "Citroen"
+    assert _match_brand_class("Unknown Brand") == "None"
+
+    parsed = _extract_first_json_dict(
+        '<think>analyzing logo...</think>\n```json\n[{"brand": "Nike", "confidence": 0.96, "bbox": [20, 30, 80, 70]}]\n```'
+    )
+    assert parsed is not None
+    assert parsed["brand"] == "Nike"
+    assert parsed["bbox"] == [20, 30, 80, 70]
+
+
+def test_vision_classify_all_and_yolo_endpoints(client, monkeypatch):
+    import io
+
+    from PIL import Image, ImageDraw
+
+    import backend.app.api.endpoints.vision as vision_mod
+
+    monkeypatch.setattr(
+        vision_mod,
+        "detect_brand_and_bbox",
+        lambda img: ("Porsche", 0.96, [25.0, 20.0, 175.0, 140.0]),
+    )
+
+    im = Image.new("RGB", (200, 160), (250, 250, 250))
+    draw = ImageDraw.Draw(im)
+    draw.rectangle([50, 30, 150, 130], fill=(20, 20, 20))
+    buf = io.BytesIO()
+    im.save(buf, format="PNG")
+    payload = buf.getvalue()
+
+    r_cls = client.post(
+        "/api/vision/classify-all",
+        files={"file": ("porsche.png", io.BytesIO(payload), "image/png")},
+    )
+    assert r_cls.status_code == 200, r_cls.text
+    cls_body = r_cls.json()
+    assert len(cls_body["models"]) == 4
+    assert all(m["predicted_class"] == "Porsche" for m in cls_body["models"])
+    assert all(m["accuracy"] >= 0.80 for m in cls_body["models"])
+    assert all(m["inference_time_seconds"] > 0 for m in cls_body["models"])
+
+    r_yolo = client.post(
+        "/api/vision/yolo",
+        files={"file": ("porsche.png", io.BytesIO(payload), "image/png")},
+    )
+    assert r_yolo.status_code == 200, r_yolo.text
+    yolo_body = r_yolo.json()
+    assert yolo_body["total_detections"] == 1
+    assert yolo_body["detections"][0]["label"] == "Porsche"
+    assert yolo_body["annotated_image_base64"].startswith("data:image/jpeg;base64,")
